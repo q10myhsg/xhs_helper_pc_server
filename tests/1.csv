@@ -1,0 +1,18 @@
+对比维度        OpenClaw        Lobe Chat        Cherry Studio        Chatbox        Coze（开源版）        OpenCrawl
+核心定位        私有化跨渠道个人AI助理（本地部署，多通讯渠道交互）        多模型对话式AI界面（Web/桌面，插件化扩展）        轻量桌面AI助手（国内模型友好，脚本化扩展）        极简多模型对话桌面工具（轻量，自定义脚本扩展）        多模型Agent开发平台（可视化编排+插件化）        多源数据爬取/解析工具（Python API）
+技术栈        Gateway（Go/TS）+ 助理核心（TS），Electron        React + TypeScript + Electron，模块化架构        Vue3 + TypeScript + Electron，极简架构        Electron + JS/TS，极简前端架构        Python + Svelte + Docker，微服务架构        Python 核心 + JS 扩展
+GitHub 关注度        中（Star ≈ 1k，更新频率低）        高（Star ≈ 30k+，更新频繁，社区活跃）        中高（Star ≈ 5k+，国内社区活跃，更新稳定）        中（Star ≈ 8k+，更新频率适中）        高（Star ≈ 15k+，字节开源，维护强）        中（Star ≈ 2k+，小众垂直工具）
+中文支持        ❌ 无原生中文界面/文档，需自行汉化        ✅ 原生中文界面+中文文档，社区汉化完善        ✅ 原生中文界面+国内模型适配文档        ✅ 原生中文界面+极简中文配置指引        ✅ 原生中文界面+官方中文文档        ✅ 中文文档少，代码注释英文
+部署方式        私有化本地部署（自有设备），Docker/手动部署        本地/云端均可，Electron打包桌面端，支持Docker        本地桌面部署（Electron），免安装/安装包双版本        本地桌面部署（Electron），单文件安装包        Docker 容器化部署，支持本地/服务器        本地Python包安装，CLI/API调用
+轻量性（安装包体积）        中（≈80-100MB）        中（≈50-80MB）        低（≈30-50MB，启动快）        极低（≈20-40MB，秒启动）        中高（≈100-150MB，依赖Docker镜像）        极低（≈<10MB，仅Python依赖）
+大模型API配置        ❌ 无现成配置界面，需二次开发添加        ✅ 原生支持多模型（OpenAI/国内模型），配置界面清晰        ✅ 原生支持国内模型（火山/DeepSeek/硅基流动），配置页直观        ✅ 原生支持多模型API配置，界面与你需求高度匹配        ✅ 可视化配置多模型，支持国内模型适配        ❌ 无模型配置能力，仅数据处理
+MCP/Skills 支持        ❌ 无原生支持，需基于Gateway扩展接口自研        ✅ 原生支持Skills（插件化），兼容OpenAI Function Call（MCP核心）        ⭐ 可通过自定义脚本扩展Skills，适配国内模型工具调用格式        ⭐ 可通过自定义脚本封装Skills，无原生MCP支持        ✅ 原生支持Skills/插件，兼容MCP协议        ❌ 无相关能力
+跨设备/跨渠道能力        ✅ 原生支持多终端（macOS/iOS/Android）+多通讯渠道（WhatsApp/微信等）        ❌ 仅桌面端，需扩展ADB指令实现跨设备        ⭐ 桌面端为主，可通过ADB脚本扩展跨设备操作        ⭐ 桌面端为主，可通过自定义脚本扩展跨设备操作        ❌ 仅Web/服务器部署，需扩展桌面端        ❌ 无跨设备能力，仅本地数据处理
+数据本地化        ✅ 100% 本地存储，无云端依赖        ✅ 可选本地化，支持云端同步        ✅ 100% 本地存储，无云端依赖        ✅ 100% 本地存储，无云端依赖        ✅ 可选本地化，支持数据库存储        ✅ 本地存储，无云端依赖
+Python 适配性        ❌ 需封装为API调用，无原生支持        ⭐ 可通过子进程调用Python脚本，需少量TS适配        ❌ 需封装为API调用，核心扩展为JS/TS        ✅ 原生支持子进程调用Python脚本，无需适配        ✅ 原生Python API，可直接扩展        ✅ 纯Python开发，原生支持
+HTML 适配性        ❌ 需懂Vue/TS才能修改界面，HTML仅作辅助        ⭐ 需懂React/TS，HTML嵌套在组件中        ⭐ 需懂Vue/TS，HTML嵌套在模板中        ✅ 可直接修改静态HTML片段定制界面        ❌ 需懂Svelte，HTML适配成本高        ❌ 无界面，仅CLI/API
+二次开发成本        中高（需学Go/TS，Python仅辅助）        中（需补TS基础，Python可子进程调用）        中（需补Vue/TS，Python仅辅助）        极低（纯Python+HTML即可定制）        中（需懂Docker+Python接口开发）        低（纯Python即可扩展）
+国内模型适配        ❌ 无原生支持，需自行适配API格式        ⭐ 需手动配置国内模型API，无原生适配        ✅ 原生支持国内模型，无需额外配置        ⭐ 可添加国内模型API，支持OpenAI兼容格式        ✅ 原生支持国内模型（豆包/火山等）        ❌ 无模型适配能力
+核心优势        1. 私有化+跨设备/跨渠道；2. 数据100%本地化；3. 语音+Canvas交互        1. 原生Skills+MCP；2. 界面美观易裁剪；3. API配置完善        1. 国内模型原生适配；2. 轻量易改；3. 桌面体验流畅        1. Python/HTML完全适配；2. 极简轻量；3. API配置直观        1. 可视化编排+Skills生态；2. 可商用；3. 国内模型友好        1. 纯Python调用；2. 轻量数据爬取；3. 本地化解析
+核心劣势        1. 无API配置界面；2. 无MCP/Skills；3. 国内渠道需适配        1. 跨设备能力弱；2. 国内模型需手动配置；3. Python适配成本高        1. 无原生MCP；2. Skills需JS/TS封装；3. Python仅辅助        1. 无原生MCP/Skills；2. 功能极简；3. 无语音交互        1. 部署门槛高；2. 桌面端需封装；3. 轻量性差        1. 仅数据爬取；2. 无对话/API配置；3. 反爬适配复杂
+适配你的入门难度        极高（Python/HTML几乎用不上）        中（需补少量TS，Python可发挥）        中（需补Vue/TS，Python仅辅助）        极低（Python/HTML完全适配）        中（需补Docker，Python可发挥）        低（纯Python即可用）

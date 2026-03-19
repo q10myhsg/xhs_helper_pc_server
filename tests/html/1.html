@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* 全局基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "SimSun", sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        /* 屏幕端打印按钮 */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background-color: #d93600;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        /* 屏幕端页眉 */
+        .screen-header {
+            width: 100%;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #d93600;
+        }
+
+        .screen-header h1 {
+            font-size: 25px;
+            font-weight: bold;
+            color: #d93600;
+            text-align: center;
+        }
+
+        /* 标题层级样式 */
+        h2 {
+            font-size: 18px;
+            font-weight: bold;
+            color: #52c41a;
+            margin: 20px 0 15px 0;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            font-size: 16px;
+            font-weight: bold;
+            color: #52c41a;
+            margin: 15px 0 10px 0;
+            page-break-after: avoid;
+        }
+
+        /* 文本样式 */
+        p {
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+
+        .key-term {
+            color: #d93600;
+            font-weight: bold;
+        }
+
+        .important-sentence {
+            color: #52c41a;
+            font-weight: bold;
+        }
+
+        .highlight {
+            background-color: #fffbe6;
+            padding: 2px 4px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        .supplementary {
+            color: #1890ff;
+            font-style: italic;
+        }
+
+        /* 数学公式样式 */
+        .math-formula {
+            font-family: "Times New Roman", serif;
+            font-style: italic;
+        }
+
+        /* 题型模块 */
+        .question-block {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+
+        .option-list {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .option-list li {
+            margin-bottom: 8px;
+        }
+
+        /* 核心母题模块 */
+        .core-question {
+            background-color: #f6ffed;
+            border: 1px solid #b7eb8f;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+
+        .solution {
+            margin-left: 20px;
+            margin-top: 15px;
+        }
+
+        .solution-step {
+            margin-bottom: 12px;
+        }
+
+        /* 举一反三模块 */
+        .extension {
+            margin: 25px 0;
+            page-break-inside: avoid;
+        }
+
+        .extension-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #d93600;
+            margin-bottom: 15px;
+        }
+
+        /* 方法总结模块 */
+        .summary {
+            background-color: #fff7e6;
+            border: 1px solid #ffd591;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+
+        /* 提示框模块 */
+        .tip {
+            background-color: #fff2e8;
+            border: 1px solid #ffbb96;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            page-break-inside: avoid;
+        }
+
+        /* 打印专属样式 */
+        @media print {
+            .print-btn, .screen-header {
+                display: none;
+            }
+
+            @page {
+                size: A4;
+                margin: 2cm;
+
+                /* 打印页眉 */
+                @top-center {
+                    content: "第1单元测试卷1";
+                    font-size: 25px;
+                    font-weight: bold;
+                    color: #d93600;
+                    border-bottom: 2px solid #d93600;
+                    padding-bottom: 5px;
+                    width: 100%;
+                }
+
+                /* 打印页脚 */
+                @bottom-center {
+                    content: counter(page) " / " counter(pages);
+                    font-size: 15px;
+                    color: #666;
+                    padding-top: 3px;
+                }
+            }
+
+            body {
+                width: auto;
+                height: auto;
+                padding: 0;
+            }
+
+            h2, h3 {
+                page-break-after: avoid;
+            }
+
+            p, .question-block, .core-question, .extension, .summary, .tip {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 屏幕端打印按钮 -->
+    <button class="print-btn" onclick="window.print()">打印全部</button>
+
+    <!-- 屏幕端页眉 -->
+    <div class="screen-header">
+        <h1>第1单元测试卷1</h1>
+    </div>
+
+    <!-- 正文内容 -->
+    <div class="content">
+        <!-- 选择题部分 -->
+        <h2>一、选择题（每小题3分，共30分）</h2>
+        <div class="question-block">
+            <ol class="option-list">
+                <li>下列各数中，属于<span class="key-term">正有理数</span>的是（ ）
+                    A. <span class="math-formula">-\sqrt{2}</span> 
+                    B. <span class="key-term">3.14</span> 
+                    C. 0 
+                    D. <span class="math-formula">-\frac{1}{3}</span>
+                </li>
+                <li>在数轴上，与原点距离为3个单位长度的点表示的数是（ ）
+                    A. 3 
+                    B. -3 
+                    C. <span class="key-term">±3</span> 
+                    D. 6
+                </li>
+                <li>下列说法正确的是（ ）
+                    A. 正数、负数统称为有理数
+                    B. <span class="key-term">0</span>是最小的有理数
+                    C. 有理数的绝对值是非负数
+                    D. 两个负数，绝对值大的数大
+                </li>
+                <li>计算 <span class="math-formula">(-3) + 5</span> 的结果是（ ）
+                    A. -2 
+                    B. <span class="key-term">2</span> 
+                    C. -8 
+                    D. 8
+                </li>
+                <li>若 <span class="math-formula">|x| = 5</span>，则x的值为（ ）
+                    A. 5 
+                    B. -5 
+                    C. <span class="key-term">±5</span> 
+                    D. 0
+                </li>
+                <li>下列各数中，互为相反数的是（ ）
+                    A. <span class="math-formula">-\frac{1}{2}</span> 和 <span class="math-formula">-2</span>
+                    B. <span class="key-term">3</span> 和 <span class="math-formula">-3</span>
+                    C. <span class="math-formula">0.2</span> 和 <span class="math-formula">-\frac{1}{5}</span>
+                    D. <span class="math-formula">1</span> 和 <span class="math-formula">|-1|</span>
+                </li>
+                <li>计算 <span class="math-formula">(-2) × (-3) × (-4)</span> 的结果是（ ）
+                    A. 24 
+                    B. <span class="key-term">-24</span> 
+                    C. 12 
+                    D. -12
+                </li>
+                <li>下列运算中，结果最大的是（ ）
+                    A. <span class="math-formula">(-3) + (-4)</span>
+                    B. <span class="math-formula">(-3) - (-4)</span>
+                    C. <span class="math-formula">(-3) × (-4)</span>
+                    D. <span class="key-term">(-3) ÷ (-4)</span>
+                </li>
+                <li>若a是负数，则下列各式中成立的是（ ）
+                    A. <span class="math-formula">|a| = a</span>
+                    B. <span class="math-formula">|a| = -a</span>
+                    C. <span class="key-term">a < -a</span>
+                    D. <span class="math-formula">a > |a|</span>
+                </li>
+                <li>某商店一周的利润情况如下：+120元，-30元，+80元，-25元，+100元，-40元，+75元，则该商店这一周的总利润是（ ）
+                    A. 280元 
+                    B. <span class="key-term">280元</span> 
+                    C. 300元 
+                    D. 320元
+                </li>
+            </ol>
+        </div>
+
+        <!-- 填空题部分 -->
+        <h2>二、填空题（每小题4分，共20分）</h2>
+        <div class="question-block">
+            <ol class="option-list">
+                <li>如果水位上升3m记作<span class="math-formula">+3m</span>，那么水位下降2m记作 <span class="highlight">______</span>。</li>
+                <li>绝对值等于4的数是 <span class="highlight">______</span>。</li>
+                <li>计算 <span class="math-formula">(-1)^{2024}</span> 的结果是 <span class="highlight">______</span>。</li>
+                <li>比较大小：<span class="math-formula">-\frac{2}{3}</span> <span class="highlight">______</span> <span class="math-formula">-\frac{3}{4}</span>（填“>”“<”或“=”）。</li>
+                <li>若 <span class="math-formula">|a + 2| + (b - 3)^2 = 0</span>，则 <span class="math-formula">a + b</span> 的值为 <span class="highlight">______</span>。</li>
+            </ol>
+        </div>
+
+        <!-- 核心母题模块 -->
+        <div class="core-question">
+            <h3>核心母题：有理数混合运算（本题10分）</h3>
+            <p>计算：<span class="math-formula">(-2)^3 + |-5| × (-2) - (-3) ÷ (-\frac{1}{3})</span></p>
+
+            <div class="solution">
+                <h4 class="important-sentence">解答过程：</h4>
+                <div class="solution-step">
+                    <p>步骤1：计算乘方和绝对值</p>
+                    <p><span class="math-formula">(-2)^3 = -8</span>，<span class="math-formula">|-5| = 5</span></p>
+                    <p>原式 = <span class="highlight">-8 + 5 × (-2) - (-3) ÷ (-\frac{1}{3})</span></p>
+                </div>
+                <div class="solution-step">
+                    <p>步骤2：计算乘除运算</p>
+                    <p><span class="math-formula">5 × (-2) = -10</span>，<span class="math-formula">(-3) ÷ (-\frac{1}{3}) = 9</span></p>
+                    <p>原式 = <span class="highlight">-8 + (-10) - 9</span></p>
+                </div>
+                <div class="solution-step">
+                    <p>步骤3：计算加减运算</p>
+                    <p><span class="math-formula">-8 + (-10) = -18</span>，<span class="math-formula">-18 - 9 = -27</span></p>
+                    <p>最终结果：<span class="key-term">-27</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 举一反三模块 -->
+        <div class="extension">
+            <div class="extension-title">举一反三</div>
+            <ol class="option-list">
+                <li>计算：<span class="math-formula">(-1)^4 + |-3| × 2 - (-4) ÷ (-\frac{1}{2})</span></li>
+                <li>计算：<span class="math-formula">(-3)^2 × (-\frac{2}{3}) + (-2)^3 ÷ 4</span></li>
+            </ol>
+        </div>
+
+        <!-- 方法总结模块 -->
+        <div class="summary">
+            <h3 class="important-sentence">方法总结：有理数混合运算法则</h3>
+            <p>1. <span class="key-term">运算顺序</span>：先算乘方，再算乘除，最后算加减；有括号先算括号内的</p>
+            <p>2. <span class="key-term">符号规则</span>：同号得正，异号得负；多个负数相乘，奇数个负号结果为负，偶数个为正</p>
+            <p>3. <span class="key-term">绝对值处理</span>：先计算绝对值，再进行后续运算</p>
+            <p class="supplementary">提示：运算时要注意符号变化，避免因符号错误导致结果错误</p>
+        </div>
+
+        <!-- 解答题部分 -->
+        <h2>三、解答题（共40分）</h2>
+        <div class="question-block">
+            <h3>1. 计算下列各题（每小题6分，共18分）</h3>
+            <ol class="option-list">
+                <li><span class="math-formula">(-12) + 15 + (-8) + 7</span></li>
+                <li><span class="math-formula">(-4) × 6 ÷ (-3)</span></li>
+                <li><span class="math-formula">(-2)^2 × 5 - (-2)^3 ÷ 4</span></li>
+            </ol>
+        </div>
+
+        <div class="question-block">
+            <h3>2. （本题10分）</h3>
+            <p>已知 <span class="math-formula">a = -3</span>，<span class="math-formula">b = 2</span>，<span class="math-formula">c = -1</span>，求下列代数式的值：</p>
+            <ol class="option-list">
+                <li><span class="math-formula">a + b + c</span></li>
+                <li><span class="math-formula">|a| - |b| + |c|</span></li>
+            </ol>
+        </div>
+
+        <div class="question-block">
+            <h3>3. （本题12分）</h3>
+            <p>某出租车一天下午以车站为出发地在东西方向营运，向东走为正，向西走为负，行车里程（单位：km）依先后次序记录如下：+9，-3，+5，-4，+8，-6，+3，-6，+4，-10。</p>
+            <ol class="option-list">
+                <li>将最后一名乘客送到目的地，出租车离车站出发点多远？在车站的什么方向？</li>
+                <li>若每千米的价格为2.4元，司机一个下午的营业额是多少？</li>
+            </ol>
+        </div>
+
+        <!-- 提示框模块 -->
+        <div class="tip">
+            <h3 class="important-sentence">考试注意事项</h3>
+            <p>1. 仔细审题，注意题目中的<span class="key-term">符号</span>和<span class="key-term">运算顺序</span></p>
+            <p>2. 计算时要步步为营，避免跳步导致错误</p>
+            <p>3. 填空题要注意结果的完整性，如绝对值的结果是<span class="key-term">非负数</span></p>
+            <p>4. 解答题要写出完整的解题过程，不能只写结果</p>
+            <p>5. 做完题目后，要仔细检查，特别是符号和计算结果</p>
+        </div>
+    </div>
+</body>
+</html>

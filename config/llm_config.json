@@ -1,0 +1,16 @@
+{
+  "models": {
+    "doubao": {
+      "api_key": "4619a094-feda-4afd-a479-9376acff87ed",
+      "api_url": "https://ark.cn-beijing.volces.com/api/v3",
+      "supported_models": ["doubao-seed-1-8-251228"]
+    },
+    "openai": {
+      "api_key": "your-openai-api-key",
+      "api_url": "https://api.openai.com/v1",
+      "supported_models": ["gpt-3.5-turbo", "gpt-4"]
+    }
+  },
+  "default_provider": "doubao",
+  "default_model": "doubao-seed-1-8-251228"
+}

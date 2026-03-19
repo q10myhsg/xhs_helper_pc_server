@@ -1,0 +1,7 @@
+Flask==2.3.2
+uiautomator2==3.2.10 
+Pillow==10.4.0
+requests==2.27.1
+beautifulsoup4==4.12.2
+lxml==5.1.0
+openai

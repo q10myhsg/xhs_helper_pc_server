@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书自动化 - 智能养号系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+            <nav class="navbar">
+                <div class="navbar-brand">🚀 小红书自动化系统</div>
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a href="#" class="nav-link active" onclick="showPage('dashboard')">仪表板</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link" onclick="showPage('device')">设备管理</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link" onclick="showPage('keyword')">关键词</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link" onclick="showPage('config')">参数配置</a></li>
+                </ul>
+            </nav>
+
+    <!-- 主内容区 -->
+    <div class="container">
+        <div class="main-content">
+            
+            <!-- 仪表板 -->
+            <div id="dashboard" class="page active">
+                <h1>📊 仪表板</h1>
+                
+                <h2>设备选择</h2>
+                <button class="btn btn-primary" onclick="refreshDeviceList()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+                <button class="btn btn-secondary" onclick="selectAllDevices()" style="margin-left: 10px;">全选</button>
+                <button class="btn btn-secondary" onclick="deselectAllDevices()" style="margin-left: 10px;">取消全选</button>
+                
+                <div class="device-selector" id="dashboard-device-list" style="margin-bottom: 20px;"></div>
+                
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-success" onclick="startNurturing()" style="margin-right: 10px;">🚀 启动养号</button>
+                    <button class="btn btn-danger" onclick="stopNurturing()" style="margin-right: 10px;">🛑 停止养号</button>
+                    <button class="btn btn-secondary" onclick="closeXiaohongshu()">关闭小红书</button>
+                </div>
+
+
+                <h2>设备详细状态</h2>
+                <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                    <button class="btn btn-primary" onclick="loadDeviceStatuses()">🔄 刷新状态</button>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label>自动刷新周期:</label>
+                        <select id="refresh-interval" onchange="updateRefreshInterval()" style="padding: 5px; border-radius: 4px;">
+                            <option value="60">1分钟</option>
+                            <option value="300">5分钟</option>
+                            <option value="600">10分钟</option>
+                        </select>
+                    </div>
+                </div>
+
+
+                <div id="device-status-list" style="margin-top: 20px;"></div>
+
+
+                <h2>最近操作日志</h2>
+                <div id="log-list" style="max-height: 300px; overflow-y: auto;">
+                    <div class="alert alert-info">暂无日志</div>
+                </div>
+            </div>
+
+            <!-- 设备管理 -->
+            <div id="device" class="page">
+                <h1>📱 设备管理</h1>
+                
+                <h2>已连接设备</h2>
+                <button class="btn btn-primary" onclick="refreshDevices()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+                
+                <div class="device-selector" id="device-list"></div>
+
+                <!-- 设备别名设置模态框 -->
+                <div id="alias-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+                    <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px;">
+                        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>设置设备别名</h3>
+                            <span class="close" onclick="closeAliasModal()" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="modal-device-id">
+                            <div class="form-group">
+                                <label for="device-alias">设备别名</label>
+                                <input type="text" id="device-alias" placeholder="请输入设备别名，如：测试手机1" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                            <button class="btn btn-secondary" onclick="closeAliasModal()">取消</button>
+                            <button class="btn btn-primary" onclick="saveDeviceAlias()">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 关键词管理 -->
+            <div id="keyword" class="page">
+                <h1>🔍 搜索关键词管理</h1>
+                
+                <!-- 设备选择 -->
+                <h2>设备选择</h2>
+                <button class="btn btn-primary" onclick="refreshKeywordDeviceList()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+                <div class="device-selector" id="keyword-device-list" style="margin-bottom: 20px;"></div>
+                
+                <!-- 功能列表 -->
+                <div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+                    <h3>功能操作</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1; min-width: 300px;">
+                            <input type="text" id="new-keyword" placeholder="输入关键词，例：科技资讯" style="width: 100%;">
+                            <button class="btn btn-primary" onclick="addKeyword()" style="margin-top: 10px;">➕ 添加</button>
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 300px;">
+                            <textarea id="keywords-import" placeholder="每行一个关键词，例：&#10;科技资讯&#10;旅行攻略&#10;美食教程" rows="3" style="width: 100%;"></textarea>
+                            <button class="btn btn-primary" onclick="importKeywords()" style="margin-top: 10px;">📥 批量导入</button>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: flex-end;">
+                            <button class="btn btn-success" onclick="saveKeywords()">💾 保存关键词</button>
+                            <button class="btn btn-danger" onclick="clearAllKeywords()">🗑️ 清除全部</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 关键词列表 -->
+                <h2>当前关键词列表</h2>
+                <div id="keyword-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px;"></div>
+            </div>
+
+            <!-- 参数配置 -->
+            <div id="config" class="page">
+                <h1>⚙️ 参数配置</h1>
+                
+                <!-- 设备选择 -->
+                <h2>设备选择</h2>
+                <button class="btn btn-primary" onclick="refreshConfigDeviceList()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+                <div class="device-selector" id="config-device-list" style="margin-bottom: 20px;"></div>
+
+                <!-- 核心参数 -->
+                <div class="config-section">
+                    <h2>⚙️ 核心参数配置</h2>
+
+                    <div class="form-group">
+                        <label>养号时间（分钟）</label>
+                        <input type="number" id="duration-minutes" min="1" max="120" value="20">
+                        <small style="color: #666;">范围：1-120分钟</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>访问帖子比例（%）</label>
+                        <input type="range" id="post-visit-ratio" min="0" max="100" value="50" oninput="document.getElementById('ratio-display').textContent = this.value + '%'">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span id="ratio-display" style="color: #667eea; font-weight: bold;">50%</span>
+                            <small style="color: #666;">搜索结果中会访问此比例的帖子</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>每个关键词最多访问帖子数</label>
+                        <input type="number" id="posts-per-keyword" min="1" max="50" value="10">
+                        <small style="color: #666;">范围：1-50条</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>发现页浏览时间（秒）</label>
+                        <input type="number" id="discovery-browse-time" min="5" max="300" value="10">
+                        <small style="color: #666;">范围：5-300秒</small>
+                    </div>
+                </div>
+
+                <!-- 访问控制 -->
+                <div class="config-section">
+                    <h2>👁️ 帖子访问控制</h2>
+
+
+
+                    <div class="form-group">
+                        <label>访问时长范围（秒）</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="duration-min" min="5" max="60" value="25" style="flex: 1;">
+                            <span>-</span>
+                            <input type="number" id="duration-max" min="5" max="120" value="45" style="flex: 1;">
+                        </div>
+                        <small style="color: #666;">模拟真实用户访问时长（随机）</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>图片滑动间隔（秒）</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="slide-interval-min" min="1" max="10" value="3" style="flex: 1;">
+                            <span>-</span>
+                            <input type="number" id="slide-interval-max" min="1" max="10" value="5" style="flex: 1;">
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <!-- 互动配置 -->
+                <div class="config-section">
+                    <h2>💬 互动行为配置</h2>
+
+                    <h3>行为触发概率</h3>
+
+                    <div class="form-group">
+                        <label>点赞概率（%）</label>
+                        <input type="range" id="like-prob" min="0" max="50" value="15" oninput="document.getElementById('like-display').textContent = this.value + '%'">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span id="like-display" style="color: #667eea; font-weight: bold;">15%</span>
+                            <small style="color: #666;">默认15%</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>收藏概率（%）</label>
+                        <input type="range" id="collect-prob" min="0" max="50" value="10" oninput="document.getElementById('collect-display').textContent = this.value + '%'">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span id="collect-display" style="color: #667eea; font-weight: bold;">10%</span>
+                            <small style="color: #666;">默认10%</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>评论概率（%）</label>
+                        <input type="range" id="comment-prob" min="0" max="50" value="5" oninput="document.getElementById('comment-display').textContent = this.value + '%'">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span id="comment-display" style="color: #667eea; font-weight: bold;">5%</span>
+                            <small style="color: #666;">默认5%</small>
+                        </div>
+                    </div>
+
+                    <h3>常用评论库</h3>
+                    <div id="comment-templates-list"></div>
+
+                    <h3>添加常用评论</h3>
+                    <div class="form-group">
+                        <input type="text" id="new-template" placeholder="输入新的常用评论，例：不错的分享！">
+                        <button class="btn btn-primary" onclick="addCommentTemplate()" style="margin-top: 10px;">➕ 添加</button>
+                    </div>
+                </div>
+
+
+
+                <!-- 保存按钮 -->
+                <div style="margin-top: 30px;">
+                    <button class="btn btn-success" onclick="saveAllConfig()">💾 保存所有配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // 全局变量
+        let selectedDevices = []; // 存储选中的设备ID列表
+        let currentDeviceId = null; // 保持向后兼容
+        let isNurturingRunning = false; // 养号状态
+        let nurtureInterval = null; // 养号定时器
+        let statusRefreshInterval = null; // 状态刷新定时器
+        let refreshIntervalSeconds = 60; // 默认刷新周期为1分钟
+
+        // 页面切换
+        function showPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            // 显示选中页面
+            document.getElementById(pageId).classList.add('active');
+            // 更新导航栏状态
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // 加载对应页面的数据
+            switch (pageId) {
+                case 'device':
+                    // 切换到设备管理页面时，无论是否选择了设备，都刷新设备列表
+                    refreshDevices();
+                    break;
+                case 'keyword':
+                    // 切换到关键词管理页面时，刷新设备列表
+                    refreshKeywordDeviceList();
+                    break;
+                case 'config':
+                    // 切换到参数配置页面时，刷新设备列表
+                    refreshConfigDeviceList();
+                    break;
+            }
+        }
+
+        // 刷新设备管理页面的设备列表
+        function refreshDevices() {
+            console.log('开始刷新设备列表...');
+            fetch('/api/devices')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('获取设备列表结果:', data);
+                    if (data.success) {
+                        const deviceList = document.getElementById('device-list');
+                        deviceList.innerHTML = '';
+                        
+                        if (data.data.length === 0) {
+                            deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+                        } else {
+                            data.data.forEach(device => {
+                                const deviceOption = document.createElement('div');
+                                deviceOption.className = 'device-option';
+                                deviceOption.style.display = 'flex';
+                                deviceOption.style.alignItems = 'center';
+                                deviceOption.style.gap = '15px';
+                                deviceOption.style.marginBottom = '10px';
+                                deviceOption.innerHTML = `
+                                    <input type="radio" id="device-${device.id}" name="device" value="${device.id}" style="margin-top: 3px;">
+                                    <label for="device-${device.id}" style="display: flex; flex-direction: row; gap: 10px; align-items: center; margin: 0;">
+                                        <strong>${device.name}</strong>
+                                        <small style="color: #666;">设备ID: ${device.id}</small>
+                                        <small style="color: ${device.status === 'online' ? '#4CAF50' : '#FF9800'};">状态: ${device.status}</small>
+                                    </label>
+                                    <div style="display: flex; gap: 5px;">
+                                        <button class="btn btn-sm btn-primary" onclick="openAliasModal('${device.id}')">设置别名</button>
+                                        ${device.status === 'offline' ? `<button class="btn btn-sm btn-danger" onclick="deleteDevice('${device.id}')">删除</button>` : ''}
+                                    </div>
+                                `;
+                                deviceList.appendChild(deviceOption);
+                            });
+                        }
+                    } else {
+                        alert('获取设备列表失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('网络错误:', error);
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 刷新仪表板的设备列表（支持多选）
+        function refreshDeviceList() {
+            console.log('开始刷新仪表板设备列表...');
+            fetch('/api/devices')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('获取设备列表结果:', data);
+                    if (data.success) {
+                        const deviceList = document.getElementById('dashboard-device-list');
+                        deviceList.innerHTML = '';
+                        
+                        if (data.data.length === 0) {
+                            deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+                        } else {
+                            data.data.forEach((device, index) => {
+                                const deviceOption = document.createElement('div');
+                                deviceOption.className = 'device-option';
+                                deviceOption.style.display = 'flex';
+                                deviceOption.style.alignItems = 'center';
+                                deviceOption.style.gap = '15px';
+                                deviceOption.style.marginBottom = '10px';
+                                // 默认选中第一个设备
+                                const isChecked = index === 0 && selectedDevices.length === 0;
+                                if (isChecked) {
+                                    selectedDevices = [device.id];
+                                }
+                                deviceOption.innerHTML = `
+                                    <input type="checkbox" id="dashboard-device-${device.id}" value="${device.id}" ${isChecked ? 'checked' : ''} onchange="updateSelectedDevices()" style="margin-top: 3px;">
+                                    <label for="dashboard-device-${device.id}" style="display: flex; flex-direction: row; gap: 10px; align-items: center; margin: 0;">
+                                        <strong>${device.name}</strong>
+                                        <small style="color: #666;">设备ID: ${device.id}</small>
+                                        <small style="color: ${device.status === 'online' ? '#4CAF50' : '#FF9800'};">状态: ${device.status}</small>
+                                    </label>
+                                `;
+                                deviceList.appendChild(deviceOption);
+                            });
+                        }
+                    } else {
+                        alert('获取设备列表失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('网络错误:', error);
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 刷新参数配置页面的设备列表
+        function refreshConfigDeviceList() {
+            console.log('开始刷新参数配置页面设备列表...');
+            fetch('/api/devices')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('获取设备列表结果:', data);
+                    if (data.success) {
+                        const deviceList = document.getElementById('config-device-list');
+                        deviceList.innerHTML = '';
+                        
+                        if (data.data.length === 0) {
+                            deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+                        } else {
+                            data.data.forEach((device, index) => {
+                                const deviceOption = document.createElement('div');
+                                deviceOption.className = 'device-option';
+                                deviceOption.style.display = 'flex';
+                                deviceOption.style.alignItems = 'center';
+                                deviceOption.style.gap = '15px';
+                                deviceOption.style.marginBottom = '10px';
+                                // 默认选中第一个设备
+                                const isChecked = index === 0;
+                                deviceOption.innerHTML = `
+                                    <input type="radio" id="config-device-${device.id}" name="config-device" value="${device.id}" ${isChecked ? 'checked' : ''} onchange="loadDeviceConfig()" style="margin-top: 3px;">
+                                    <label for="config-device-${device.id}" style="display: flex; flex-direction: row; gap: 10px; align-items: center; margin: 0;">
+                                        <strong>${device.name}</strong>
+                                        <small style="color: #666;">设备ID: ${device.id}</small>
+                                        <small style="color: ${device.status === 'online' ? '#4CAF50' : '#FF9800'};">状态: ${device.status}</small>
+                                    </label>
+                                `;
+                                deviceList.appendChild(deviceOption);
+                            });
+                            // 默认加载第一个设备的配置
+                            if (data.data.length > 0) {
+                                currentDeviceId = data.data[0].id;
+                                loadDeviceConfig();
+                            }
+                        }
+                    } else {
+                        alert('获取设备列表失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('网络错误:', error);
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 更新选中的设备列表
+        function updateSelectedDevices() {
+            selectedDevices = [];
+            document.querySelectorAll('#dashboard-device-list input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedDevices.push(checkbox.value);
+            });
+            console.log('选中的设备:', selectedDevices);
+        }
+
+        // 全选设备
+        function selectAllDevices() {
+            document.querySelectorAll('#dashboard-device-list input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            updateSelectedDevices();
+        }
+
+        // 取消全选设备
+        function deselectAllDevices() {
+            document.querySelectorAll('#dashboard-device-list input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedDevices = [];
+            console.log('选中的设备:', selectedDevices);
+        }
+
+        // 刷新关键词管理页面的设备列表
+        function refreshKeywordDeviceList() {
+            console.log('开始刷新关键词管理页面设备列表...');
+            fetch('/api/devices')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('获取设备列表结果:', data);
+                    if (data.success) {
+                        const deviceList = document.getElementById('keyword-device-list');
+                        deviceList.innerHTML = '';
+                        
+                        if (data.data.length === 0) {
+                            deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+                        } else {
+                            data.data.forEach((device, index) => {
+                                const deviceOption = document.createElement('div');
+                                deviceOption.className = 'device-option';
+                                deviceOption.style.display = 'flex';
+                                deviceOption.style.alignItems = 'center';
+                                deviceOption.style.gap = '15px';
+                                deviceOption.style.marginBottom = '10px';
+                                // 默认选中第一个设备
+                                const isChecked = index === 0;
+                                deviceOption.innerHTML = `
+                                    <input type="radio" id="keyword-device-${device.id}" name="keyword-device" value="${device.id}" ${isChecked ? 'checked' : ''} onchange="loadDeviceKeywords()" style="margin-top: 3px;">
+                                    <label for="keyword-device-${device.id}" style="display: flex; flex-direction: row; gap: 10px; align-items: center; margin: 0;">
+                                        <strong>${device.name}</strong>
+                                        <small style="color: #666;">设备ID: ${device.id}</small>
+                                        <small style="color: ${device.status === 'online' ? '#4CAF50' : '#FF9800'};">状态: ${device.status}</small>
+                                    </label>
+                                `;
+                                deviceList.appendChild(deviceOption);
+                            });
+                            // 默认加载第一个设备的关键词
+                            if (data.data.length > 0) {
+                                currentDeviceId = data.data[0].id;
+                                refreshKeywords();
+                            }
+                        }
+                    } else {
+                        alert('获取设备列表失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('网络错误:', error);
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 加载选中设备的关键词
+        function loadDeviceKeywords() {
+            const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+            if (!selectedDevice) {
+                return;
+            }
+            const deviceId = selectedDevice.value;
+            currentDeviceId = deviceId;
+            refreshKeywords();
+        }
+
+        // 启动养号（支持多个设备）
+        function startNurturing() {
+            if (selectedDevices.length === 0) {
+                alert('请选择至少一个设备');
+                return;
+            }
+            
+            let successCount = 0;
+            let totalCount = selectedDevices.length;
+            
+            // 为每个选中的设备启动养号
+            selectedDevices.forEach(deviceId => {
+                fetch('/api/yanghao/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ device_id: deviceId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    totalCount--;
+                    if (data.success) {
+                        successCount++;
+                        console.log(`设备 ${deviceId} 养号已启动`);
+                        addLog(`设备 ${deviceId} 养号已启动`);
+                    } else {
+                        console.error(`设备 ${deviceId} 启动养号失败: `, data.error);
+                        addLog(`设备 ${deviceId} 启动养号失败: ${data.error}`);
+                    }
+                    
+                    // 所有设备都处理完毕
+                    if (totalCount === 0) {
+                        // 更新UI状态
+                        if (successCount > 0) {
+                            isNurturingRunning = true;
+                            // document.getElementById('running-status').innerHTML = '🟢 运行中'; // 已删除的DOM元素
+                            
+                            // 按照页面选择的刷新周期刷新状态
+                            if (!nurtureInterval) {
+                                // 获取页面上选择的刷新周期
+                                const select = document.getElementById('refresh-interval');
+                                const intervalSeconds = parseInt(select.value);
+                                // 转换为毫秒
+                                const intervalMs = intervalSeconds * 1000;
+                                // 设置定时器
+                                nurtureInterval = setInterval(refreshStatus, intervalMs);
+                            }
+                            // 启动自动刷新设备状态
+                            startAutoRefresh();
+                        }
+                        
+                        // 显示结果
+                        if (successCount === selectedDevices.length) {
+                            alert(`已成功为 ${successCount} 个设备启动养号`);
+                        } else if (successCount > 0) {
+                            alert(`已成功为 ${successCount} 个设备启动养号，${selectedDevices.length - successCount} 个设备启动失败`);
+                        } else {
+                            alert(`所有设备启动养号失败，请检查设备状态`);
+                        }
+                    }
+                })
+                .catch(error => {
+                    totalCount--;
+                    console.error(`设备 ${deviceId} 网络错误: `, error.message);
+                    addLog(`设备 ${deviceId} 网络错误: ${error.message}`);
+                    
+                    // 所有设备都处理完毕
+                    if (totalCount === 0) {
+                        alert(`所有设备启动养号失败，请检查网络连接`);
+                    }
+                });
+            });
+        }
+
+        // 停止养号（支持多个设备）
+        function stopNurturing() {
+            if (selectedDevices.length === 0) {
+                alert('请选择至少一个设备');
+                return;
+            }
+            
+            let successCount = 0;
+            let totalCount = selectedDevices.length;
+            
+            // 为每个选中的设备停止养号
+            selectedDevices.forEach(deviceId => {
+                fetch('/api/yanghao/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ device_id: deviceId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    totalCount--;
+                    if (data.success) {
+                        successCount++;
+                        console.log(`设备 ${deviceId} 养号已停止`);
+                        addLog(`设备 ${deviceId} 养号已停止`);
+                    } else {
+                        console.error(`设备 ${deviceId} 停止养号失败: `, data.error);
+                        addLog(`设备 ${deviceId} 停止养号失败: ${data.error}`);
+                    }
+                    
+                    // 所有设备都处理完毕
+                    if (totalCount === 0) {
+                        // 更新UI状态
+                        if (successCount > 0) {
+                            isNurturingRunning = false;
+                            // 清除定时器
+                            if (nurtureInterval) {
+                                clearInterval(nurtureInterval);
+                                nurtureInterval = null;
+                            }
+                            // 停止自动刷新设备状态
+                            stopAutoRefresh();
+                            
+                            refreshStatus();
+                        }
+                        
+                        // 显示结果
+                        if (successCount === selectedDevices.length) {
+                            alert(`已成功为 ${successCount} 个设备停止养号`);
+                        } else if (successCount > 0) {
+                            alert(`已成功为 ${successCount} 个设备停止养号，${selectedDevices.length - successCount} 个设备停止失败`);
+                        } else {
+                            alert(`所有设备停止养号失败，请检查设备状态`);
+                        }
+                    }
+                })
+                .catch(error => {
+                    totalCount--;
+                    console.error(`设备 ${deviceId} 网络错误: `, error.message);
+                    addLog(`设备 ${deviceId} 网络错误: ${error.message}`);
+                    
+                    // 所有设备都处理完毕
+                    if (totalCount === 0) {
+                        alert(`所有设备停止养号失败，请检查网络连接`);
+                    }
+                });
+            });
+        }
+
+        // 添加日志
+        function addLog(message) {
+            const logList = document.getElementById('log-list');
+            const logItem = document.createElement('div');
+            logItem.className = 'alert alert-info';
+            const now = new Date();
+            const timeStr = now.toLocaleString();
+            logItem.innerHTML = `[${timeStr}] ${message}`;
+            
+            // 添加到日志列表的顶部
+            if (logList.firstChild && logList.firstChild.className === 'alert alert-info' && logList.firstChild.textContent === '暂无日志') {
+                logList.innerHTML = '';
+            }
+            logList.insertBefore(logItem, logList.firstChild);
+            
+            // 限制日志数量
+            if (logList.children.length > 50) {
+                logList.removeChild(logList.lastChild);
+            }
+        }
+
+        // 保存所有配置
+        function saveAllConfig() {
+            const selectedDevice = document.querySelector('input[name="config-device"]:checked');
+            if (!selectedDevice) {
+                alert('请选择一个设备');
+                return;
+            }
+            const deviceId = selectedDevice.value;
+            
+            // 保存核心参数
+            const params = {
+                duration_minutes: parseInt(document.getElementById('duration-minutes').value),
+                post_visit_ratio: parseInt(document.getElementById('post-visit-ratio').value),
+                posts_per_keyword: parseInt(document.getElementById('posts-per-keyword').value),
+                discovery_browse_time: parseInt(document.getElementById('discovery-browse-time').value)
+            };
+            
+            // 保存访问控制配置
+            const visitControl = {
+                duration_range: [
+                    parseInt(document.getElementById('duration-min').value),
+                    parseInt(document.getElementById('duration-max').value)
+                ],
+                slide_interval: [
+                    parseInt(document.getElementById('slide-interval-min').value),
+                    parseInt(document.getElementById('slide-interval-max').value)
+                ]
+            };
+            
+            // 保存互动配置
+            const interaction = {
+                like_prob: parseInt(document.getElementById('like-prob').value),
+                collect_prob: parseInt(document.getElementById('collect-prob').value),
+                comment_prob: parseInt(document.getElementById('comment-prob').value),
+                comment_templates: commentTemplates
+            };
+            
+            // 保存关键词
+            // 这里可以添加保存关键词的逻辑
+            
+            // 合并所有配置
+            fetch(`/api/config/${deviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const config = { 
+                            ...data.data, 
+                            ...params, 
+                            visit_control: visitControl, 
+                            interaction: interaction 
+                        };
+                        return fetch(`/api/config/${deviceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(config)
+                        });
+                    } else {
+                        throw new Error('获取配置失败');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('所有配置已保存');
+                    } else {
+                        alert('保存配置失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+        }
+        
+        // 加载设备配置数据
+        function loadDeviceConfig() {
+            // 获取当前选中的设备ID
+            const selectedRadio = document.querySelector('input[name="config-device"]:checked');
+            if (!selectedRadio) return;
+            
+            currentDeviceId = selectedRadio.value;
+            
+            // 加载关键词
+            refreshKeywords();
+            
+            // 加载评论模板
+            loadCommentTemplates();
+            
+            // 加载核心参数
+            loadParams();
+            
+            // 加载访问控制配置
+            loadVisitControl();
+            
+            // 加载互动配置
+            loadInteraction();
+        }
+        
+        // 加载核心参数
+        function loadParams() {
+            if (!currentDeviceId) return;
+            
+            // 先获取设备特定的配置
+            fetch(`/api/config/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(deviceData => {
+                    let deviceConfig = deviceData.success && deviceData.data ? deviceData.data : {};
+                    
+                    // 再获取默认配置
+                    return fetch('/api/config/default')
+                        .then(response => response.json())
+                        .then(defaultData => {
+                            let defaultConfig = defaultData.success && defaultData.data ? defaultData.data : {};
+                            
+                            // 合并配置：设备配置优先，其次默认配置，最后硬编码默认值
+                            const config = {
+                                duration_minutes: deviceConfig.duration_minutes !== undefined ? deviceConfig.duration_minutes : (defaultConfig.duration_minutes !== undefined ? defaultConfig.duration_minutes : 20),
+                                post_visit_ratio: deviceConfig.post_visit_ratio !== undefined ? deviceConfig.post_visit_ratio : (defaultConfig.post_visit_ratio !== undefined ? defaultConfig.post_visit_ratio : 50),
+                                posts_per_keyword: deviceConfig.posts_per_keyword !== undefined ? deviceConfig.posts_per_keyword : (defaultConfig.posts_per_keyword !== undefined ? defaultConfig.posts_per_keyword : 10),
+                                discovery_browse_time: deviceConfig.discovery_browse_time !== undefined ? deviceConfig.discovery_browse_time : (defaultConfig.discovery_browse_time !== undefined ? defaultConfig.discovery_browse_time : 10)
+                            };
+                            
+                            // 更新核心参数表单
+                            document.getElementById('duration-minutes').value = config.duration_minutes;
+                            document.getElementById('post-visit-ratio').value = config.post_visit_ratio;
+                            document.getElementById('ratio-display').textContent = config.post_visit_ratio + '%';
+                            document.getElementById('posts-per-keyword').value = config.posts_per_keyword;
+                            document.getElementById('discovery-browse-time').value = config.discovery_browse_time;
+                        });
+                })
+                .catch(error => {
+                    console.error('加载核心参数失败:', error);
+                });
+        }
+        
+        // 加载访问控制配置
+        function loadVisitControl() {
+            if (!currentDeviceId) return;
+            
+            // 先获取设备特定的配置
+            fetch(`/api/config/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(deviceData => {
+                    let deviceVisitControl = deviceData.success && deviceData.data && deviceData.data.visit_control ? deviceData.data.visit_control : {};
+                    
+                    // 再获取默认配置
+                    return fetch('/api/config/default')
+                        .then(response => response.json())
+                        .then(defaultData => {
+                            let defaultVisitControl = defaultData.success && defaultData.data && defaultData.data.visit_control ? defaultData.data.visit_control : {};
+                            
+                            // 合并配置：设备配置优先，其次默认配置，最后硬编码默认值
+                            const visitControl = {
+                                duration_range: deviceVisitControl.duration_range !== undefined ? deviceVisitControl.duration_range : (defaultVisitControl.duration_range !== undefined ? defaultVisitControl.duration_range : [25, 45]),
+                                slide_interval: deviceVisitControl.slide_interval !== undefined ? deviceVisitControl.slide_interval : (defaultVisitControl.slide_interval !== undefined ? defaultVisitControl.slide_interval : [3, 5])
+                            };
+                            
+                            // 更新访问控制表单
+                            document.getElementById('duration-min').value = visitControl.duration_range[0];
+                            document.getElementById('duration-max').value = visitControl.duration_range[1];
+                            document.getElementById('slide-interval-min').value = visitControl.slide_interval[0];
+                            document.getElementById('slide-interval-max').value = visitControl.slide_interval[1];
+                        });
+                })
+                .catch(error => {
+                    console.error('加载访问控制配置失败:', error);
+                });
+        }
+        
+        // 加载互动配置
+        function loadInteraction() {
+            if (!currentDeviceId) return;
+            
+            // 先获取设备特定的配置
+            fetch(`/api/config/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(deviceData => {
+                    let deviceInteraction = deviceData.success && deviceData.data && deviceData.data.interaction ? deviceData.data.interaction : {};
+                    
+                    // 再获取默认配置
+                    return fetch('/api/config/default')
+                        .then(response => response.json())
+                        .then(defaultData => {
+                            let defaultInteraction = defaultData.success && defaultData.data && defaultData.data.interaction ? defaultData.data.interaction : {};
+                            
+                            // 合并配置：设备配置优先，其次默认配置，最后硬编码默认值
+                            const interaction = {
+                                like_prob: deviceInteraction.like_prob !== undefined ? deviceInteraction.like_prob : (defaultInteraction.like_prob !== undefined ? defaultInteraction.like_prob : 15),
+                                collect_prob: deviceInteraction.collect_prob !== undefined ? deviceInteraction.collect_prob : (defaultInteraction.collect_prob !== undefined ? defaultInteraction.collect_prob : 10),
+                                comment_prob: deviceInteraction.comment_prob !== undefined ? deviceInteraction.comment_prob : (defaultInteraction.comment_prob !== undefined ? defaultInteraction.comment_prob : 5),
+                                comment_templates: deviceInteraction.comment_templates !== undefined ? deviceInteraction.comment_templates : (defaultInteraction.comment_templates !== undefined ? defaultInteraction.comment_templates : ['不错的分享！', '学习了~', '感谢分享', '很有用的内容', '已收藏学习'])
+                            };
+                            
+                            // 更新行为触发概率表单
+                            document.getElementById('like-prob').value = interaction.like_prob;
+                            document.getElementById('like-display').textContent = interaction.like_prob + '%';
+                            document.getElementById('collect-prob').value = interaction.collect_prob;
+                            document.getElementById('collect-display').textContent = interaction.collect_prob + '%';
+                            document.getElementById('comment-prob').value = interaction.comment_prob;
+                            document.getElementById('comment-display').textContent = interaction.comment_prob + '%';
+                            
+                            // 更新评论模板
+                            commentTemplates = interaction.comment_templates;
+                            renderCommentTemplates();
+                        });
+                })
+                .catch(error => {
+                    console.error('加载互动配置失败:', error);
+                });
+        }
+
+        // 刷新关键词列表
+        function refreshKeywords() {
+            if (!currentDeviceId) {
+                alert('请先选择设备');
+                return;
+            }
+            fetch(`/api/config/keywords/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const keywordList = document.getElementById('keyword-list');
+                        keywordList.innerHTML = '';
+                        data.data.forEach(keyword => {
+                            const listItem = document.createElement('div');
+                            listItem.className = 'list-item';
+                            listItem.innerHTML = `
+                                <div class="list-item-content">
+                                    <div class="list-item-text">${keyword}</div>
+                                </div>
+                                <div class="list-item-actions">
+                                    <button class="btn btn-sm btn-danger" onclick="deleteKeyword('${keyword}')">删除</button>
+                                </div>
+                            `;
+                            keywordList.appendChild(listItem);
+                        });
+                    } else {
+                        alert('获取关键词列表失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 添加关键词
+        function addKeyword() {
+            const newKeyword = document.getElementById('new-keyword').value.trim();
+            if (!newKeyword) {
+                alert('请输入关键词');
+                return;
+            }
+            const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+            if (!selectedDevice) {
+                alert('请先选择设备');
+                return;
+            }
+            const deviceId = selectedDevice.value;
+            // 先获取现有关键词列表
+            fetch(`/api/config/keywords/${deviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const keywords = data.data;
+                        // 检查关键词是否已存在
+                        if (keywords.includes(newKeyword)) {
+                            alert('关键词已存在');
+                            throw new Error('关键词已存在');
+                        }
+                        // 添加新关键词
+                        keywords.push(newKeyword);
+                        // 保存完整列表
+                        return fetch(`/api/config/keywords/${deviceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ keywords: keywords })
+                        });
+                    } else {
+                        throw new Error('获取关键词列表失败');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        refreshKeywords();
+                        document.getElementById('new-keyword').value = '';
+                        alert('关键词添加成功');
+                    } else {
+                        alert('添加关键词失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    // 只处理网络错误和其他真正的错误
+                    if (error.message !== '关键词已存在') {
+                        alert('网络错误: ' + error.message);
+                    }
+                });
+        }
+
+        // 批量导入关键词
+        function importKeywords() {
+            const importText = document.getElementById('keywords-import').value.trim();
+            if (!importText) {
+                alert('请输入关键词');
+                return;
+            }
+            const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+            if (!selectedDevice) {
+                alert('请先选择设备');
+                return;
+            }
+            const deviceId = selectedDevice.value;
+            const newKeywords = importText.split('\n').map(line => line.trim()).filter(line => line);
+            
+            // 先获取现有关键词列表
+            fetch(`/api/config/keywords/${deviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const existingKeywords = data.data;
+                        // 合并关键词，去重
+                        const allKeywords = [...new Set([...existingKeywords, ...newKeywords])];
+                        // 保存合并后的关键词列表
+                        return fetch(`/api/config/keywords/${deviceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ keywords: allKeywords })
+                        });
+                    } else {
+                        throw new Error('获取关键词列表失败');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        refreshKeywords();
+                        document.getElementById('keywords-import').value = '';
+                        alert('关键词导入成功');
+                    } else {
+                        alert('导入关键词失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 删除关键词
+        function deleteKeyword(keyword) {
+            const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+            if (!selectedDevice) {
+                alert('请先选择设备');
+                return;
+            }
+            const deviceId = selectedDevice.value;
+            
+            fetch(`/api/config/keywords/${deviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const keywords = data.data.filter(k => k !== keyword);
+                        return fetch(`/api/config/keywords/${deviceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ keywords: keywords })
+                        });
+                    } else {
+                        throw new Error('获取关键词列表失败');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        refreshKeywords();
+                    } else {
+                        alert('删除关键词失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 保存核心参数
+        function saveParams() {
+            if (!currentDeviceId) {
+                alert('请先选择设备');
+                return;
+            }
+            const params = {
+                duration_minutes: parseInt(document.getElementById('duration-minutes').value),
+                post_visit_ratio: parseInt(document.getElementById('post-visit-ratio').value),
+                posts_per_keyword: parseInt(document.getElementById('posts-per-keyword').value),
+                discovery_browse_time: parseInt(document.getElementById('discovery-browse-time').value)
+            };
+            fetch(`/api/config/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const config = { ...data.data, ...params };
+                        return fetch(`/api/config/${currentDeviceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(config)
+                        });
+                    } else {
+                        throw new Error('获取配置失败');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('参数保存成功');
+                    } else {
+                        alert('保存参数失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 保存访问控制配置
+        function saveVisitControl() {
+            if (!currentDeviceId) {
+                alert('请先选择设备');
+                return;
+            }
+            const visitControl = {
+                filter_image_text: document.getElementById('filter-image-text').checked,
+                duration_range: [
+                    parseInt(document.getElementById('duration-min').value),
+                    parseInt(document.getElementById('duration-max').value)
+                ],
+                slide_interval: [3, 5], // 默认值
+                slide_distance: document.getElementById('slide-distance').value
+            };
+            fetch(`/api/config/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const config = { ...data.data, visit_control: visitControl };
+                        return fetch(`/api/config/${currentDeviceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(config)
+                        });
+                    } else {
+                        throw new Error('获取配置失败');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('访问控制配置保存成功');
+                    } else {
+                        alert('保存访问控制配置失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 评论模板管理
+        let commentTemplates = ['不错的分享！', '学习了~', '感谢分享', '很有用的内容', '已收藏学习'];
+
+        // 加载评论模板
+        function loadCommentTemplates() {
+            if (!currentDeviceId) return;
+            fetch(`/api/config/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.interaction) {
+                        commentTemplates = data.data.interaction.comment_templates || commentTemplates;
+                        renderCommentTemplates();
+                    }
+                })
+                .catch(error => {
+                    console.error('加载评论模板失败:', error);
+                });
+        }
+
+        // 渲染评论模板列表
+        function renderCommentTemplates() {
+            const listContainer = document.getElementById('comment-templates-list');
+            listContainer.innerHTML = '';
+            
+            if (commentTemplates.length === 0) {
+                listContainer.innerHTML = '<div style="color: #999; padding: 20px;">暂无常用评论，请添加</div>';
+                return;
+            }
+            
+            commentTemplates.forEach((template, index) => {
+                const listItem = document.createElement('div');
+                listItem.className = 'list-item';
+                listItem.innerHTML = `
+                    <div class="list-item-content">
+                        <div class="list-item-text">${template}</div>
+                    </div>
+                    <div class="list-item-actions">
+                        <button class="btn btn-sm btn-danger" onclick="deleteCommentTemplate(${index})">删除</button>
+                    </div>
+                `;
+                listContainer.appendChild(listItem);
+            });
+        }
+
+        // 添加评论模板
+        function addCommentTemplate() {
+            const newTemplate = document.getElementById('new-template').value.trim();
+            if (!newTemplate) {
+                alert('请输入常用评论');
+                return;
+            }
+            if (!currentDeviceId) {
+                alert('请先选择设备');
+                return;
+            }
+            
+            // 检查是否重复
+            if (commentTemplates.includes(newTemplate)) {
+                alert('评论已存在');
+                return;
+            }
+            
+            // 添加到内存数组
+            commentTemplates.push(newTemplate);
+            renderCommentTemplates();
+            document.getElementById('new-template').value = '';
+            
+            // 先获取设备的完整配置
+            fetch(`/api/config/${currentDeviceId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    // 获取完整配置
+                    const fullConfig = data.data;
+                    // 更新评论模板
+                    if (!fullConfig.interaction) {
+                        fullConfig.interaction = {};
+                    }
+                    fullConfig.interaction.comment_templates = commentTemplates;
+                    // 保存完整配置
+                    return fetch(`/api/config/${currentDeviceId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(fullConfig)
+                    });
+                } else {
+                    throw new Error('获取配置失败');
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('常用评论添加成功');
+                } else {
+                    alert('保存失败: ' + data.error);
+                    // 恢复原来的状态
+                    commentTemplates.pop();
+                    renderCommentTemplates();
+                }
+            })
+            .catch(error => {
+                console.error('网络错误:', error);
+                alert('网络错误: ' + error.message);
+                // 恢复原来的状态
+                commentTemplates.pop();
+                renderCommentTemplates();
+            });
+        }
+
+        // 删除评论模板
+        function deleteCommentTemplate(index) {
+            if (commentTemplates.length <= 1) {
+                alert('至少需要保留一条常用评论');
+                return;
+            }
+            
+            // 保存删除前的状态，以便在保存失败时恢复
+            const originalTemplates = [...commentTemplates];
+            
+            // 从内存数组中删除
+            commentTemplates.splice(index, 1);
+            renderCommentTemplates();
+            
+            // 先获取设备的完整配置
+            fetch(`/api/config/${currentDeviceId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    // 获取完整配置
+                    const fullConfig = data.data;
+                    // 更新评论模板
+                    if (!fullConfig.interaction) {
+                        fullConfig.interaction = {};
+                    }
+                    fullConfig.interaction.comment_templates = commentTemplates;
+                    // 保存完整配置
+                    return fetch(`/api/config/${currentDeviceId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(fullConfig)
+                    });
+                } else {
+                    throw new Error('获取配置失败');
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('保存失败: ' + data.error);
+                    // 恢复原来的状态
+                    commentTemplates = originalTemplates;
+                    renderCommentTemplates();
+                }
+            })
+            .catch(error => {
+                console.error('网络错误:', error);
+                alert('网络错误: ' + error.message);
+                // 恢复原来的状态
+                commentTemplates = originalTemplates;
+                renderCommentTemplates();
+            });
+        }
+
+        // 保存互动配置
+        function saveInteraction() {
+            if (!currentDeviceId) {
+                alert('请先选择设备');
+                return;
+            }
+            if (commentTemplates.length === 0) {
+                alert('请至少添加一条常用评论');
+                return;
+            }
+            const interaction = {
+                like_prob: parseInt(document.getElementById('like-prob').value),
+                collect_prob: parseInt(document.getElementById('collect-prob').value),
+                comment_prob: parseInt(document.getElementById('comment-prob').value),
+                comment_templates: commentTemplates
+            };
+            fetch(`/api/config/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const config = { ...data.data, interaction: interaction };
+                        return fetch(`/api/config/${currentDeviceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(config)
+                        });
+                    } else {
+                        throw new Error('获取配置失败');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('互动配置保存成功');
+                    } else {
+                        alert('保存互动配置失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+        }
+
+        // 启动养号
+        function startYangHao() {
+            if (!currentDeviceId) {
+                alert('请先选择设备');
+                return;
+            }
+            fetch('/api/yanghao/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ device_id: currentDeviceId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('养号已启动');
+                    setInterval(refreshStatus, 5000); // 每5秒刷新一次状态
+                } else {
+                    alert('启动养号失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('网络错误: ' + error.message);
+            });
+        }
+
+        // 停止养号
+        function stopYangHao() {
+            if (!currentDeviceId) {
+                alert('请先选择设备');
+                return;
+            }
+            fetch('/api/yanghao/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ device_id: currentDeviceId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('养号已停止');
+                    refreshStatus();
+                } else {
+                    alert('停止养号失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('网络错误: ' + error.message);
+            });
+        }
+
+        // 启动自动刷新
+        function startAutoRefresh() {
+            // 如果已经有定时器，先清除
+            if (statusRefreshInterval) {
+                clearInterval(statusRefreshInterval);
+                statusRefreshInterval = null;
+            }
+            // 启动新的定时器
+            statusRefreshInterval = setInterval(loadDeviceStatuses, refreshIntervalSeconds * 1000);
+        }
+        
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (statusRefreshInterval) {
+                clearInterval(statusRefreshInterval);
+                statusRefreshInterval = null;
+            }
+        }
+        
+        // 更新刷新周期
+        function updateRefreshInterval() {
+            const select = document.getElementById('refresh-interval');
+            refreshIntervalSeconds = parseInt(select.value);
+            // 重新启动自动刷新
+            if (statusRefreshInterval) {
+                stopAutoRefresh();
+                startAutoRefresh();
+            }
+        }
+        
+        // 刷新状态
+        function refreshStatus() {
+            if (!currentDeviceId) {
+                return;
+            }
+            fetch(`/api/yanghao/status/${currentDeviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const status = data.data;
+                        // 更新仪表板状态
+                        // document.getElementById('running-status').textContent = status.is_running ? '🟢 运行中' : '⚪ 未运行'; // 已删除的DOM元素
+                        // document.getElementById('visited-count').textContent = status.visited || 0; // 已删除的DOM元素
+                        // document.getElementById('remain-time').textContent = (status.remain_time || 0) + ' 分钟'; // 已删除的DOM元素
+                    }
+                })
+                .catch(error => {
+                    console.error('刷新状态失败:', error);
+                });
+                
+            // 同时更新设备详细状态
+            loadDeviceStatuses();
+        }
+        
+        // 关闭小红书
+        function closeXiaohongshu() {
+            if (selectedDevices.length === 0) {
+                alert('请选择至少一个设备');
+                return;
+            }
+            
+            // 检查设备状态
+            let validDevices = [];
+            let invalidDevices = [];
+            
+            // 先获取所有设备的状态
+            Promise.all(selectedDevices.map(deviceId => {
+                return Promise.all([
+                    fetch(`/api/yanghao/status/${deviceId}`).then(r => r.json()),
+                    fetch(`/api/devices`).then(r => r.json())
+                ]).then(([statusData, devicesData]) => {
+                    // 检查养号状态
+                    const isRunning = statusData.success && statusData.data && statusData.data.is_running;
+                    
+                    // 检查设备状态
+                    const device = devicesData.success && devicesData.data.find(d => d.id === deviceId);
+                    const isOnline = device && device.status === 'online';
+                    
+                    if (isRunning) {
+                        invalidDevices.push({ id: deviceId, reason: '设备正在养号中' });
+                    } else if (!isOnline) {
+                        invalidDevices.push({ id: deviceId, reason: '设备离线' });
+                    } else {
+                        validDevices.push(deviceId);
+                    }
+                });
+            })).then(() => {
+                if (invalidDevices.length > 0) {
+                    let errorMsg = '以下设备无法关闭小红书：\n';
+                    invalidDevices.forEach(device => {
+                        errorMsg += `- 设备 ${device.id}：${device.reason}\n`;
+                    });
+                    alert(errorMsg);
+                    
+                    // 如果没有有效的设备，直接返回
+                    if (validDevices.length === 0) {
+                        return;
+                    }
+                }
+                
+                // 为有效的设备关闭小红书
+                let successCount = 0;
+                let totalCount = validDevices.length;
+                
+                validDevices.forEach(deviceId => {
+                    fetch(`/api/yanghao/close-xhs/${deviceId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            totalCount--;
+                            if (data.success) {
+                                successCount++;
+                            }
+                            if (totalCount === 0) {
+                                if (successCount === validDevices.length) {
+                                    alert('小红书已关闭');
+                                } else {
+                                    alert(`部分设备关闭小红书失败，成功 ${successCount} 个，失败 ${validDevices.length - successCount} 个`);
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            totalCount--;
+                            if (totalCount === 0) {
+                                alert('网络错误: ' + error.message);
+                            }
+                        });
+                });
+            }).catch(error => {
+                alert('网络错误: ' + error.message);
+            });
+        }
+        
+        // 加载设备详细状态
+        function loadDeviceStatuses() {
+            fetch('/api/devices')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const deviceStatusList = document.getElementById('device-status-list');
+                        deviceStatusList.innerHTML = '';
+                        
+                        if (data.data.length === 0) {
+                            deviceStatusList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+                        } else {
+                            data.data.forEach(device => {
+                                // 创建设备状态卡片
+                                const deviceCard = document.createElement('div');
+                                deviceCard.className = 'device-status-card';
+                                deviceCard.style.border = '1px solid #e9ecef';
+                                deviceCard.style.borderRadius = '8px';
+                                deviceCard.style.padding = '15px';
+                                deviceCard.style.marginBottom = '15px';
+                                deviceCard.style.backgroundColor = '#f8f9fa';
+                                
+                                // 点击设备卡片时选中该设备
+                                deviceCard.onclick = function() {
+                                    // 取消所有选中的设备
+                                    document.querySelectorAll('#dashboard-device-list input[type="checkbox"]').forEach(checkbox => {
+                                        checkbox.checked = false;
+                                    });
+                                    // 选中当前设备
+                                    const checkbox = document.getElementById(`dashboard-device-${device.id}`);
+                                    if (checkbox) {
+                                        checkbox.checked = true;
+                                        updateSelectedDevices();
+                                        currentDeviceId = device.id;
+                                    }
+                                };
+                                
+                                // 获取设备的养号状态
+                                fetch(`/api/yanghao/status/${device.id}`)
+                                    .then(response => response.json())
+                                    .then(statusData => {
+                                        let statusHtml = '';
+                                        if (statusData.success) {
+                                            const status = statusData.data;
+                                            statusHtml = `
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                                    <div>
+                                                        <h3 style="margin: 0; display: inline;">${device.name}</h3>
+                                                        <small style="color: #666; margin-left: 10px;">设备ID: ${device.id}</small>
+                                                    </div>
+                                                    <span style="color: ${device.status === 'offline' ? '#FF9800' : (status.is_running ? '#4CAF50' : '#666')};">
+                                                        ${device.status === 'offline' ? '🔴 离线' : (status.is_running ? '🟢 养号中' : '⚪ 未养号')}
+                                                    </span>
+                                                </div>
+                                                <div style="margin-bottom: 5px;">
+                                                    <strong>当前关键词:</strong> ${status.current_keyword || '无'}
+                                                </div>
+                                                <div style="margin-bottom: 5px;">
+                                                    <strong>已访问帖子:</strong> ${status.visited || 0}
+                                                </div>
+                                                <div style="margin-bottom: 5px;">
+                                                    <strong>剩余时间:</strong> ${(status.remain_time || 0)} 分钟
+                                                </div>
+
+                                            `;
+                                        } else {
+                                            statusHtml = `
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                                    <div>
+                                                        <h3 style="margin: 0; display: inline;">${device.name}</h3>
+                                                        <small style="color: #666; margin-left: 10px;">设备ID: ${device.id}</small>
+                                                    </div>
+                                                    <span style="color: ${device.status === 'offline' ? '#FF9800' : '#666'};">
+                                                        ${device.status === 'offline' ? '🔴 离线' : '⚪ 未养号'}
+                                                    </span>
+                                                </div>
+                                                <div style="margin-bottom: 5px;">
+                                                    <strong>当前关键词:</strong> 无
+                                                </div>
+                                                <div style="margin-bottom: 5px;">
+                                                    <strong>已访问帖子:</strong> 0
+                                                </div>
+                                                <div style="margin-bottom: 5px;">
+                                                    <strong>剩余时间:</strong> 0 分钟
+                                                </div>
+                                            `;
+                                        }
+                                        deviceCard.innerHTML = statusHtml;
+                                    })
+                                    .catch(error => {
+                                        console.error(`获取设备 ${device.id} 状态失败:`, error);
+                                        deviceCard.innerHTML = `
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                                <div>
+                                                    <h3 style="margin: 0; display: inline;">${device.name}</h3>
+                                                    <small style="color: #666; margin-left: 10px;">设备ID: ${device.id}</small>
+                                                </div>
+                                                <span style="color: ${device.status === 'offline' ? '#FF9800' : '#666'};">
+                                                    ${device.status === 'offline' ? '🔴 离线' : '⚪ 未养号'}
+                                                </span>
+                                            </div>
+                                            <div style="margin-bottom: 5px;">
+                                                <strong>当前关键词:</strong> 无
+                                            </div>
+                                            <div style="margin-bottom: 5px;">
+                                                <strong>已访问帖子:</strong> 0
+                                            </div>
+                                            <div style="margin-bottom: 5px;">
+                                                <strong>剩余时间:</strong> 0 分钟
+                                            </div>
+                                        `;
+                                    });
+                                
+                                deviceStatusList.appendChild(deviceCard);
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('获取设备列表失败:', error);
+                    const deviceStatusList = document.getElementById('device-status-list');
+                    deviceStatusList.innerHTML = '<div class="alert alert-danger">获取设备列表失败，请检查网络连接</div>';
+                });
+        }
+
+        // 保存关键词
+        function saveKeywords() {
+            const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+            if (!selectedDevice) {
+                alert('请先选择设备');
+                return;
+            }
+            const deviceId = selectedDevice.value;
+            
+            // 获取当前显示的关键词列表
+            const keywordElements = document.querySelectorAll('#keyword-list .list-item-text');
+            const keywords = Array.from(keywordElements).map(element => element.textContent.trim());
+            
+            // 调用API保存关键词
+            fetch(`/api/config/keywords/${deviceId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ keywords: keywords })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('关键词已保存');
+                } else {
+                    alert('保存关键词失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('网络错误:', error);
+                alert('网络错误: ' + error.message);
+            });
+        }
+
+        function clearAllKeywords() {
+            const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+            if (!selectedDevice) {
+                alert('请先选择设备');
+                return;
+            }
+            const deviceId = selectedDevice.value;
+            const deviceLabel = selectedDevice.nextElementSibling.textContent.trim();
+            
+            if (confirm(`确定要清除设备 "${deviceLabel}" 的所有关键词吗？`)) {
+                fetch(`/api/config/keywords/${deviceId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ keywords: [] })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        refreshKeywords();
+                        alert(`已清除设备 "${deviceLabel}" 的所有关键词`);
+                    } else {
+                        alert('清除关键词失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('网络错误:', error);
+                    alert('网络错误: ' + error.message);
+                });
+            }
+        }
+
+        // 打开设备别名设置模态框
+        function openAliasModal(deviceId) {
+            document.getElementById('modal-device-id').value = deviceId;
+            // 尝试获取设备当前别名
+            fetch(`/api/device/alias?device_id=${deviceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.alias) {
+                        document.getElementById('device-alias').value = data.data.alias;
+                    } else {
+                        document.getElementById('device-alias').value = '';
+                    }
+                })
+                .catch(error => {
+                    console.error('获取设备别名失败:', error);
+                    document.getElementById('device-alias').value = '';
+                });
+            document.getElementById('alias-modal').style.display = 'block';
+        }
+
+        // 关闭设备别名设置模态框
+        function closeAliasModal() {
+            document.getElementById('alias-modal').style.display = 'none';
+            document.getElementById('device-alias').value = '';
+        }
+
+        // 保存设备别名
+        function saveDeviceAlias() {
+            const deviceId = document.getElementById('modal-device-id').value;
+            const alias = document.getElementById('device-alias').value.trim();
+            
+            if (!alias) {
+                alert('请输入设备别名');
+                return;
+            }
+            
+            fetch('/api/device/alias', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ device_id: deviceId, alias: alias })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    closeAliasModal();
+                    // 刷新设备列表以显示新别名
+                    refreshDevices();
+                } else {
+                    alert('设置设备别名失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('网络错误: ' + error.message);
+            });
+        }
+        
+        // 删除设备
+        function deleteDevice(deviceId) {
+            if (confirm('确定要删除此设备吗？')) {
+                fetch(`/api/device/${deviceId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('设备删除成功');
+                        refreshDevices();
+                    } else {
+                        alert('删除失败: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    alert('网络错误: ' + error.message);
+                });
+            }
+        }
+
+        // 页面加载时初始化
+        window.onload = function() {
+            // 刷新仪表板设备列表
+            refreshDeviceList();
+            // 刷新状态
+            refreshStatus();
+            // 加载设备详细状态
+            loadDeviceStatuses();
+        };
+    </script>
+</body>
+</html>
