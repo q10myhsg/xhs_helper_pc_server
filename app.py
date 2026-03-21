@@ -8,6 +8,7 @@ from xhs_nurturing import NurturingManager
 from license_manager import LicenseManager
 from machine_code import get_machine_code
 from pdf_converter import pdf_converter
+from file_transfer import file_transfer_manager
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -586,6 +587,149 @@ def api_pdf_preview():
             })
         else:
             return jsonify({"success": False, "error": "预览生成失败"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# ==================== 文件传输 API ====================
+
+# 文件传输配置存储文件
+FILE_TRANSFER_CONFIG_FILE = "config/file_transfer_config.json"
+
+def load_file_transfer_config():
+    """加载文件传输配置"""
+    if os.path.exists(FILE_TRANSFER_CONFIG_FILE):
+        with open(FILE_TRANSFER_CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {
+        "computer_dir": "/Users/wenyangzang/Desktop/1/传输专用目录",
+        "phone_dir": "/sdcard/Download/传输专用目录"
+    }
+
+def save_file_transfer_config(config):
+    """保存文件传输配置"""
+    os.makedirs("config", exist_ok=True)
+    with open(FILE_TRANSFER_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+@app.route("/api/file-transfer/config", methods=["GET"])
+def api_get_file_transfer_config():
+    """获取文件传输配置"""
+    try:
+        config = load_file_transfer_config()
+        return jsonify({"success": True, "data": config})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/file-transfer/config", methods=["POST"])
+def api_save_file_transfer_config():
+    """保存文件传输配置"""
+    try:
+        config = request.json
+        save_file_transfer_config(config)
+        return jsonify({"success": True, "message": "配置已保存"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/file-transfer/clear-phone", methods=["POST"])
+def api_clear_phone_directory():
+    """清理手机传输目录"""
+    try:
+        data = request.json
+        phone_dir = data.get('phone_dir')
+        
+        if not phone_dir:
+            return jsonify({"success": False, "error": "手机目录路径不能为空"})
+        
+        result = file_transfer_manager.clear_phone_directory(phone_dir)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/file-transfer/transfer", methods=["POST"])
+def api_transfer_files():
+    """传输文件到手机"""
+    try:
+        data = request.json
+        computer_dir = data.get('computer_dir')
+        phone_dir = data.get('phone_dir')
+        
+        if not computer_dir or not phone_dir:
+            return jsonify({"success": False, "error": "电脑目录和手机目录路径都不能为空"})
+        
+        result = file_transfer_manager.transfer_files_to_phone(computer_dir, phone_dir)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/file-transfer/clear-computer", methods=["POST"])
+def api_clear_computer_directory():
+    """清空电脑传输目录"""
+    try:
+        data = request.json
+        computer_dir = data.get('computer_dir')
+        
+        if not computer_dir:
+            return jsonify({"success": False, "error": "电脑目录路径不能为空"})
+        
+        result = file_transfer_manager.clear_computer_directory(computer_dir)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/file-transfer/full-transfer", methods=["POST"])
+def api_full_transfer():
+    """执行完整的传输流程"""
+    try:
+        data = request.json
+        computer_dir = data.get('computer_dir')
+        phone_dir = data.get('phone_dir')
+        
+        if not computer_dir or not phone_dir:
+            return jsonify({"success": False, "error": "电脑目录和手机目录路径都不能为空"})
+        
+        result = file_transfer_manager.execute_full_transfer(computer_dir, phone_dir)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/file-transfer/check-computer-dir", methods=["POST"])
+def api_check_computer_directory():
+    """检查电脑目录内容"""
+    try:
+        data = request.json
+        computer_dir = data.get('computer_dir')
+        
+        if not computer_dir:
+            return jsonify({"success": False, "error": "电脑目录路径不能为空"})
+        
+        if not os.path.exists(computer_dir):
+            return jsonify({
+                "success": True, 
+                "data": {
+                    "exists": False,
+                    "file_count": 0,
+                    "files": []
+                }
+            })
+        
+        # 获取目录内容
+        files = []
+        for item in os.listdir(computer_dir):
+            item_path = os.path.join(computer_dir, item)
+            files.append({
+                "name": item,
+                "type": "directory" if os.path.isdir(item_path) else "file",
+                "size": os.path.getsize(item_path) if os.path.isfile(item_path) else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "exists": True,
+                "file_count": len(files),
+                "files": files
+            }
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
