@@ -1,10 +1,13 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file
 import json
 import threading
 import os
+import uuid
+from werkzeug.utils import secure_filename
 from xhs_nurturing import NurturingManager
 from license_manager import LicenseManager
 from machine_code import get_machine_code
+from pdf_converter import pdf_converter
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
@@ -317,6 +320,128 @@ def api_check_permission():
                 "message": message
             }
         })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# ==================== 错误处理 ====================
+
+# ==================== PDF转换 API ====================
+
+ALLOWED_EXTENSIONS = {'pdf'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route("/api/pdf/upload", methods=["POST"])
+def api_pdf_upload():
+    """上传PDF文件"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "error": "没有文件"})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            # 生成唯一文件名
+            unique_id = str(uuid.uuid4())
+            filename = f"{unique_id}_{filename}"
+            filepath = os.path.join(pdf_converter.upload_folder, filename)
+            file.save(filepath)
+            
+            return jsonify({
+                "success": True, 
+                "message": "文件上传成功",
+                "data": {
+                    "filename": filename,
+                    "original_name": file.filename,
+                    "filepath": filepath
+                }
+            })
+        else:
+            return jsonify({"success": False, "error": "只允许上传PDF文件"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/convert", methods=["POST"])
+def api_pdf_convert():
+    """转换PDF为图片"""
+    try:
+        data = request.json
+        filename = data.get('filename')
+        dpi = data.get('dpi', 300)
+        fmt = data.get('format', 'png')
+        add_watermark = data.get('add_watermark', True)
+        generate_simple_pdf = data.get('generate_simple_pdf', True)
+        start_page = data.get('start_page', 1)
+        end_page = data.get('end_page')
+        add_header = data.get('add_header', False)
+        add_footer = data.get('add_footer', False)
+        
+        if not filename:
+            return jsonify({"success": False, "error": "文件名不能为空"})
+        
+        filepath = os.path.join(pdf_converter.upload_folder, filename)
+        if not os.path.exists(filepath):
+            return jsonify({"success": False, "error": "文件不存在"})
+        
+        # 执行转换
+        result = pdf_converter.convert_pdf_to_images(
+            filepath, 
+            dpi=dpi, 
+            fmt=fmt, 
+            add_watermark=add_watermark,
+            generate_simple_pdf=generate_simple_pdf,
+            start_page=start_page,
+            end_page=end_page,
+            add_header=add_header,
+            add_footer=add_footer
+        )
+        
+        # 获取相对路径用于前端显示
+        images_urls = []
+        for img_path in result['images']:
+            # 转换为URL路径
+            rel_path = os.path.relpath(img_path, 'static')
+            images_urls.append(f"/static/{rel_path}")
+        
+        simple_pdf_url = None
+        if result['simple_pdf']:
+            rel_path = os.path.relpath(result['simple_pdf'], 'static')
+            simple_pdf_url = f"/static/{rel_path}"
+        
+        return jsonify({
+            "success": True,
+            "message": "转换完成",
+            "data": {
+                "images": images_urls,
+                "simple_pdf": simple_pdf_url,
+                "total_pages": len(result['images'])
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/download/<path:filename>")
+def api_pdf_download(filename):
+    """下载转换后的文件"""
+    try:
+        filepath = os.path.join('static', filename)
+        if os.path.exists(filepath):
+            return send_file(filepath, as_attachment=True)
+        else:
+            return jsonify({"success": False, "error": "文件不存在"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/cleanup", methods=["POST"])
+def api_pdf_cleanup():
+    """清理旧的PDF转换文件"""
+    try:
+        pdf_converter.cleanup_old_files(max_age_hours=24)
+        return jsonify({"success": True, "message": "清理完成"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
