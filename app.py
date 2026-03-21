@@ -445,6 +445,150 @@ def api_pdf_cleanup():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+# ==================== PDF图片配置 API ====================
+
+# 用户图片配置存储文件
+PDF_IMAGES_CONFIG_FILE = "config/pdf_images_config.json"
+
+def load_pdf_images_config():
+    """加载PDF图片配置"""
+    if os.path.exists(PDF_IMAGES_CONFIG_FILE):
+        with open(PDF_IMAGES_CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {
+        "watermark": None,
+        "header": None,
+        "footer": None
+    }
+
+def save_pdf_images_config(config):
+    """保存PDF图片配置"""
+    os.makedirs("config", exist_ok=True)
+    with open(PDF_IMAGES_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+@app.route("/api/pdf/images/config", methods=["GET"])
+def api_get_pdf_images_config():
+    """获取PDF图片配置"""
+    try:
+        config = load_pdf_images_config()
+        return jsonify({"success": True, "data": config})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/images/config", methods=["POST"])
+def api_save_pdf_images_config():
+    """保存PDF图片配置"""
+    try:
+        config = request.json
+        save_pdf_images_config(config)
+        return jsonify({"success": True, "message": "配置已保存"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/images/upload", methods=["POST"])
+def api_upload_pdf_image():
+    """上传PDF图片（水印/页眉/页脚）"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "error": "没有文件"})
+        
+        file = request.files['file']
+        image_type = request.form.get('type', 'watermark')  # watermark, header, footer
+        
+        if file.filename == '':
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        # 检查文件类型
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
+        if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+            return jsonify({"success": False, "error": "只允许上传图片文件(PNG, JPG, JPEG, GIF, BMP)"})
+        
+        # 保存文件
+        filename = secure_filename(file.filename)
+        unique_id = str(uuid.uuid4())
+        filename = f"{unique_id}_{filename}"
+        
+        # 按类型分类存储
+        upload_dir = os.path.join('static', 'pdf_images', image_type)
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        filepath = os.path.join(upload_dir, filename)
+        file.save(filepath)
+        
+        # 更新配置
+        config = load_pdf_images_config()
+        config[image_type] = f"/static/pdf_images/{image_type}/{filename}"
+        save_pdf_images_config(config)
+        
+        return jsonify({
+            "success": True,
+            "message": "图片上传成功",
+            "data": {
+                "type": image_type,
+                "path": config[image_type],
+                "filename": filename
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/preview", methods=["POST"])
+def api_pdf_preview():
+    """生成PDF预览（第一页带水印/页眉/页脚效果）"""
+    try:
+        data = request.json
+        filename = data.get('filename')
+        add_watermark = data.get('add_watermark', True)
+        add_header = data.get('add_header', False)
+        add_footer = data.get('add_footer', False)
+        
+        if not filename:
+            return jsonify({"success": False, "error": "文件名不能为空"})
+        
+        filepath = os.path.join(pdf_converter.upload_folder, filename)
+        if not os.path.exists(filepath):
+            return jsonify({"success": False, "error": "文件不存在"})
+        
+        # 加载用户配置的图片路径
+        config = load_pdf_images_config()
+        
+        # 创建临时转换器，使用用户配置的图片
+        from pdf_converter import PDFConverter
+        preview_converter = PDFConverter(
+            watermark_path=config.get('watermark') or None,
+            header_path=config.get('header') or None,
+            footer_path=config.get('footer') or None
+        )
+        
+        # 只转换第一页作为预览
+        result = preview_converter.convert_pdf_to_images(
+            filepath,
+            dpi=150,  # 预览用较低DPI，加快速度
+            fmt='png',
+            add_watermark=add_watermark,
+            generate_simple_pdf=False,
+            start_page=1,
+            end_page=1,
+            add_header=add_header,
+            add_footer=add_footer
+        )
+        
+        if result['images']:
+            # 返回预览图片URL
+            rel_path = os.path.relpath(result['images'][0], 'static')
+            preview_url = f"/static/{rel_path}"
+            return jsonify({
+                "success": True,
+                "data": {
+                    "preview_url": preview_url
+                }
+            })
+        else:
+            return jsonify({"success": False, "error": "预览生成失败"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 # ==================== 错误处理 ====================
 
 @app.errorhandler(404)

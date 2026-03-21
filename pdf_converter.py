@@ -31,13 +31,17 @@ except ImportError:
 class PDFConverter:
     """PDF转换器类"""
     
-    def __init__(self, upload_folder='static/uploads', output_folder='static/pdf_outputs'):
+    def __init__(self, upload_folder='static/uploads', output_folder='static/pdf_outputs',
+                 watermark_path=None, header_path=None, footer_path=None):
         """
         初始化PDF转换器
         
         参数:
             upload_folder: PDF文件上传目录
             output_folder: 转换后的图片输出目录
+            watermark_path: 水印图片路径
+            header_path: 页眉图片路径
+            footer_path: 页脚图片路径
         """
         self.upload_folder = upload_folder
         self.output_folder = output_folder
@@ -46,12 +50,12 @@ class PDFConverter:
         os.makedirs(upload_folder, exist_ok=True)
         os.makedirs(output_folder, exist_ok=True)
         
-        # 水印图片路径（默认使用程序目录下的strong_watermark.png）
-        self.watermark_path = os.path.join(os.path.dirname(__file__), 'strong_watermark.png')
+        # 水印图片路径
+        self.watermark_path = watermark_path or os.path.join(os.path.dirname(__file__), 'strong_watermark.png')
         
         # 页眉页脚图片路径
-        self.header_path = os.path.join(os.path.dirname(__file__), 'header.png')
-        self.footer_path = os.path.join(os.path.dirname(__file__), 'footer.png')
+        self.header_path = header_path or os.path.join(os.path.dirname(__file__), 'header.png')
+        self.footer_path = footer_path or os.path.join(os.path.dirname(__file__), 'footer.png')
     
     def create_simple_pdf(self, pdf_path, output_folder):
         """

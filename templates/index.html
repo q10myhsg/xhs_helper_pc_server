@@ -266,6 +266,53 @@
                 </div>
 
                 <div class="config-section">
+                    <h2>🎨 图片素材设置</h2>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">上传水印、页眉、页脚图片，将自动记住您的选择</p>
+                    
+                    <!-- 水印图片 -->
+                    <div class="form-group">
+                        <label>水印图片</label>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="pdf-watermark-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
+                            <button class="btn btn-secondary" onclick="document.getElementById('pdf-watermark-input').click()">📁 选择水印</button>
+                            <span id="pdf-watermark-name" style="color: #666; font-size: 14px;">使用默认水印</span>
+                            <button class="btn btn-danger" onclick="clearPdfImage('watermark')" style="font-size: 12px; padding: 4px 8px;">清除</button>
+                        </div>
+                        <div id="pdf-watermark-preview" style="margin-top: 10px; display: none;">
+                            <img src="" style="max-width: 200px; max-height: 100px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+
+                    <!-- 页眉图片 -->
+                    <div class="form-group">
+                        <label>页眉图片</label>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="pdf-header-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
+                            <button class="btn btn-secondary" onclick="document.getElementById('pdf-header-input').click()">📁 选择页眉</button>
+                            <span id="pdf-header-name" style="color: #666; font-size: 14px;">未选择</span>
+                            <button class="btn btn-danger" onclick="clearPdfImage('header')" style="font-size: 12px; padding: 4px 8px;">清除</button>
+                        </div>
+                        <div id="pdf-header-preview" style="margin-top: 10px; display: none;">
+                            <img src="" style="max-width: 400px; max-height: 80px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+
+                    <!-- 页脚图片 -->
+                    <div class="form-group">
+                        <label>页脚图片</label>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="pdf-footer-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
+                            <button class="btn btn-secondary" onclick="document.getElementById('pdf-footer-input').click()">📁 选择页脚</button>
+                            <span id="pdf-footer-name" style="color: #666; font-size: 14px;">未选择</span>
+                            <button class="btn btn-danger" onclick="clearPdfImage('footer')" style="font-size: 12px; padding: 4px 8px;">清除</button>
+                        </div>
+                        <div id="pdf-footer-preview" style="margin-top: 10px; display: none;">
+                            <img src="" style="max-width: 400px; max-height: 80px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
                     <h2>⚙️ 转换设置</h2>
                     
                     <div class="form-group">
@@ -312,21 +359,31 @@
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="pdf-add-header" style="width: auto;">
-                            <span>添加页眉（需准备header.png）</span>
+                            <span>添加页眉</span>
                         </label>
                     </div>
 
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="pdf-add-footer" style="width: auto;">
-                            <span>添加页脚（需准备footer.png）</span>
+                            <span>添加页脚</span>
                         </label>
                     </div>
                 </div>
 
                 <div style="margin-top: 30px;">
                     <button class="btn btn-success" id="pdf-convert-btn" onclick="convertPdfToImages()" disabled>🚀 开始转换</button>
+                    <button class="btn btn-info" id="pdf-preview-btn" onclick="generatePdfPreview()" disabled style="margin-left: 10px;">👁️ 预览效果</button>
                     <button class="btn btn-secondary" onclick="clearPdfResults()" style="margin-left: 10px;">🗑️ 清空结果</button>
+                </div>
+
+                <!-- 预览区域 -->
+                <div id="pdf-preview-section" style="display: none; margin-top: 30px;">
+                    <h2>👁️ 预览效果</h2>
+                    <div style="border: 2px solid #ddd; border-radius: 8px; padding: 20px; background: #f9f9f9;">
+                        <img id="pdf-preview-image" src="" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <p style="text-align: center; color: #666; margin-top: 10px; font-size: 14px;">第一页预览效果</p>
+                    </div>
                 </div>
 
                 <!-- 转换进度 -->
@@ -430,6 +487,8 @@
         // 页面加载时处理URL参数
         document.addEventListener('DOMContentLoaded', function() {
             handleUrlParams();
+            // 初始化PDF图片配置
+            initPdfImagesConfig();
         });
 
         // 刷新设备管理页面的设备列表
@@ -1986,6 +2045,153 @@
         
         let currentPdfFilename = null;
         let currentPdfImages = [];
+        let pdfImagesConfig = {
+            watermark: null,
+            header: null,
+            footer: null
+        };
+
+        // 页面加载时初始化PDF图片配置
+        function initPdfImagesConfig() {
+            // 从localStorage加载配置
+            const savedConfig = localStorage.getItem('pdfImagesConfig');
+            if (savedConfig) {
+                pdfImagesConfig = JSON.parse(savedConfig);
+                updatePdfImagesUI();
+            }
+            
+            // 从服务器加载配置
+            fetch('/api/pdf/images/config')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        pdfImagesConfig = data.data;
+                        localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+                        updatePdfImagesUI();
+                    }
+                })
+                .catch(error => console.log('加载配置失败:', error));
+        }
+
+        // 更新PDF图片UI
+        function updatePdfImagesUI() {
+            // 水印
+            if (pdfImagesConfig.watermark) {
+                document.getElementById('pdf-watermark-name').textContent = '已选择自定义水印';
+                document.getElementById('pdf-watermark-preview').style.display = 'block';
+                document.getElementById('pdf-watermark-preview').querySelector('img').src = pdfImagesConfig.watermark;
+            }
+            
+            // 页眉
+            if (pdfImagesConfig.header) {
+                document.getElementById('pdf-header-name').textContent = '已选择页眉';
+                document.getElementById('pdf-header-preview').style.display = 'block';
+                document.getElementById('pdf-header-preview').querySelector('img').src = pdfImagesConfig.header;
+            }
+            
+            // 页脚
+            if (pdfImagesConfig.footer) {
+                document.getElementById('pdf-footer-name').textContent = '已选择页脚';
+                document.getElementById('pdf-footer-preview').style.display = 'block';
+                document.getElementById('pdf-footer-preview').querySelector('img').src = pdfImagesConfig.footer;
+            }
+        }
+
+        // 处理PDF图片上传
+        function handlePdfImageUpload(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+
+            fetch('/api/pdf/images/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    pdfImagesConfig[type] = data.data.path;
+                    localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+                    updatePdfImagesUI();
+                    showPdfMessage(`${type === 'watermark' ? '水印' : type === 'header' ? '页眉' : '页脚'}上传成功`, 'success');
+                } else {
+                    showPdfMessage('上传失败: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showPdfMessage('上传错误: ' + error.message, 'error');
+            });
+        }
+
+        // 清除PDF图片
+        function clearPdfImage(type) {
+            pdfImagesConfig[type] = null;
+            localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+            
+            // 更新UI
+            const nameMap = {
+                'watermark': '使用默认水印',
+                'header': '未选择',
+                'footer': '未选择'
+            };
+            document.getElementById(`pdf-${type}-name`).textContent = nameMap[type];
+            document.getElementById(`pdf-${type}-preview`).style.display = 'none';
+            document.getElementById(`pdf-${type}-input`).value = '';
+            
+            showPdfMessage('已清除', 'success');
+        }
+
+        // 生成PDF预览
+        function generatePdfPreview() {
+            if (!currentPdfFilename) {
+                showPdfMessage('请先上传PDF文件', 'error');
+                return;
+            }
+
+            const addWatermark = document.getElementById('pdf-add-watermark').checked;
+            const addHeader = document.getElementById('pdf-add-header').checked;
+            const addFooter = document.getElementById('pdf-add-footer').checked;
+
+            // 显示进度
+            document.getElementById('pdf-progress').style.display = 'block';
+            document.getElementById('pdf-preview-section').style.display = 'none';
+            document.getElementById('pdf-error').style.display = 'none';
+            document.getElementById('pdf-preview-btn').disabled = true;
+
+            fetch('/api/pdf/preview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filename: currentPdfFilename,
+                    add_watermark: addWatermark,
+                    add_header: addHeader,
+                    add_footer: addFooter
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('pdf-progress').style.display = 'none';
+                document.getElementById('pdf-preview-btn').disabled = false;
+
+                if (data.success) {
+                    document.getElementById('pdf-preview-image').src = data.data.preview_url;
+                    document.getElementById('pdf-preview-section').style.display = 'block';
+                    showPdfMessage('预览生成成功', 'success');
+                } else {
+                    showPdfMessage('预览生成失败: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                document.getElementById('pdf-progress').style.display = 'none';
+                document.getElementById('pdf-preview-btn').disabled = false;
+                showPdfMessage('预览错误: ' + error.message, 'error');
+            });
+        }
 
         // 处理PDF文件选择
         function handlePdfFileSelect(event) {
@@ -2010,6 +2216,7 @@
                 if (data.success) {
                     currentPdfFilename = data.data.filename;
                     document.getElementById('pdf-convert-btn').disabled = false;
+                    document.getElementById('pdf-preview-btn').disabled = false;
                     showPdfMessage('文件上传成功，可以开始转换', 'success');
                 } else {
                     showPdfMessage('上传失败: ' + data.error, 'error');
