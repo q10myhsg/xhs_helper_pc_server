@@ -636,43 +636,87 @@ def api_clear_phone_directory():
     try:
         data = request.json
         phone_dir = data.get('phone_dir')
+        device_id = data.get('device_id')
         
         if not phone_dir:
             return jsonify({"success": False, "error": "手机目录路径不能为空"})
         
-        result = file_transfer_manager.clear_phone_directory(phone_dir)
+        if not device_id:
+            return jsonify({"success": False, "error": "请先选择目标设备"})
+        
+        # 创建设备特定的传输管理器
+        from file_transfer import FileTransferManager
+        ft_manager = FileTransferManager(device_id=device_id)
+        
+        result = ft_manager.clear_phone_directory(phone_dir)
         return jsonify(result)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
 @app.route("/api/file-transfer/transfer", methods=["POST"])
 def api_transfer_files():
-    """传输文件到手机"""
+    """传输文件到手机（支持文件上传）"""
     try:
-        data = request.json
-        computer_dir = data.get('computer_dir')
-        phone_dir = data.get('phone_dir')
+        phone_dir = request.form.get('phone_dir')
+        device_id = request.form.get('device_id')
         
-        if not computer_dir or not phone_dir:
-            return jsonify({"success": False, "error": "电脑目录和手机目录路径都不能为空"})
+        if not phone_dir:
+            return jsonify({"success": False, "error": "手机目录路径不能为空"})
         
-        result = file_transfer_manager.transfer_files_to_phone(computer_dir, phone_dir)
-        return jsonify(result)
+        if not device_id:
+            return jsonify({"success": False, "error": "请先选择目标设备"})
+        
+        # 检查是否有上传的文件
+        if 'files' not in request.files:
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        # 创建临时目录存储上传的文件
+        import tempfile
+        temp_dir = tempfile.mkdtemp(prefix='file_transfer_')
+        
+        try:
+            # 保存上传的文件到临时目录
+            file_count = 0
+            for file in files:
+                if file.filename:
+                    # 保持相对路径结构
+                    rel_path = file.filename
+                    file_path = os.path.join(temp_dir, rel_path)
+                    
+                    # 确保父目录存在
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    file.save(file_path)
+                    file_count += 1
+            
+            # 创建设备特定的传输管理器
+            from file_transfer import FileTransferManager
+            ft_manager = FileTransferManager(device_id=device_id)
+            
+            # 传输文件到手机
+            result = ft_manager.transfer_files_to_phone(temp_dir, phone_dir)
+            result['file_count'] = file_count
+            
+            return jsonify(result)
+            
+        finally:
+            # 清理临时目录
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
 @app.route("/api/file-transfer/clear-computer", methods=["POST"])
 def api_clear_computer_directory():
-    """清空电脑传输目录"""
+    """清空电脑传输目录（前端处理，后端只需返回成功）"""
     try:
-        data = request.json
-        computer_dir = data.get('computer_dir')
-        
-        if not computer_dir:
-            return jsonify({"success": False, "error": "电脑目录路径不能为空"})
-        
-        result = file_transfer_manager.clear_computer_directory(computer_dir)
-        return jsonify(result)
+        # 由于文件是通过上传方式传输，电脑端不需要清理实际目录
+        # 浏览器会自动释放内存中的文件引用
+        return jsonify({"success": True, "message": "已清除选择的文件"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
@@ -680,56 +724,78 @@ def api_clear_computer_directory():
 def api_full_transfer():
     """执行完整的传输流程"""
     try:
-        data = request.json
-        computer_dir = data.get('computer_dir')
-        phone_dir = data.get('phone_dir')
+        phone_dir = request.form.get('phone_dir')
+        device_id = request.form.get('device_id')
         
-        if not computer_dir or not phone_dir:
-            return jsonify({"success": False, "error": "电脑目录和手机目录路径都不能为空"})
+        if not phone_dir:
+            return jsonify({"success": False, "error": "手机目录路径不能为空"})
         
-        result = file_transfer_manager.execute_full_transfer(computer_dir, phone_dir)
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
-
-@app.route("/api/file-transfer/check-computer-dir", methods=["POST"])
-def api_check_computer_directory():
-    """检查电脑目录内容"""
-    try:
-        data = request.json
-        computer_dir = data.get('computer_dir')
+        if not device_id:
+            return jsonify({"success": False, "error": "请先选择目标设备"})
         
-        if not computer_dir:
-            return jsonify({"success": False, "error": "电脑目录路径不能为空"})
+        # 检查是否有上传的文件
+        if 'files' not in request.files:
+            return jsonify({"success": False, "error": "没有选择文件"})
         
-        if not os.path.exists(computer_dir):
-            return jsonify({
-                "success": True, 
-                "data": {
-                    "exists": False,
-                    "file_count": 0,
-                    "files": []
-                }
-            })
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            return jsonify({"success": False, "error": "没有选择文件"})
         
-        # 获取目录内容
-        files = []
-        for item in os.listdir(computer_dir):
-            item_path = os.path.join(computer_dir, item)
-            files.append({
-                "name": item,
-                "type": "directory" if os.path.isdir(item_path) else "file",
-                "size": os.path.getsize(item_path) if os.path.isfile(item_path) else None
-            })
+        # 创建设备特定的传输管理器
+        from file_transfer import FileTransferManager
+        ft_manager = FileTransferManager(device_id=device_id)
         
-        return jsonify({
+        results = {
             "success": True,
-            "data": {
-                "exists": True,
-                "file_count": len(files),
-                "files": files
-            }
-        })
+            "steps": {}
+        }
+        
+        # 步骤1: 清理手机传输目录
+        step1_result = ft_manager.clear_phone_directory(phone_dir)
+        results["steps"]["clear_phone"] = step1_result
+        
+        if not step1_result["success"]:
+            results["success"] = False
+            results["message"] = "清理手机目录失败，流程终止"
+            return jsonify(results)
+        
+        # 步骤2: 创建临时目录并保存上传的文件
+        import tempfile
+        import shutil
+        temp_dir = tempfile.mkdtemp(prefix='file_transfer_')
+        
+        try:
+            file_count = 0
+            for file in files:
+                if file.filename:
+                    rel_path = file.filename
+                    file_path = os.path.join(temp_dir, rel_path)
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    file.save(file_path)
+                    file_count += 1
+            
+            # 传输文件到手机
+            step2_result = ft_manager.transfer_files_to_phone(temp_dir, phone_dir)
+            step2_result['file_count'] = file_count
+            results["steps"]["transfer"] = step2_result
+            
+            if not step2_result["success"]:
+                results["success"] = False
+                results["message"] = "文件传输失败"
+                return jsonify(results)
+            
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        # 步骤3: 清空电脑目录（前端已处理）
+        results["steps"]["clear_computer"] = {
+            "success": True,
+            "message": "已清除选择的文件"
+        }
+        
+        results["message"] = "文件传输流程执行成功"
+        return jsonify(results)
+        
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 

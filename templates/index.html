@@ -427,12 +427,27 @@
                 <p style="color: #666; margin-bottom: 20px;">一键将电脑文件传输到手机，支持自动清理和传输后清空</p>
 
                 <div class="config-section">
+                    <h2>📱 选择目标设备</h2>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">请选择要传输文件的在线设备</p>
+                    
+                    <div id="ft-device-list" style="margin-bottom: 15px;">
+                        <div class="alert alert-info">正在加载设备列表...</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="refreshFtDeviceList()">🔄 刷新设备列表</button>
+                </div>
+
+                <div class="config-section">
                     <h2>⚙️ 路径配置</h2>
                     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">配置会自动保存，下次打开时自动恢复</p>
 
                     <div class="form-group">
-                        <label for="ft-computer-dir">电脑源目录</label>
-                        <input type="text" id="ft-computer-dir" placeholder="例如: /Users/xxx/Desktop/传输专用目录" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label>电脑源目录</label>
+                        <input type="file" id="ft-dir-selector" webkitdirectory directory multiple style="display: none;" onchange="handleFtDirSelect(event)">
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                            <button class="btn btn-primary" onclick="document.getElementById('ft-dir-selector').click()">📁 选择文件夹</button>
+                            <span id="ft-selected-dir-name" style="color: #666;">未选择文件夹</span>
+                        </div>
+                        <input type="hidden" id="ft-computer-dir">
                     </div>
 
                     <div class="form-group">
@@ -446,9 +461,8 @@
                 <div class="config-section">
                     <h2>📂 电脑目录内容</h2>
                     <div id="ft-dir-content" style="margin-top: 15px;">
-                        <div class="alert alert-info">点击"刷新目录"查看文件列表</div>
+                        <div class="alert alert-info">请先选择文件夹</div>
                     </div>
-                    <button class="btn btn-primary" onclick="refreshFileTransferDir()" style="margin-top: 10px;">🔄 刷新目录</button>
                 </div>
 
                 <div class="config-section">
@@ -2443,9 +2457,11 @@
         // ==================== 文件传输功能 ====================
         
         let fileTransferConfig = {
-            computer_dir: '/Users/wenyangzang/Desktop/1/传输专用目录',
+            computer_dir: '',
             phone_dir: '/sdcard/Download/传输专用目录'
         };
+        let ftSelectedFiles = []; // 存储选择的文件列表
+        let ftSelectedDevice = null; // 当前选择的设备
 
         // 初始化文件传输配置
         function initFileTransferConfig() {
@@ -2460,7 +2476,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        fileTransferConfig = data.data;
+                        fileTransferConfig = { ...fileTransferConfig, ...data.data };
                         localStorage.setItem('fileTransferConfig', JSON.stringify(fileTransferConfig));
                         updateFileTransferUI();
                     }
@@ -2468,17 +2484,115 @@
                 .catch(error => console.log('加载配置失败:', error));
             
             updateFileTransferUI();
+            refreshFtDeviceList(); // 加载设备列表
         }
 
         // 更新文件传输UI
         function updateFileTransferUI() {
-            document.getElementById('ft-computer-dir').value = fileTransferConfig.computer_dir || '';
-            document.getElementById('ft-phone-dir').value = fileTransferConfig.phone_dir || '';
+            document.getElementById('ft-phone-dir').value = fileTransferConfig.phone_dir || '/sdcard/Download/传输专用目录';
+        }
+
+        // 刷新设备列表
+        function refreshFtDeviceList() {
+            const deviceListDiv = document.getElementById('ft-device-list');
+            deviceListDiv.innerHTML = '<div class="alert alert-info">正在加载设备列表...</div>';
+            
+            fetch('/api/devices')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.length > 0) {
+                        displayFtDeviceList(data.data);
+                    } else {
+                        deviceListDiv.innerHTML = '<div class="alert alert-warning">暂无在线设备，请检查ADB连接</div>';
+                    }
+                })
+                .catch(error => {
+                    deviceListDiv.innerHTML = '<div class="alert alert-danger">加载设备列表失败: ' + error.message + '</div>';
+                });
+        }
+
+        // 显示设备列表
+        function displayFtDeviceList(devices) {
+            const deviceListDiv = document.getElementById('ft-device-list');
+            
+            let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+            devices.forEach(device => {
+                const isSelected = ftSelectedDevice === device.id;
+                const borderColor = isSelected ? '#ff2442' : '#ddd';
+                const bgColor = isSelected ? '#fff0f2' : '#fff';
+                
+                html += `
+                    <div onclick="selectFtDevice('${device.id}')" 
+                         style="cursor: pointer; padding: 12px; border: 2px solid ${borderColor}; border-radius: 8px; background: ${bgColor}; display: flex; align-items: center; gap: 10px;">
+                        <input type="radio" name="ft-device" value="${device.id}" ${isSelected ? 'checked' : ''} style="margin: 0;">
+                        <div>
+                            <div style="font-weight: bold;">${device.name}</div>
+                            <div style="font-size: 12px; color: #666;">ID: ${device.id}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            deviceListDiv.innerHTML = html;
+        }
+
+        // 选择设备
+        function selectFtDevice(deviceId) {
+            ftSelectedDevice = deviceId;
+            refreshFtDeviceList(); // 刷新UI显示选中状态
+        }
+
+        // 处理文件夹选择
+        function handleFtDirSelect(event) {
+            const files = event.target.files;
+            if (files.length === 0) return;
+            
+            // 获取文件夹路径（从第一个文件的路径推断）
+            const firstFile = files[0];
+            const fullPath = firstFile.webkitRelativePath || firstFile.name;
+            const dirName = fullPath.split('/')[0];
+            
+            document.getElementById('ft-selected-dir-name').textContent = dirName + ' (' + files.length + ' 个文件)';
+            
+            // 存储文件列表
+            ftSelectedFiles = Array.from(files);
+            
+            // 显示文件列表
+            displayFtFileList();
+        }
+
+        // 显示文件列表
+        function displayFtFileList() {
+            const contentDiv = document.getElementById('ft-dir-content');
+            
+            if (ftSelectedFiles.length === 0) {
+                contentDiv.innerHTML = '<div class="alert alert-info">请先选择文件夹</div>';
+                return;
+            }
+            
+            let html = `<div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px;">`;
+            html += `<p style="margin-bottom: 10px; font-weight: bold;">共 ${ftSelectedFiles.length} 个文件</p>`;
+            html += `<ul style="list-style: none; padding: 0; max-height: 300px; overflow-y: auto;">`;
+            
+            // 只显示前20个文件，避免列表过长
+            const displayFiles = ftSelectedFiles.slice(0, 20);
+            displayFiles.forEach(file => {
+                const size = file.size ? `(${(file.size / 1024).toFixed(1)} KB)` : '';
+                const path = file.webkitRelativePath || file.name;
+                html += `<li style="padding: 3px 0; border-bottom: 1px solid #eee; font-size: 13px;">📄 ${path} <span style="color: #999;">${size}</span></li>`;
+            });
+            
+            if (ftSelectedFiles.length > 20) {
+                html += `<li style="padding: 5px 0; color: #666; font-style: italic;">... 还有 ${ftSelectedFiles.length - 20} 个文件</li>`;
+            }
+            
+            html += '</ul></div>';
+            contentDiv.innerHTML = html;
         }
 
         // 保存配置
         function saveFileTransferConfig() {
-            fileTransferConfig.computer_dir = document.getElementById('ft-computer-dir').value;
             fileTransferConfig.phone_dir = document.getElementById('ft-phone-dir').value;
             
             localStorage.setItem('fileTransferConfig', JSON.stringify(fileTransferConfig));
@@ -2499,36 +2613,13 @@
             .catch(error => showFtMessage('保存错误: ' + error.message, 'error'));
         }
 
-        // 刷新目录内容
-        function refreshFileTransferDir() {
-            const computerDir = document.getElementById('ft-computer-dir').value;
-            
-            if (!computerDir) {
-                showFtMessage('请先配置电脑源目录', 'error');
-                return;
+        // 获取选中的设备ID
+        function getSelectedFtDevice() {
+            if (!ftSelectedDevice) {
+                showFtMessage('请先选择目标设备', 'error');
+                return null;
             }
-            
-            showFtProgress(true, '正在读取目录...');
-            
-            fetch('/api/file-transfer/check-computer-dir', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ computer_dir: computerDir })
-            })
-            .then(response => response.json())
-            .then(data => {
-                showFtProgress(false);
-                
-                if (data.success) {
-                    displayDirContent(data.data);
-                } else {
-                    showFtMessage('读取目录失败: ' + data.error, 'error');
-                }
-            })
-            .catch(error => {
-                showFtProgress(false);
-                showFtMessage('读取错误: ' + error.message, 'error');
-            });
+            return ftSelectedDevice;
         }
 
         // 显示目录内容
@@ -2562,6 +2653,9 @@
         // 清理手机目录
         function clearPhoneDir() {
             const phoneDir = document.getElementById('ft-phone-dir').value;
+            const deviceId = getSelectedFtDevice();
+            
+            if (!deviceId) return;
             
             if (!phoneDir) {
                 showFtMessage('请先配置手机目标目录', 'error');
@@ -2578,7 +2672,7 @@
             fetch('/api/file-transfer/clear-phone', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone_dir: phoneDir })
+                body: JSON.stringify({ phone_dir: phoneDir, device_id: deviceId })
             })
             .then(response => response.json())
             .then(data => {
@@ -2599,21 +2693,37 @@
 
         // 仅传输文件
         function transferFilesOnly() {
-            const computerDir = document.getElementById('ft-computer-dir').value;
             const phoneDir = document.getElementById('ft-phone-dir').value;
+            const deviceId = getSelectedFtDevice();
             
-            if (!computerDir || !phoneDir) {
-                showFtMessage('请先配置电脑源目录和手机目标目录', 'error');
+            if (!deviceId) return;
+            
+            if (!phoneDir) {
+                showFtMessage('请先配置手机目标目录', 'error');
+                return;
+            }
+            
+            if (ftSelectedFiles.length === 0) {
+                showFtMessage('请先选择要传输的文件夹', 'error');
                 return;
             }
             
             showFtProgress(true, '正在传输文件...');
             hideFtResults();
             
+            // 创建FormData并添加文件
+            const formData = new FormData();
+            formData.append('phone_dir', phoneDir);
+            formData.append('device_id', deviceId);
+            
+            // 添加所有文件
+            ftSelectedFiles.forEach(file => {
+                formData.append('files', file, file.webkitRelativePath || file.name);
+            });
+            
             fetch('/api/file-transfer/transfer', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ computer_dir: computerDir, phone_dir: phoneDir })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
@@ -2632,75 +2742,77 @@
             });
         }
 
-        // 清空电脑目录
+        // 清空电脑目录（清除选择的文件）
         function clearComputerDir() {
-            const computerDir = document.getElementById('ft-computer-dir').value;
-            
-            if (!computerDir) {
-                showFtMessage('请先配置电脑源目录', 'error');
+            if (ftSelectedFiles.length === 0) {
+                showFtMessage('当前没有选择任何文件', 'error');
                 return;
             }
             
-            if (!confirm('确定要清空电脑上的传输目录吗？此操作不可恢复。')) {
+            if (!confirm('确定要清除选择的文件吗？')) {
                 return;
             }
             
-            showFtProgress(true, '正在清空电脑目录...');
-            hideFtResults();
+            // 清除文件列表
+            ftSelectedFiles = [];
+            document.getElementById('ft-selected-dir-name').textContent = '未选择文件夹';
+            document.getElementById('ft-dir-selector').value = '';
+            displayFtFileList();
             
-            fetch('/api/file-transfer/clear-computer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ computer_dir: computerDir })
-            })
-            .then(response => response.json())
-            .then(data => {
-                showFtProgress(false);
-                
-                if (data.success) {
-                    showFtResults({ clear_computer: data });
-                    showFtMessage('电脑目录清空成功', 'success');
-                    refreshFileTransferDir(); // 刷新目录显示
-                } else {
-                    showFtMessage('清空失败: ' + data.error, 'error');
-                }
-            })
-            .catch(error => {
-                showFtProgress(false);
-                showFtMessage('清空错误: ' + error.message, 'error');
-            });
+            showFtMessage('已清除选择的文件', 'success');
         }
 
         // 执行完整传输流程
         function executeFullTransfer() {
-            const computerDir = document.getElementById('ft-computer-dir').value;
             const phoneDir = document.getElementById('ft-phone-dir').value;
+            const deviceId = getSelectedFtDevice();
             
-            if (!computerDir || !phoneDir) {
-                showFtMessage('请先配置电脑源目录和手机目标目录', 'error');
+            if (!deviceId) return;
+            
+            if (!phoneDir) {
+                showFtMessage('请先配置手机目标目录', 'error');
                 return;
             }
             
-            if (!confirm('确定要执行完整传输流程吗？\n\n流程：清理手机目录 → 传输文件 → 清空电脑目录')) {
+            if (ftSelectedFiles.length === 0) {
+                showFtMessage('请先选择要传输的文件夹', 'error');
+                return;
+            }
+            
+            if (!confirm('确定要执行完整传输流程吗？\n\n流程：清理手机目录 → 传输文件 → 清空选择')) {
                 return;
             }
             
             showFtProgress(true, '正在执行完整传输流程...');
             hideFtResults();
             
+            // 创建FormData并添加文件
+            const formData = new FormData();
+            formData.append('phone_dir', phoneDir);
+            formData.append('device_id', deviceId);
+            
+            // 添加所有文件
+            ftSelectedFiles.forEach(file => {
+                formData.append('files', file, file.webkitRelativePath || file.name);
+            });
+            
             fetch('/api/file-transfer/full-transfer', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ computer_dir: computerDir, phone_dir: phoneDir })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
                 showFtProgress(false);
                 
                 if (data.success) {
+                    // 清除文件列表
+                    ftSelectedFiles = [];
+                    document.getElementById('ft-selected-dir-name').textContent = '未选择文件夹';
+                    document.getElementById('ft-dir-selector').value = '';
+                    displayFtFileList();
+                    
                     showFtResults(data.steps);
                     showFtMessage('完整传输流程执行成功', 'success');
-                    refreshFileTransferDir(); // 刷新目录显示
                 } else {
                     showFtResults(data.steps);
                     showFtMessage('流程执行失败: ' + (data.message || ''), 'error');
