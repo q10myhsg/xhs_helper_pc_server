@@ -446,6 +446,177 @@ def api_pdf_cleanup():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+# ==================== PDF批量处理 API ====================
+
+# PDF路径配置存储文件
+PDF_PATHS_CONFIG_FILE = "config/pdf_paths_config.json"
+
+def load_pdf_paths_config():
+    """加载PDF路径配置"""
+    if os.path.exists(PDF_PATHS_CONFIG_FILE):
+        with open(PDF_PATHS_CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {
+        "source_path": "",
+        "output_path": ""
+    }
+
+def save_pdf_paths_config(config):
+    """保存PDF路径配置"""
+    os.makedirs("config", exist_ok=True)
+    with open(PDF_PATHS_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+@app.route("/api/pdf/paths/config", methods=["GET"])
+def api_get_pdf_paths_config():
+    """获取PDF路径配置"""
+    try:
+        config = load_pdf_paths_config()
+        return jsonify({"success": True, "data": config})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/paths/config", methods=["POST"])
+def api_save_pdf_paths_config():
+    """保存PDF路径配置"""
+    try:
+        config = request.json
+        save_pdf_paths_config(config)
+        return jsonify({"success": True, "message": "配置已保存"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/batch/upload", methods=["POST"])
+def api_pdf_batch_upload():
+    """批量上传PDF文件"""
+    try:
+        if 'files' not in request.files:
+            return jsonify({"success": False, "error": "没有文件"})
+        
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        uploaded_files = []
+        for file in files:
+            if file and file.filename.endswith('.pdf'):
+                filename = secure_filename(file.filename)
+                unique_id = str(uuid.uuid4())
+                saved_filename = f"{unique_id}_{filename}"
+                filepath = os.path.join(pdf_converter.upload_folder, saved_filename)
+                file.save(filepath)
+                
+                uploaded_files.append({
+                    "original_name": filename,
+                    "saved_name": saved_filename,
+                    "filepath": filepath,
+                    "size": os.path.getsize(filepath)
+                })
+        
+        return jsonify({
+            "success": True,
+            "message": f"成功上传 {len(uploaded_files)} 个文件",
+            "data": {
+                "files": uploaded_files,
+                "count": len(uploaded_files)
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/batch/convert", methods=["POST"])
+def api_pdf_batch_convert():
+    """批量转换PDF文件"""
+    try:
+        data = request.json
+        files = data.get('files', [])
+        settings = data.get('settings', {})
+        
+        if not files:
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        results = []
+        total_files = len(files)
+        
+        for index, file_info in enumerate(files):
+            try:
+                filename = file_info.get('saved_name')
+                filepath = os.path.join(pdf_converter.upload_folder, filename)
+                
+                if not os.path.exists(filepath):
+                    results.append({
+                        "original_name": file_info.get('original_name'),
+                        "success": False,
+                        "error": "文件不存在"
+                    })
+                    continue
+                
+                # 加载用户配置的图片路径
+                config = load_pdf_images_config()
+                from pdf_converter import PDFConverter
+                converter = PDFConverter(
+                    watermark_path=config.get('watermark') or None,
+                    header_path=config.get('header') or None,
+                    footer_path=config.get('footer') or None
+                )
+                
+                # 执行转换
+                result = converter.convert_pdf_to_images(
+                    filepath,
+                    dpi=settings.get('dpi', 300),
+                    fmt=settings.get('format', 'png'),
+                    add_watermark=settings.get('add_watermark', True),
+                    generate_simple_pdf=settings.get('generate_simple_pdf', True),
+                    start_page=settings.get('start_page', 1),
+                    end_page=settings.get('end_page'),
+                    add_header=settings.get('add_header', False),
+                    add_footer=settings.get('add_footer', False)
+                )
+                
+                # 获取相对路径
+                images_urls = []
+                for img_path in result['images']:
+                    rel_path = os.path.relpath(img_path, 'static')
+                    images_urls.append(f"/static/{rel_path}")
+                
+                simple_pdf_url = None
+                if result['simple_pdf']:
+                    rel_path = os.path.relpath(result['simple_pdf'], 'static')
+                    simple_pdf_url = f"/static/{rel_path}"
+                
+                results.append({
+                    "original_name": file_info.get('original_name'),
+                    "saved_name": filename,
+                    "success": True,
+                    "images": images_urls,
+                    "simple_pdf": simple_pdf_url,
+                    "total_pages": len(result['images']),
+                    "progress": {
+                        "current": index + 1,
+                        "total": total_files
+                    }
+                })
+                
+            except Exception as e:
+                results.append({
+                    "original_name": file_info.get('original_name'),
+                    "success": False,
+                    "error": str(e)
+                })
+        
+        return jsonify({
+            "success": True,
+            "message": "批量转换完成",
+            "data": {
+                "results": results,
+                "total": total_files,
+                "success_count": sum(1 for r in results if r['success']),
+                "failed_count": sum(1 for r in results if not r['success'])
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 # ==================== PDF图片配置 API ====================
 
 # 用户图片配置存储文件
