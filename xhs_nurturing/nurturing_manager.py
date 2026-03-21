@@ -8,6 +8,10 @@ from .config_manager import ConfigManager
 from .interaction_manager import InteractionManager
 from .browse_manager import BrowseManager
 from .utils import random_delay, validate_keywords
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from license_manager import LicenseManager
 
 class NurturingManager:
     """养号管理器"""
@@ -18,9 +22,11 @@ class NurturingManager:
         self.config_manager = ConfigManager()
         self.interaction_manager = InteractionManager()
         self.browse_manager = BrowseManager()
+        self.license_manager = LicenseManager()
         self.logger = logging.getLogger(__name__)
         self._device_threads = {}  # 存储设备ID与对应线程的映射，同时作为运行任务集合
         self._nurturing_status = {}  # 存储设备ID与对应养号状态的映射
+        self._device_start_times = {}  # 存储设备开始养号的时间
     
     def start_nurturing(self, device_id: str) -> bool:
         """
@@ -33,13 +39,26 @@ class NurturingManager:
                 self.logger.warning(f"设备 {device_id} 已经在养号中")
                 return False
             
-            # 连接设备
-            if not self.device_manager.connect_device(device_id):
-                self.logger.error(f"无法连接设备 {device_id}")
+            # 检查启动权限
+            permission_ok, permission_msg = self.license_manager.check_launch_permission()
+            if not permission_ok:
+                self.logger.error(f"权限检查失败: {permission_msg}")
                 return False
             
             # 获取设备配置
             config = self.config_manager.get_device_config(device_id)
+            
+            # 检查每日时长限制
+            duration_minutes = config.get("duration_minutes", 20)
+            limit_ok, limit_msg = self.license_manager.check_daily_limit(device_id, duration_minutes)
+            if not limit_ok:
+                self.logger.error(f"时长限制检查失败: {limit_msg}")
+                return False
+            
+            # 连接设备
+            if not self.device_manager.connect_device(device_id):
+                self.logger.error(f"无法连接设备 {device_id}")
+                return False
             
             # 验证配置
             if not self.config_manager.validate_config(config):
@@ -59,6 +78,10 @@ class NurturingManager:
                 visited=0,
                 current_keyword=""
             )
+            
+            # 记录开始时间和启动统计
+            self._device_start_times[device_id] = time.time()
+            self.license_manager.record_usage_start(device_id)
             
             # 添加到运行任务
             # 不需要单独添加到运行任务集合，因为已经存储到_device_threads中
@@ -101,7 +124,8 @@ class NurturingManager:
             t0 = time.time()
             # 检查设备是否在线
             if not self.device_manager.is_device_online(device_id):
-                self.logger.error(f"设备 {device_id} 离线")
+                self.logger.error(f"设备 {device_id} 离线，停止养号")
+                self.stop_nurturing(device_id)
                 return
             
             # 检查是否已被停止
@@ -116,7 +140,7 @@ class NurturingManager:
             self.logger.info(f"启动小红书 - 设备: {device_id}")
             if not self.browse_manager.start_xiaohongshu(device):
                 self.logger.error(f"启动小红书失败 - 设备: {device_id}")
-                self.device_manager.update_device_status(device_id, is_running=False, remain_time=0)
+                self.stop_nurturing(device_id)
                 return
             
             # 检查是否已被停止
@@ -126,9 +150,9 @@ class NurturingManager:
             
             # 在发现页浏览一段时间
             self.logger.info(f"在发现页浏览 {discovery_browse_time} 秒 - 设备: {device_id}")
-            if not device:
-                self.logger.error(f"设备 {device_id} 离线")
-                self.device_manager.update_device_status(device_id, is_running=False, remain_time=0)
+            if not device or not self.device_manager.is_device_online(device_id):
+                self.logger.error(f"设备 {device_id} 离线，停止养号")
+                self.stop_nurturing(device_id)
                 return
             # 检查是否已被停止
             if device_id not in self._device_threads:
@@ -136,11 +160,17 @@ class NurturingManager:
                 return
             # 创建停止检查回调函数
             def stop_check():
-                return device_id not in self._device_threads
+                return device_id not in self._device_threads or not self.device_manager.is_device_online(device_id)
             self.browse_manager.browse_discovery_page(device, discovery_browse_time, config, stop_check)
             # 检查是否已被停止
             if device_id not in self._device_threads:
                 self.logger.info(f"养号已被停止 - 设备: {device_id}")
+                return
+            
+            # 检查设备是否在线
+            if not self.device_manager.is_device_online(device_id):
+                self.logger.error(f"设备 {device_id} 离线，停止养号")
+                self.stop_nurturing(device_id)
                 return
             
             # 随机选择关键词
@@ -149,7 +179,7 @@ class NurturingManager:
             random.shuffle(keywords)
             if not keywords:
                 self.logger.warning("关键词列表为空")
-                # self.device_manager.update_device_status(device_id, is_running=False, remain_time=0)
+                self.stop_nurturing(device_id)
                 return
             for keyword in keywords:
                 # 检查是否已被停止
@@ -160,10 +190,10 @@ class NurturingManager:
                 if time.time() - t0 >= total_time:
                     break
                 # 检查设备是否在线
-                if not self.device_manager.get_device(device_id):
-                    self.logger.error(f"设备 {device_id} 离线")
-                    self.device_manager.update_device_status(device_id, is_running=False, remain_time=0)
-                    break
+                if not self.device_manager.is_device_online(device_id):
+                    self.logger.error(f"设备 {device_id} 离线，停止养号")
+                    self.stop_nurturing(device_id)
+                    return
                 
                 # 更新养号状态
                 if device_id in self._nurturing_status:
@@ -175,8 +205,9 @@ class NurturingManager:
                 # 5. 搜索关键词并浏览帖子
                 # 检查设备是否在线
                 if not self.device_manager.is_device_online(device_id):
-                    self.logger.error(f"设备 {device_id} 离线")
-                    break
+                    self.logger.error(f"设备 {device_id} 离线，停止养号")
+                    self.stop_nurturing(device_id)
+                    return
                 
                 # 检查是否已被停止
                 if device_id not in self._device_threads:
@@ -185,7 +216,7 @@ class NurturingManager:
                 
                 # 创建停止检查回调函数
                 def stop_check():
-                    return device_id not in self._device_threads
+                    return device_id not in self._device_threads or not self.device_manager.is_device_online(device_id)
                 
                 # 创建计数回调函数
                 def count_callback():
@@ -210,8 +241,9 @@ class NurturingManager:
                 
                 # 检查设备是否在线
                 if not self.device_manager.is_device_online(device_id):
-                    self.logger.error(f"设备 {device_id} 离线")
-                    break
+                    self.logger.error(f"设备 {device_id} 离线，停止养号")
+                    self.stop_nurturing(device_id)
+                    return
                 
                 # 更新养号状态
                 if device_id in self._nurturing_status:
@@ -219,8 +251,9 @@ class NurturingManager:
                 
                 # 检查设备是否在线
                 if not self.device_manager.is_device_online(device_id):
-                    self.logger.error(f"设备 {device_id} 离线")
-                    break
+                    self.logger.error(f"设备 {device_id} 离线，停止养号")
+                    self.stop_nurturing(device_id)
+                    return
                 
                 # 长随机间隔（避免频繁操作）
                 wait_time = random.randint(15, 30)
@@ -230,11 +263,21 @@ class NurturingManager:
                     if device_id not in self._device_threads:
                         self.logger.info(f"养号已被停止 - 设备: {device_id}")
                         return
+                    if not self.device_manager.is_device_online(device_id):
+                        self.logger.error(f"设备 {device_id} 离线，停止养号")
+                        self.stop_nurturing(device_id)
+                        return
                     time.sleep(1)
             
             # 检查是否已被停止
             if device_id not in self._device_threads:
                 self.logger.info(f"养号已被停止 - 设备: {device_id}")
+                return
+            
+            # 检查设备是否在线
+            if not self.device_manager.is_device_online(device_id):
+                self.logger.error(f"设备 {device_id} 离线，停止养号")
+                self.stop_nurturing(device_id)
                 return
             
             # 养号完成
@@ -243,32 +286,37 @@ class NurturingManager:
                 final_visited = self._nurturing_status[device_id].get('visited', 0)
             self.logger.info(f"养号完成 - 设备: {device_id}, 访问帖子数: {final_visited}")
             
-            # 更新设备状态
-            self.device_manager.update_device_status(
-                device_id,
-                is_running=False
-            )
+            # 更新设备状态并记录使用时长
+            self.stop_nurturing(device_id)
             
         except Exception as e:
             self.logger.error(f"养号异常 - 设备: {device_id}, 错误: {e}")
-            # 更新设备状态
-            self.device_manager.update_device_status(device_id, is_running=False)
-        finally:
-            # 从运行任务中移除
-            if device_id in self._device_threads:
-                del self._device_threads[device_id]
-                # 清除养号状态
-                if device_id in self._nurturing_status:
-                    del self._nurturing_status[device_id]
+            # 更新设备状态并记录使用时长
+            self.stop_nurturing(device_id)
     
     def stop_nurturing(self, device_id: str):
         """
         停止养号
         :param device_id: 设备ID
         """
+        # 检查是否已经停止过，避免重复操作
+        if device_id not in self._device_threads and device_id not in self._device_start_times:
+            self.logger.info(f"设备 {device_id} 已经停止养号")
+            return
+        
         self.device_manager.stop_task(device_id)
         # 立即更新设备状态为未运行
         self.device_manager.update_device_status(device_id, is_running=False)
+        
+        # 记录使用时长
+        if device_id in self._device_start_times:
+            start_time = self._device_start_times[device_id]
+            used_seconds = time.time() - start_time
+            used_minutes = max(1, int(used_seconds / 60))
+            self.license_manager.record_usage_minutes(device_id, used_minutes)
+            self.logger.info(f"设备 {device_id} 使用时长: {used_minutes} 分钟")
+            del self._device_start_times[device_id]
+        
         # 从运行任务中移除并杀死对应线程
         if device_id in self._device_threads:
             thread = self._device_threads[device_id]

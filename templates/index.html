@@ -15,6 +15,7 @@
                     <li class="nav-item"><a href="#" class="nav-link" onclick="showPage('device')">设备管理</a></li>
                     <li class="nav-item"><a href="#" class="nav-link" onclick="showPage('keyword')">关键词</a></li>
                     <li class="nav-item"><a href="#" class="nav-link" onclick="showPage('config')">参数配置</a></li>
+                    <li class="nav-item"><a href="/activation" class="nav-link">激活</a></li>
                 </ul>
             </nav>
 
@@ -289,6 +290,32 @@
                     break;
             }
         }
+        
+        // 处理URL参数，实现页面跳转
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = urlParams.get('page');
+            if (page) {
+                // 模拟点击对应导航链接
+                const navLinks = document.querySelectorAll('.nav-link');
+                navLinks.forEach(link => {
+                    if (link.textContent.trim() === '仪表板' && page === 'dashboard') {
+                        link.click();
+                    } else if (link.textContent.trim() === '设备管理' && page === 'device') {
+                        link.click();
+                    } else if (link.textContent.trim() === '关键词' && page === 'keyword') {
+                        link.click();
+                    } else if (link.textContent.trim() === '参数配置' && page === 'config') {
+                        link.click();
+                    }
+                });
+            }
+        }
+        
+        // 页面加载时处理URL参数
+        document.addEventListener('DOMContentLoaded', function() {
+            handleUrlParams();
+        });
 
         // 刷新设备管理页面的设备列表
         function refreshDevices() {

@@ -1751,6 +1751,55 @@
   },
   "device_aliases": {
     "de78def7": "语文",
-    "779baf23": "数学"
+    "779baf23": "数学",
+    "2539cd3d": "英语"
+  },
+  "2539cd3d": {
+    "discovery_browse_time": 10,
+    "duration_minutes": 20,
+    "interaction": {
+      "like_prob": 15,
+      "collect_prob": 10,
+      "comment_prob": 5,
+      "comment_templates": [
+        "不错的分享！",
+        "学习了~",
+        "感谢分享",
+        "很有用的内容",
+        "已收藏学习"
+      ]
+    },
+    "keywords": [
+      "英语四级报名",
+      "英语四级备考",
+      "英语四级单词",
+      "英语四级APP",
+      "英语四级听力",
+      "英语四级分值",
+      "英语四级作文",
+      "英语四级翻译",
+      "英语四级资料",
+      "英语四级网课",
+      "英语四级真题",
+      "英语四级技巧",
+      "英语四级零基础",
+      "英语四级二战",
+      "英语四级报班",
+      "英语四级时间",
+      "英语四级词汇",
+      "英语四级阅读"
+    ],
+    "post_visit_ratio": 20,
+    "posts_per_keyword": 5,
+    "visit_control": {
+      "duration_range": [
+        25,
+        45
+      ],
+      "slide_interval": [
+        3,
+        5
+      ]
+    }
   }
 }

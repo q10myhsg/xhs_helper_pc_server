@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>激活 - 小红书自动化系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .activation-section {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .license-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .license-info h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .license-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .license-item {
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }
+        .license-item strong {
+            display: block;
+            color: #666;
+            font-size: 12px;
+        }
+        .license-item span {
+            color: #333;
+            font-weight: bold;
+        }
+        .usage-section {
+            margin-top: 20px;
+        }
+        .usage-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .usage-table th, .usage-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .usage-table th {
+            background: #667eea;
+            color: white;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-active {
+            background: #4CAF50;
+            color: white;
+        }
+        .status-expired {
+            background: #f44336;
+            color: white;
+        }
+        .status-inactive {
+            background: #9e9e9e;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">🚀 小红书自动化系统</div>
+        <ul class="navbar-nav">
+            <li class="nav-item"><a href="/" class="nav-link">仪表板</a></li>
+            <li class="nav-item"><a href="/" class="nav-link" onclick="event.preventDefault(); window.location.href='/' + '?page=device'">设备管理</a></li>
+            <li class="nav-item"><a href="/" class="nav-link" onclick="event.preventDefault(); window.location.href='/' + '?page=keyword'">关键词</a></li>
+            <li class="nav-item"><a href="/" class="nav-link" onclick="event.preventDefault(); window.location.href='/' + '?page=config'">参数配置</a></li>
+            <li class="nav-item"><a href="#" class="nav-link active">激活</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="main-content">
+            <h1>🔑 软件激活</h1>
+            
+            <div class="activation-section">
+                <!-- 激活码输入 -->
+                <div class="config-section">
+                    <h2>输入激活码</h2>
+                    <div class="form-group">
+                        <label for="auth-code">激活码</label>
+                        <input type="text" id="auth-code" placeholder="请输入激活码">
+                    </div>
+                    <div class="form-group">
+                        <label for="machine-code">机器码</label>
+                        <input type="text" id="machine-code" readonly placeholder="自动生成">
+                    </div>
+                    <button class="btn btn-primary" onclick="verifyActivation()" style="margin-top: 10px;">
+                        ✅ 验证并激活
+                    </button>
+                </div>
+
+                <!-- 当前授权信息 -->
+                <div class="license-info" id="license-info">
+                    <h3>📋 当前授权信息</h3>
+                    <div id="license-content">
+                        <div class="alert alert-info">暂无授权信息，请先激活</div>
+                    </div>
+                </div>
+
+                <!-- 使用情况 -->
+                <div class="usage-section" id="usage-section" style="display: none;">
+                    <h3>📊 今日使用情况</h3>
+                    <table class="usage-table">
+                        <thead>
+                            <tr>
+                                <th>设备ID</th>
+                                <th>使用分钟</th>
+                                <th>启动次数</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usage-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时获取授权信息
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLicenseInfo();
+        });
+
+        function loadLicenseInfo() {
+            fetch('/api/license/info')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('machine-code').value = data.data.machine_code;
+                        renderLicenseInfo(data.data.license);
+                        renderUsageInfo(data.data.devices_usage);
+                    }
+                })
+                .catch(error => {
+                    console.error('加载授权信息失败:', error);
+                });
+        }
+
+        function renderLicenseInfo(license) {
+            const content = document.getElementById('license-content');
+            if (!license) {
+                content.innerHTML = '<div class="alert alert-info">暂无授权信息，请先激活</div>';
+                return;
+            }
+
+            let statusClass = 'status-inactive';
+            let statusText = '未激活';
+            if (license.active) {
+                statusClass = 'status-active';
+                statusText = '已激活';
+            }
+
+            content.innerHTML = `
+                <div class="license-detail">
+                    <div class="license-item">
+                        <strong>状态</strong>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="license-item">
+                        <strong>套餐类型</strong>
+                        <span>${license.package_type || '-'}</span>
+                    </div>
+                    <div class="license-item">
+                        <strong>过期日期</strong>
+                        <span>${license.expire_date || '-'}</span>
+                    </div>
+                    <div class="license-item">
+                        <strong>最大设备数</strong>
+                        <span>${license.max_devices || '-'}</span>
+                    </div>
+                    <div class="license-item">
+                        <strong>每日时长限制</strong>
+                        <span>${license.max_daily_minutes || '-'} 分钟</span>
+                    </div>
+                    <div class="license-item">
+                        <strong>激活时间</strong>
+                        <span>${license.create_time ? new Date(license.create_time).toLocaleString() : '-'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderUsageInfo(devicesUsage) {
+            const section = document.getElementById('usage-section');
+            const tbody = document.getElementById('usage-table-body');
+            
+            if (!devicesUsage || devicesUsage.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            tbody.innerHTML = '';
+            
+            devicesUsage.forEach(usage => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${usage.device_id}</td>
+                    <td>${usage.total_minutes}</td>
+                    <td>${usage.start_count}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function verifyActivation() {
+            const authCode = document.getElementById('auth-code').value.trim();
+            if (!authCode) {
+                alert('请输入激活码');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '验证中...';
+
+            fetch('/api/activation/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ auth_code: authCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('激活成功！');
+                    document.getElementById('auth-code').value = '';
+                    loadLicenseInfo();
+                } else {
+                    alert('激活失败：' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('验证激活码失败:', error);
+                alert('网络错误：' + error.message);
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = '✅ 验证并激活';
+            });
+        }
+    </script>
+</body>
+</html>

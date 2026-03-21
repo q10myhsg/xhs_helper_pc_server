@@ -3,11 +3,14 @@ import json
 import threading
 import os
 from xhs_nurturing import NurturingManager
+from license_manager import LicenseManager
+from machine_code import get_machine_code
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# 初始化养号管理器
+# 初始化管理器
 nurturing_manager = NurturingManager()
+license_manager = LicenseManager()
 current_device = {"device_id": None}
 
 # ==================== 页面路由 ====================
@@ -45,6 +48,11 @@ def interact_page():
 def status_page():
     """状态监控页面"""
     return render_template("status.html")
+
+@app.route("/activation")
+def activation_page():
+    """激活页面"""
+    return render_template("activation.html")
 
 # ==================== API 接口 ====================
 
@@ -248,6 +256,69 @@ def api_default_config():
             return jsonify({"success":  True, "message": "默认模板已更新"})
     except Exception as e:
         return jsonify({"success": False, "error":  str(e)})
+
+# ==================== 激活相关 API ====================
+
+@app.route("/api/activation/verify", methods=["POST"])
+def api_verify_activation():
+    """验证激活码"""
+    try:
+        auth_code = request.json.get("auth_code", "")
+        if not auth_code:
+            return jsonify({"success": False, "error": "激活码不能为空"})
+        
+        success, message, data = license_manager.verify_activation_code(auth_code)
+        if success:
+            return jsonify({"success": True, "message": message, "data": data})
+        else:
+            return jsonify({"success": False, "error": message})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/license/info", methods=["GET"])
+def api_get_license_info():
+    """获取当前授权信息"""
+    try:
+        license_info = license_manager.get_license_info()
+        machine_code = get_machine_code()
+        
+        # 获取今日所有设备使用情况
+        devices_usage = license_manager.get_all_devices_usage_today()
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "license": license_info,
+                "machine_code": machine_code,
+                "devices_usage": devices_usage
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/device/usage/<device_id>", methods=["GET"])
+def api_get_device_usage(device_id):
+    """获取设备今日使用情况"""
+    try:
+        usage = license_manager.get_device_usage_today(device_id)
+        return jsonify({"success": True, "data": usage})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/permission/check", methods=["GET"])
+def api_check_permission():
+    """检查启动权限"""
+    try:
+        allowed, message = license_manager.check_launch_permission()
+        return jsonify({
+            "success": True,
+            "data": {
+                "allowed": allowed,
+                "message": message
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 # ==================== 错误处理 ====================
 
