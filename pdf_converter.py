@@ -146,8 +146,8 @@ class PDFConverter:
         # 解析水印页面范围
         watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
 
-        # 创建输出目录: PDF相同文件夹/imgs/文件名/
-        output_dir = pdf_path.parent / "imgs" / pdf_path.stem
+        # 创建输出目录: PDF相同文件夹/image/文件名/
+        output_dir = pdf_path.parent / "image" / pdf_path.stem
         output_dir.mkdir(parents=True, exist_ok=True)
 
         output_paths = []
