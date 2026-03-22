@@ -468,16 +468,12 @@
                     </div>
                 </div>
 
-                <!-- 步骤3: 预览和转换 -->
+                <!-- 步骤3: 开始转换 -->
                 <div class="config-section">
-                    <h2>🚀 步骤3: 预览和转换</h2>
-                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">支持多文件预览，可选择任意已添加的PDF文件进行预览</p>
+                    <h2>🚀 步骤3: 开始转换</h2>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">文件将上传到指定目录后进行转换</p>
 
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                        <select id="pdf-preview-file-select" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; min-width: 200px;" disabled>
-                            <option value="">选择要预览的文件</option>
-                        </select>
-                        <button class="btn btn-info" id="pdf-preview-btn" onclick="previewSelectedPdf()" disabled>👁️ 预览选中文件</button>
                         <button class="btn btn-success" id="pdf-convert-btn" onclick="batchConvertPdfs()" disabled>🚀 开始批量转换</button>
                         <button class="btn btn-secondary" onclick="clearAllPdfData()">🗑️ 清空所有</button>
                     </div>
@@ -495,50 +491,6 @@
                         <div id="pdf-progress-text" style="font-size: 14px;">准备中...</div>
                     </div>
                 </div>
-
-                <!-- 多文件预览区域 -->
-                <div id="pdf-preview-section" style="display: none; margin-top: 30px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h2>👁️ 预览效果</h2>
-                        <div id="pdf-preview-tabs" style="display: flex; gap: 5px;"></div>
-                    </div>
-                    
-                    <!-- 加载中提示 -->
-                    <div id="pdf-preview-loading" style="display: none; text-align: center; padding: 40px; background: #f9f9f9; border: 2px solid #ddd; border-radius: 8px;">
-                        <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                        <p style="color: #666; margin-top: 15px;">正在生成预览，请稍候...</p>
-                        <p id="pdf-preview-progress" style="color: #999; font-size: 12px;">正在处理第 1 页</p>
-                    </div>
-                    
-                    <!-- 预览内容 -->
-                    <div id="pdf-preview-content" style="border: 2px solid #ddd; border-radius: 8px; padding: 20px; background: #f9f9f9;">
-                        <div id="pdf-preview-images-container" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-                            <!-- 预览图片将动态插入这里 -->
-                        </div>
-                        <p id="pdf-preview-filename" style="text-align: center; color: #666; margin-top: 15px; font-size: 14px;"></p>
-                    </div>
-                </div>
-                
-                <style>
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                    .pdf-preview-page {
-                        border: 1px solid #ccc;
-                        border-radius: 4px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                        max-width: 100%;
-                    }
-                    .pdf-preview-page-container {
-                        text-align: center;
-                    }
-                    .pdf-preview-page-label {
-                        color: #666;
-                        font-size: 12px;
-                        margin-top: 5px;
-                    }
-                </style>
 
                 <!-- 批量转换结果 -->
                 <div id="pdf-batch-results" style="display: none; margin-top: 30px;">
@@ -2352,55 +2304,6 @@
             showPdfMessage('已清除', 'success');
         }
 
-        // 生成PDF预览
-        function generatePdfPreview() {
-            if (!currentPdfFilename) {
-                showPdfMessage('请先上传PDF文件', 'error');
-                return;
-            }
-
-            const addWatermark = document.getElementById('pdf-add-watermark').checked;
-            const addHeader = document.getElementById('pdf-add-header').checked;
-            const addFooter = document.getElementById('pdf-add-footer').checked;
-
-            // 显示进度
-            document.getElementById('pdf-progress').style.display = 'block';
-            document.getElementById('pdf-preview-section').style.display = 'none';
-            document.getElementById('pdf-error').style.display = 'none';
-            document.getElementById('pdf-preview-btn').disabled = true;
-
-            fetch('/api/pdf/preview', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    filename: currentPdfFilename,
-                    add_watermark: addWatermark,
-                    add_header: addHeader,
-                    add_footer: addFooter
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('pdf-progress').style.display = 'none';
-                document.getElementById('pdf-preview-btn').disabled = false;
-
-                if (data.success) {
-                    document.getElementById('pdf-preview-image').src = data.data.preview_url;
-                    document.getElementById('pdf-preview-section').style.display = 'block';
-                    showPdfMessage('预览生成成功', 'success');
-                } else {
-                    showPdfMessage('预览生成失败: ' + data.error, 'error');
-                }
-            })
-            .catch(error => {
-                document.getElementById('pdf-progress').style.display = 'none';
-                document.getElementById('pdf-preview-btn').disabled = false;
-                showPdfMessage('预览错误: ' + error.message, 'error');
-            });
-        }
-
         // PDF批量处理相关变量
         let pdfBatchFiles = [];  // 存储批量选择的PDF文件信息（只存路径，不存文件对象）
         let pdfBatchResults = []; // 存储批量转换结果
@@ -2449,18 +2352,15 @@
             });
 
             displayPdfFileList();
-            updatePdfPreviewSelect();
             document.getElementById('pdf-batch-count').textContent = `已选择 ${files.length} 个文件`;
             document.getElementById('pdf-file-list').style.display = 'block';
 
             // 启用按钮
             if (files.length > 0) {
-                document.getElementById('pdf-preview-file-select').disabled = false;
-                document.getElementById('pdf-preview-btn').disabled = false;
                 document.getElementById('pdf-convert-btn').disabled = false;
             }
 
-            showPdfMessage(`成功选择 ${files.length} 个PDF文件（无需上传，直接本地转换）`, 'success');
+            showPdfMessage(`成功选择 ${files.length} 个PDF文件`, 'success');
         }
 
         // 显示PDF文件列表
@@ -2484,30 +2384,14 @@
             });
         }
 
-        // 更新预览文件选择下拉框
-        function updatePdfPreviewSelect() {
-            const select = document.getElementById('pdf-preview-file-select');
-            select.innerHTML = '<option value="">选择要预览的文件</option>';
-            
-            pdfBatchFiles.forEach((pdfFile, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = pdfFile.original_name;
-                select.appendChild(option);
-            });
-        }
-
         // 从批量列表中移除PDF
         function removePdfFromBatch(index) {
             pdfBatchFiles.splice(index, 1);
             displayPdfFileList();
-            updatePdfPreviewSelect();
             document.getElementById('pdf-batch-count').textContent = `已选择 ${pdfBatchFiles.length} 个文件`;
-            
+
             if (pdfBatchFiles.length === 0) {
                 document.getElementById('pdf-file-list').style.display = 'none';
-                document.getElementById('pdf-preview-file-select').disabled = true;
-                document.getElementById('pdf-preview-btn').disabled = true;
                 document.getElementById('pdf-convert-btn').disabled = true;
             }
         }
@@ -2593,112 +2477,6 @@
         }
 
         // 预览选中的PDF文件
-        function previewSelectedPdf() {
-            const select = document.getElementById('pdf-preview-file-select');
-            const selectedIndex = select.value;
-            
-            if (selectedIndex === '' || pdfBatchFiles.length === 0) {
-                showPdfMessage('请先选择要预览的PDF文件', 'error');
-                return;
-            }
-            
-            const selectedFile = pdfBatchFiles[parseInt(selectedIndex)];
-            const formData = new FormData();
-            formData.append('file', selectedFile.file);
-            
-            // 显示加载状态
-            document.getElementById('pdf-preview-btn').disabled = true;
-            document.getElementById('pdf-preview-section').style.display = 'block';
-            document.getElementById('pdf-preview-loading').style.display = 'block';
-            document.getElementById('pdf-preview-content').style.display = 'none';
-            document.getElementById('pdf-preview-progress').textContent = '正在上传文件...';
-            showPdfMessage(`正在上传并预览: ${selectedFile.original_name}...`, 'info');
-            
-            fetch('/api/pdf/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 使用选中的文件进行预览转换
-                    const format = document.getElementById('pdf-output-format').value;
-                    const dpi = 150; // 预览使用较低DPI加快速度
-                    const addWatermark = document.getElementById('pdf-add-watermark').checked;
-                    const addHeader = document.getElementById('pdf-add-header').checked;
-                    const addFooter = document.getElementById('pdf-add-footer').checked;
-                    
-                    // 获取水印和位置设置
-                    const watermarkPageRange = getWatermarkPageRange();
-                    const watermarkPosition = getWatermarkPosition();
-                    const positions = getHeaderFooterPositions();
-                    
-                    document.getElementById('pdf-preview-progress').textContent = '正在转换页面...';
-                    
-                    return fetch('/api/pdf/preview-multi', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            filename: data.data.filename,
-                            format: format,
-                            dpi: dpi,
-                            add_watermark: addWatermark,
-                            add_header: addHeader,
-                            add_footer: addFooter,
-                            watermark_page_range: watermarkPageRange,
-                            watermark_position: watermarkPosition,
-                            header_position: positions.header,
-                            footer_position: positions.footer,
-                            max_pages: 5  // 最多预览前5页
-                        })
-                    });
-                } else {
-                    throw new Error(data.error);
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('pdf-preview-btn').disabled = false;
-                document.getElementById('pdf-preview-loading').style.display = 'none';
-                document.getElementById('pdf-preview-content').style.display = 'block';
-                
-                if (data.success && data.data.images.length > 0) {
-                    // 显示多页预览
-                    const container = document.getElementById('pdf-preview-images-container');
-                    container.innerHTML = '';
-                    
-                    data.data.images.forEach((imgUrl, index) => {
-                        const pageDiv = document.createElement('div');
-                        pageDiv.className = 'pdf-preview-page-container';
-                        pageDiv.style.cssText = 'flex: 0 0 auto; max-width: 200px;';
-                        pageDiv.innerHTML = `
-                            <img src="${imgUrl}" class="pdf-preview-page" style="max-width: 100%; height: auto;">
-                            <p class="pdf-preview-page-label">第 ${index + 1} 页</p>
-                        `;
-                        container.appendChild(pageDiv);
-                    });
-                    
-                    const totalPages = data.data.total_pages;
-                    const shownPages = data.data.images.length;
-                    let pageInfo = `${selectedFile.original_name} - 共 ${totalPages} 页`;
-                    if (shownPages < totalPages) {
-                        pageInfo += `（显示前 ${shownPages} 页）`;
-                    }
-                    document.getElementById('pdf-preview-filename').textContent = pageInfo;
-                    
-                    showPdfMessage(`预览生成成功，共 ${shownPages} 页`, 'success');
-                } else {
-                    showPdfMessage('预览生成失败: ' + (data.error || '未知错误'), 'error');
-                }
-            })
-            .catch(error => {
-                document.getElementById('pdf-preview-btn').disabled = false;
-                document.getElementById('pdf-preview-loading').style.display = 'none';
-                document.getElementById('pdf-preview-content').style.display = 'block';
-                showPdfMessage('预览错误: ' + error.message, 'error');
-            });
-        }
-
         // 批量转换PDF文件（先上传到指定目录，再转换）
         function batchConvertPdfs() {
             if (pdfBatchFiles.length === 0) {
@@ -2719,7 +2497,6 @@
             document.getElementById('pdf-batch-results').style.display = 'none';
             document.getElementById('pdf-error').style.display = 'none';
             document.getElementById('pdf-convert-btn').disabled = true;
-            document.getElementById('pdf-preview-btn').disabled = true;
             updatePdfProgress(5, '准备上传文件...');
 
             // 保存基础目录到localStorage
@@ -2763,7 +2540,6 @@
             .catch(error => {
                 document.getElementById('pdf-batch-progress').style.display = 'none';
                 document.getElementById('pdf-convert-btn').disabled = false;
-                document.getElementById('pdf-preview-btn').disabled = false;
                 showPdfMessage('文件上传失败: ' + error.message, 'error');
             });
         }
@@ -2806,7 +2582,6 @@
             .then(data => {
                 document.getElementById('pdf-batch-progress').style.display = 'none';
                 document.getElementById('pdf-convert-btn').disabled = false;
-                document.getElementById('pdf-preview-btn').disabled = false;
 
                 if (data.success) {
                     pdfBatchResults = data.data.results;
@@ -2819,7 +2594,6 @@
             .catch(error => {
                 document.getElementById('pdf-batch-progress').style.display = 'none';
                 document.getElementById('pdf-convert-btn').disabled = false;
-                document.getElementById('pdf-preview-btn').disabled = false;
                 showPdfMessage('批量转换失败: ' + error.message, 'error');
             });
         }
@@ -2918,15 +2692,8 @@
             document.getElementById('pdf-batch-count').textContent = '未选择文件';
             document.getElementById('pdf-file-list').style.display = 'none';
             document.getElementById('pdf-files-container').innerHTML = '';
-            document.getElementById('pdf-preview-section').style.display = 'none';
-            document.getElementById('pdf-preview-loading').style.display = 'none';
-            document.getElementById('pdf-preview-content').style.display = 'block';
-            document.getElementById('pdf-preview-images-container').innerHTML = '';
             document.getElementById('pdf-batch-results').style.display = 'none';
             document.getElementById('pdf-batch-progress').style.display = 'none';
-            document.getElementById('pdf-preview-file-select').innerHTML = '<option value="">选择要预览的文件</option>';
-            document.getElementById('pdf-preview-file-select').disabled = true;
-            document.getElementById('pdf-preview-btn').disabled = true;
             document.getElementById('pdf-convert-btn').disabled = true;
             
             // 重置水印设置
