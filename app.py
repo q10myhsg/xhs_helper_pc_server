@@ -494,6 +494,76 @@ def api_pdf_preview():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@app.route("/api/pdf/preview-multi", methods=["POST"])
+def api_pdf_preview_multi():
+    """预览PDF转换效果（多页预览，最多5页）"""
+    try:
+        data = request.json
+        filename = data.get('filename')
+        dpi = data.get('dpi', 150)  # 预览使用较低DPI加快速度
+        fmt = data.get('format', 'png')
+        add_watermark = data.get('add_watermark', True)
+        add_header = data.get('add_header', False)
+        add_footer = data.get('add_footer', False)
+        max_pages = data.get('max_pages', 5)  # 最多预览页数
+        
+        # 水印相关参数
+        watermark_page_range = data.get('watermark_page_range', 'even')
+        watermark_position = data.get('watermark_position', None)
+        header_position = data.get('header_position', None)
+        footer_position = data.get('footer_position', None)
+        
+        if not filename:
+            return jsonify({"success": False, "error": "文件名不能为空"})
+        
+        filepath = os.path.join(pdf_converter.upload_folder, filename)
+        if not os.path.exists(filepath):
+            return jsonify({"success": False, "error": "文件不存在"})
+        
+        # 获取PDF总页数
+        import fitz
+        doc = fitz.open(filepath)
+        total_pages = len(doc)
+        doc.close()
+        
+        # 计算要预览的页数
+        preview_pages = min(max_pages, total_pages)
+        
+        # 执行转换（多页）
+        result = pdf_converter.convert_pdf_to_images(
+            filepath, 
+            dpi=dpi, 
+            fmt=fmt, 
+            add_watermark=add_watermark,
+            generate_simple_pdf=False,  # 预览不生成simple PDF
+            start_page=1,
+            end_page=preview_pages,  # 预览多页
+            add_header=add_header,
+            add_footer=add_footer,
+            watermark_page_range=watermark_page_range,
+            watermark_position=watermark_position,
+            header_position=header_position,
+            footer_position=footer_position
+        )
+        
+        # 获取相对路径用于前端显示
+        images_urls = []
+        for img_path in result['images']:
+            rel_path = os.path.relpath(img_path, 'static')
+            images_urls.append(f"/static/{rel_path}")
+        
+        return jsonify({
+            "success": True,
+            "message": "预览生成完成",
+            "data": {
+                "images": images_urls,
+                "total_pages": total_pages,
+                "preview_pages": preview_pages
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route("/api/pdf/download/<path:filename>")
 def api_pdf_download(filename):
     """下载转换后的文件"""
