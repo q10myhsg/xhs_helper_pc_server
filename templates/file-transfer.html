@@ -149,7 +149,7 @@ function clearPhoneDir() {
     .then(data => {
         hideFtProgress();
         if (data.success) {
-            showFtResults(data.data);
+            showFtResults(data, '清理手机目录');
             showFtMessage('手机目录清理成功', 'success');
         } else {
             showFtMessage('清理失败: ' + data.error, 'error');
@@ -187,7 +187,7 @@ function transferFilesOnly() {
     .then(data => {
         hideFtProgress();
         if (data.success) {
-            showFtResults(data.data);
+            showFtResults(data, '传输文件');
             showFtMessage('文件传输成功', 'success');
         } else {
             showFtMessage('传输失败: ' + data.error, 'error');
@@ -220,7 +220,7 @@ function clearComputerDir() {
     .then(data => {
         hideFtProgress();
         if (data.success) {
-            showFtResults(data.data);
+            showFtResults(data, '清空电脑目录');
             showFtMessage('电脑目录清空成功', 'success');
         } else {
             showFtMessage('清空失败: ' + data.error, 'error');
@@ -258,7 +258,7 @@ function executeFullTransfer() {
     .then(data => {
         hideFtProgress();
         if (data.success) {
-            showFtResults(data.data);
+            showFtResults(data, '完整传输流程');
             showFtMessage('完整传输流程执行成功', 'success');
         } else {
             showFtMessage('执行失败: ' + data.error, 'error');
@@ -281,27 +281,38 @@ function hideFtProgress() {
     document.getElementById('ft-progress').style.display = 'none';
 }
 
-function showFtResults(data) {
+function showFtResults(data, operationName) {
     const resultsDiv = document.getElementById('ft-results');
     const contentDiv = document.getElementById('ft-results-content');
     resultsDiv.style.display = 'block';
     
     let html = '<div style="background: #f0f0f0; padding: 15px; border-radius: 8px;">';
+    html += `<h4 style="margin-top: 0; margin-bottom: 15px;">📋 ${operationName}结果</h4>`;
     
-    // 检查是否是完整传输（有steps字段）还是单步操作
-    if (data.steps) {
+    // 检查是否是完整传输（有steps字段）
+    if (data && data.steps) {
         if (data.steps.clear_phone) {
-            html += `<div style="margin-bottom: 10px;"><strong>清理手机目录:</strong> ${data.steps.clear_phone.success ? '成功' : '失败'}</div>`;
+            const step = data.steps.clear_phone;
+            html += `<div style="margin-bottom: 10px;"><strong>清理手机目录:</strong> ${step.success ? '✅ 成功' : '❌ 失败'}${step.message ? ' - ' + step.message : ''}</div>`;
         }
         if (data.steps.transfer) {
-            html += `<div style="margin-bottom: 10px;"><strong>传输文件:</strong> ${data.steps.transfer.success ? '成功' : '失败'} - ${data.steps.transfer.file_count || 0} 个文件</div>`;
+            const step = data.steps.transfer;
+            html += `<div style="margin-bottom: 10px;"><strong>传输文件:</strong> ${step.success ? '✅ 成功' : '❌ 失败'}${step.file_count !== undefined ? ' - ' + step.file_count + ' 个文件' : ''}${step.message ? ' - ' + step.message : ''}</div>`;
         }
         if (data.steps.clear_computer) {
-            html += `<div><strong>清空电脑目录:</strong> ${data.steps.clear_computer.success ? '成功' : '失败'}</div>`;
+            const step = data.steps.clear_computer;
+            html += `<div><strong>清空电脑目录:</strong> ${step.success ? '✅ 成功' : '❌ 失败'}${step.message ? ' - ' + step.message : ''}</div>`;
         }
     } else {
         // 单步操作
-        html += `<div><strong>操作结果:</strong> 成功</div>`;
+        if (data && data.success) {
+            html += `<div><strong>操作状态:</strong> ✅ 成功${data.message ? ' - ' + data.message : ''}</div>`;
+            if (data.file_count !== undefined) {
+                html += `<div style="margin-top: 5px;"><strong>文件数量:</strong> ${data.file_count} 个</div>`;
+            }
+        } else {
+            html += `<div><strong>操作状态:</strong> 执行完成</div>`;
+        }
     }
     
     html += '</div>';
