@@ -21,40 +21,40 @@ license_manager = LicenseManager()
 current_device = {"device_id": None}
 
 # ==================== 页面路由 ====================
-@app. route("/")
+@app.route("/")
 def index():
     """主页仪表板"""
-    return render_template("index.html")
+    return render_template("dashboard.html", active_page="dashboard")
+
+@app.route("/dashboard")
+def dashboard_page():
+    """仪表板页面"""
+    return render_template("dashboard.html", active_page="dashboard")
 
 @app.route("/device")
 def device_page():
     """设备管理页面"""
-    return render_template("device.html")
+    return render_template("device.html", active_page="device")
 
 @app.route("/keyword")
 def keyword_page():
     """关键词管理页面"""
-    return render_template("keyword. html")
+    return render_template("keyword.html", active_page="keyword")
 
-@app.route("/param")
-def param_page():
-    """核心参数页面"""
-    return render_template("param.html")
+@app.route("/config")
+def config_page():
+    """参数配置页面"""
+    return render_template("config.html", active_page="config")
 
-@app.route("/visit")
-def visit_page():
-    """访问控制页面"""
-    return render_template("visit.html")
+@app.route("/pdf")
+def pdf_page():
+    """PDF转图片页面"""
+    return render_template("pdf.html", active_page="pdf")
 
-@app.route("/interact")
-def interact_page():
-    """互动配置页面"""
-    return render_template("interact.html")
-
-@app.route("/status")
-def status_page():
-    """状态监控页面"""
-    return render_template("status.html")
+@app.route("/file-transfer")
+def file_transfer_page():
+    """文件传输页面"""
+    return render_template("file-transfer.html", active_page="file-transfer")
 
 @app.route("/activation")
 def activation_page():

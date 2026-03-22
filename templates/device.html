@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>📱 设备管理</h1>
+
+<h2>已连接设备</h2>
+<button class="btn btn-primary" onclick="refreshDevices()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+
+<div class="device-selector" id="device-list"></div>
+
+<div id="alias-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3>设置设备别名</h3>
+            <span class="close" onclick="closeAliasModal()" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="modal-device-id">
+            <div class="form-group">
+                <label for="device-alias">设备别名</label>
+                <input type="text" id="device-alias" placeholder="请输入设备别名，如：测试手机1" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeAliasModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveDeviceAlias()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshDevices() {
+    console.log('开始刷新设备列表...');
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            console.log('获取设备列表结果:', data);
+            if (data.success) {
+                const deviceList = document.getElementById('device-list');
+                deviceList.innerHTML = '';
+                
+                if (data.data.length === 0) {
+                    deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+                } else {
+                    data.data.forEach(device => {
+                        const deviceOption = document.createElement('div');
+                        deviceOption.className = 'device-option';
+                        deviceOption.style.display = 'flex';
+                        deviceOption.style.alignItems = 'center';
+                        deviceOption.style.gap = '15px';
+                        deviceOption.style.marginBottom = '10px';
+                        deviceOption.innerHTML = `
+                            <span style="font-size: 32px;">📱</span>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold;">${device.name}</div>
+                                <div style="font-size: 12px; color: #666;">
+                                    ${device.id} | ${device.status === 'offline' ? '🔴 离线' : '🟢 在线'}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-primary" onclick="openAliasModal('${device.id}')" style="padding: 4px 12px; font-size: 12px;">别名</button>
+                                <button class="btn btn-danger" onclick="deleteDevice('${device.id}')" style="padding: 4px 12px; font-size: 12px;">删除</button>
+                            </div>
+                        `;
+                        deviceList.appendChild(deviceOption);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('获取设备列表失败:', error);
+        });
+}
+
+function openAliasModal(deviceId) {
+    document.getElementById('modal-device-id').value = deviceId;
+    fetch(`/api/device/alias?device_id=${deviceId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.alias) {
+                document.getElementById('device-alias').value = data.data.alias;
+            } else {
+                document.getElementById('device-alias').value = '';
+            }
+        })
+        .catch(error => {
+            console.error('获取设备别名失败:', error);
+            document.getElementById('device-alias').value = '';
+        });
+    document.getElementById('alias-modal').style.display = 'block';
+}
+
+function closeAliasModal() {
+    document.getElementById('alias-modal').style.display = 'none';
+    document.getElementById('device-alias').value = '';
+}
+
+function saveDeviceAlias() {
+    const deviceId = document.getElementById('modal-device-id').value;
+    const alias = document.getElementById('device-alias').value.trim();
+    
+    if (!alias) {
+        alert('请输入设备别名');
+        return;
+    }
+    
+    fetch('/api/device/alias', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ device_id: deviceId, alias: alias })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeAliasModal();
+            refreshDevices();
+        } else {
+            alert('设置设备别名失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('网络错误: ' + error.message);
+    });
+}
+
+function deleteDevice(deviceId) {
+    if (confirm('确定要删除此设备吗？')) {
+        fetch(`/api/device/${deviceId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('设备删除成功');
+                refreshDevices();
+            } else {
+                alert('删除失败: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('网络错误: ' + error.message);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    refreshDevices();
+});
+</script>
+{% endblock %}

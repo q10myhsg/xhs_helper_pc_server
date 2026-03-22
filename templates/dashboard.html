@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>📊 仪表板</h1>
+
+<h2>设备选择</h2>
+<button class="btn btn-primary" onclick="refreshDeviceList()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+<button class="btn btn-secondary" onclick="selectAllDevices()" style="margin-left: 10px;">全选</button>
+<button class="btn btn-secondary" onclick="deselectAllDevices()" style="margin-left: 10px;">取消全选</button>
+
+<div class="device-selector" id="dashboard-device-list" style="margin-bottom: 20px;"></div>
+
+<div style="margin-bottom: 20px;">
+    <button class="btn btn-success" onclick="startNurturing()" style="margin-right: 10px;">🚀 启动养号</button>
+    <button class="btn btn-danger" onclick="stopNurturing()" style="margin-right: 10px;">🛑 停止养号</button>
+    <button class="btn btn-secondary" onclick="closeXiaohongshu()">关闭小红书</button>
+</div>
+
+
+<h2>设备详细状态</h2>
+<div style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+    <button class="btn btn-primary" onclick="loadDeviceStatuses()">🔄 刷新状态</button>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <label>自动刷新周期:</label>
+        <select id="refresh-interval" onchange="updateRefreshInterval()" style="padding: 5px; border-radius: 4px;">
+            <option value="60">1分钟</option>
+            <option value="300">5分钟</option>
+            <option value="600">10分钟</option>
+        </select>
+    </div>
+</div>
+
+
+<div id="device-status-list" style="margin-top: 20px;"></div>
+
+
+<h2>最近操作日志</h2>
+<div id="log-list" style="max-height: 300px; overflow-y: auto;">
+    <div class="alert alert-info">暂无日志</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedDevices = [];
+let currentDeviceId = null;
+let isNurturingRunning = false;
+let nurtureInterval = null;
+let statusRefreshInterval = null;
+let refreshIntervalSeconds = 60;
+
+function refreshDeviceList() {
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            const deviceList = document.getElementById('dashboard-device-list');
+            deviceList.innerHTML = '';
+            
+            if (data.data.length === 0) {
+                deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+            } else {
+                data.data.forEach(device => {
+                    const deviceOption = document.createElement('div');
+                    deviceOption.className = 'device-option';
+                    deviceOption.style.display = 'flex';
+                    deviceOption.style.alignItems = 'center';
+                    deviceOption.style.gap = '15px';
+                    deviceOption.style.marginBottom = '10px';
+                    deviceOption.innerHTML = `
+                        <input type="checkbox" id="dashboard-device-${device.id}" name="dashboard-device" value="${device.id}" onchange="updateSelectedDevices()">
+                        <label for="dashboard-device-${device.id}" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+                            <span style="font-size: 24px;">📱</span>
+                            <div>
+                                <div style="font-weight: bold;">${device.name}</div>
+                                <div style="font-size: 12px; color: #666;">${device.id} | ${device.status === 'offline' ? '🔴 离线' : '🟢 在线'}</div>
+                            </div>
+                        </label>
+                    `;
+                    deviceList.appendChild(deviceOption);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('获取设备列表失败:', error);
+        });
+}
+
+function selectAllDevices() {
+    document.querySelectorAll('#dashboard-device-list input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateSelectedDevices();
+}
+
+function deselectAllDevices() {
+    document.querySelectorAll('#dashboard-device-list input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateSelectedDevices();
+}
+
+function updateSelectedDevices() {
+    selectedDevices = [];
+    document.querySelectorAll('#dashboard-device-list input[type="checkbox"]:checked').forEach(checkbox => {
+        selectedDevices.push(checkbox.value);
+    });
+}
+
+function loadDeviceStatuses() {
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            const deviceStatusList = document.getElementById('device-status-list');
+            deviceStatusList.innerHTML = '';
+            
+            if (data.data.length === 0) {
+                deviceStatusList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+            } else {
+                data.data.forEach(device => {
+                    const deviceCard = document.createElement('div');
+                    deviceCard.className = 'device-status-card';
+                    deviceCard.style.border = '1px solid #e9ecef';
+                    deviceCard.style.borderRadius = '8px';
+                    deviceCard.style.padding = '15px';
+                    deviceCard.style.marginBottom = '15px';
+                    deviceCard.style.backgroundColor = '#f8f9fa';
+                    
+                    deviceCard.onclick = function() {
+                        document.querySelectorAll('#dashboard-device-list input[type="checkbox"]').forEach(checkbox => {
+                            checkbox.checked = false;
+                        });
+                        const checkbox = document.getElementById(`dashboard-device-${device.id}`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            updateSelectedDevices();
+                            currentDeviceId = device.id;
+                        }
+                    };
+                    
+                    fetch(`/api/yanghao/status/${device.id}`)
+                        .then(response => response.json())
+                        .then(statusData => {
+                            let statusHtml = '';
+                            if (statusData.success) {
+                                const status = statusData.data;
+                                statusHtml = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <div>
+                                            <h3 style="margin: 0; display: inline;">${device.name}</h3>
+                                            <small style="color: #666; margin-left: 10px;">设备ID: ${device.id}</small>
+                                        </div>
+                                        <span style="color: ${device.status === 'offline' ? '#FF9800' : (status.is_running ? '#4CAF50' : '#666')};">
+                                            ${device.status === 'offline' ? '🔴 离线' : (status.is_running ? '🟢 养号中' : '⚪ 未养号')}
+                                        </span>
+                                    </div>
+                                    <div style="margin-bottom: 5px;">
+                                        <strong>当前关键词:</strong> ${status.current_keyword || '无'}
+                                    </div>
+                                    <div style="margin-bottom: 5px;">
+                                        <strong>已访问帖子:</strong> ${status.visited || 0}
+                                    </div>
+                                    <div style="margin-bottom: 5px;">
+                                        <strong>剩余时间:</strong> ${(status.remain_time || 0)} 分钟
+                                    </div>
+                                `;
+                            } else {
+                                statusHtml = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                        <div>
+                                            <h3 style="margin: 0; display: inline;">${device.name}</h3>
+                                            <small style="color: #666; margin-left: 10px;">设备ID: ${device.id}</small>
+                                        </div>
+                                        <span style="color: ${device.status === 'offline' ? '#FF9800' : '#666'};">
+                                            ${device.status === 'offline' ? '🔴 离线' : '⚪ 未养号'}
+                                        </span>
+                                    </div>
+                                    <div style="margin-bottom: 5px;">
+                                        <strong>当前关键词:</strong> 无
+                                    </div>
+                                    <div style="margin-bottom: 5px;">
+                                        <strong>已访问帖子:</strong> 0
+                                    </div>
+                                    <div style="margin-bottom: 5px;">
+                                        <strong>剩余时间:</strong> 0 分钟
+                                    </div>
+                                `;
+                            }
+                            deviceCard.innerHTML = statusHtml;
+                        })
+                        .catch(error => {
+                            console.error(`获取设备 ${device.id} 状态失败:`, error);
+                            deviceCard.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <div>
+                                        <h3 style="margin: 0; display: inline;">${device.name}</h3>
+                                        <small style="color: #666; margin-left: 10px;">设备ID: ${device.id}</small>
+                                    </div>
+                                    <span style="color: ${device.status === 'offline' ? '#FF9800' : '#666'};">
+                                        ${device.status === 'offline' ? '🔴 离线' : '⚪ 未养号'}
+                                    </span>
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                    <strong>当前关键词:</strong> 无
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                    <strong>已访问帖子:</strong> 0
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                    <strong>剩余时间:</strong> 0 分钟
+                                </div>
+                            `;
+                        });
+                    
+                    deviceStatusList.appendChild(deviceCard);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('获取设备列表失败:', error);
+            const deviceStatusList = document.getElementById('device-status-list');
+            deviceStatusList.innerHTML = '<div class="alert alert-danger">获取设备列表失败，请检查网络连接</div>';
+        });
+}
+
+function updateRefreshInterval() {
+    const interval = parseInt(document.getElementById('refresh-interval').value);
+    refreshIntervalSeconds = interval;
+    if (statusRefreshInterval) {
+        clearInterval(statusRefreshInterval);
+    }
+    statusRefreshInterval = setInterval(loadDeviceStatuses, interval * 1000);
+}
+
+function startNurturing() {
+    if (selectedDevices.length === 0) {
+        alert('请先选择设备');
+        return;
+    }
+    selectedDevices.forEach(deviceId => {
+        fetch(`/api/yanghao/start/${deviceId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`设备 ${deviceId} 启动成功`);
+            }
+        });
+    });
+    loadDeviceStatuses();
+}
+
+function stopNurturing() {
+    if (selectedDevices.length === 0) {
+        alert('请先选择设备');
+        return;
+    }
+    selectedDevices.forEach(deviceId => {
+        fetch(`/api/yanghao/stop/${deviceId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`设备 ${deviceId} 停止成功`);
+            }
+        });
+    });
+    loadDeviceStatuses();
+}
+
+function closeXiaohongshu() {
+    if (selectedDevices.length === 0) {
+        alert('请先选择设备');
+        return;
+    }
+    selectedDevices.forEach(deviceId => {
+        fetch(`/api/xiaohongshu/close/${deviceId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`设备 ${deviceId} 关闭小红书成功`);
+            }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    refreshDeviceList();
+    loadDeviceStatuses();
+    statusRefreshInterval = setInterval(loadDeviceStatuses, refreshIntervalSeconds * 1000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>📱 文件传输工具</h1>
+<p style="color: #666; margin-bottom: 20px;">一键将电脑文件传输到手机，支持自动清理和传输后清空</p>
+
+<div class="config-section">
+    <h2>📱 选择目标设备</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">请选择要传输文件的在线设备</p>
+    
+    <div id="ft-device-list" style="margin-bottom: 15px;">
+        <div class="alert alert-info">正在加载设备列表...</div>
+    </div>
+    <button class="btn btn-secondary" onclick="refreshFtDeviceList()">🔄 刷新设备列表</button>
+</div>
+
+<div class="config-section">
+    <h2>⚙️ 路径配置</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">配置会自动保存，下次打开时自动恢复</p>
+
+    <div class="form-group">
+        <label for="ft-computer-dir">电脑源目录</label>
+        <input type="text" id="ft-computer-dir" placeholder="例如: /Users/username/Documents/待传输文件" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px;">
+        <p style="color: #999; font-size: 12px;">请输入电脑上的完整文件夹路径</p>
+    </div>
+
+    <div class="form-group">
+        <label for="ft-phone-dir">手机目标目录</label>
+        <input type="text" id="ft-phone-dir" placeholder="例如: /sdcard/Download/传输专用目录" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    </div>
+
+    <button class="btn btn-secondary" onclick="saveFileTransferConfig()">💾 保存配置</button>
+</div>
+
+<div class="config-section">
+    <h2>🚀 传输操作</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">完整流程：清理手机目录 → 传输文件 → 清空电脑目录</p>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-danger" onclick="clearPhoneDir()">🗑️ 清理手机目录</button>
+        <button class="btn btn-primary" onclick="transferFilesOnly()">📤 仅传输文件</button>
+        <button class="btn btn-warning" onclick="clearComputerDir()">🧹 清空电脑目录</button>
+        <button class="btn btn-success" onclick="executeFullTransfer()">⚡ 执行完整传输</button>
+    </div>
+</div>
+
+<div id="ft-progress" style="display: none; margin-top: 20px;">
+    <div class="alert alert-info">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="spinner"></div>
+            <span id="ft-progress-text">正在处理...</span>
+        </div>
+    </div>
+</div>
+
+<div id="ft-results" style="display: none; margin-top: 20px;">
+    <h3>📋 执行结果</h3>
+    <div id="ft-results-content"></div>
+</div>
+
+<div id="ft-error" style="display: none; margin-top: 20px;">
+    <div class="alert alert-danger"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedDeviceId = null;
+
+function initFileTransferConfig() {
+    const savedConfig = localStorage.getItem('fileTransferConfig');
+    if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        if (config.computer_dir) document.getElementById('ft-computer-dir').value = config.computer_dir;
+        if (config.phone_dir) document.getElementById('ft-phone-dir').value = config.phone_dir;
+    }
+}
+
+function saveFileTransferConfig() {
+    const config = {
+        computer_dir: document.getElementById('ft-computer-dir').value,
+        phone_dir: document.getElementById('ft-phone-dir').value
+    };
+    localStorage.setItem('fileTransferConfig', JSON.stringify(config));
+    showFtMessage('配置已保存', 'success');
+}
+
+function refreshFtDeviceList() {
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            const deviceList = document.getElementById('ft-device-list');
+            deviceList.innerHTML = '';
+            
+            if (data.success && data.data.length > 0) {
+                const onlineDevices = data.data.filter(d => d.status !== 'offline');
+                if (onlineDevices.length === 0) {
+                    deviceList.innerHTML = '<div class="alert alert-warning">暂无在线设备，请检查设备连接</div>';
+                } else {
+                    onlineDevices.forEach((device, index) => {
+                        const deviceOption = document.createElement('div');
+                        deviceOption.className = 'device-option';
+                        deviceOption.style.display = 'flex';
+                        deviceOption.style.alignItems = 'center';
+                        deviceOption.style.gap = '15px';
+                        deviceOption.style.marginBottom = '10px';
+                        deviceOption.innerHTML = `
+                            <input type="radio" id="ft-device-${device.id}" name="ft-device" value="${device.id}" ${index === 0 ? 'checked' : ''} onchange="selectedDeviceId='${device.id}'">
+                            <label for="ft-device-${device.id}" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+                                <span style="font-size: 24px;">📱</span>
+                                <div>
+                                    <div style="font-weight: bold;">${device.name}</div>
+                                    <div style="font-size: 12px; color: #666;">${device.id} | 🟢 在线</div>
+                                </div>
+                            </label>
+                        `;
+                        deviceList.appendChild(deviceOption);
+                    });
+                    selectedDeviceId = onlineDevices[0].id;
+                }
+            } else {
+                deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+            }
+        })
+        .catch(error => {
+            console.error('获取设备列表失败:', error);
+            document.getElementById('ft-device-list').innerHTML = '<div class="alert alert-danger">获取设备列表失败</div>';
+        });
+}
+
+function clearPhoneDir() {
+    if (!selectedDeviceId) {
+        showFtMessage('请先选择设备', 'error');
+        return;
+    }
+    const phoneDir = document.getElementById('ft-phone-dir').value;
+    if (!phoneDir) {
+        showFtMessage('请先填写手机目标目录', 'error');
+        return;
+    }
+    
+    showFtProgress('正在清理手机目录...');
+    fetch('/api/file-transfer/clear-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: selectedDeviceId, target_dir: phoneDir })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideFtProgress();
+        if (data.success) {
+            showFtResults(data.data);
+            showFtMessage('手机目录清理成功', 'success');
+        } else {
+            showFtMessage('清理失败: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideFtProgress();
+        showFtMessage('清理失败: ' + error.message, 'error');
+    });
+}
+
+function transferFilesOnly() {
+    if (!selectedDeviceId) {
+        showFtMessage('请先选择设备', 'error');
+        return;
+    }
+    const computerDir = document.getElementById('ft-computer-dir').value;
+    const phoneDir = document.getElementById('ft-phone-dir').value;
+    if (!computerDir || !phoneDir) {
+        showFtMessage('请先填写完整路径配置', 'error');
+        return;
+    }
+    
+    showFtProgress('正在传输文件...');
+    fetch('/api/file-transfer/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            device_id: selectedDeviceId, 
+            source_dir: computerDir,
+            target_dir: phoneDir 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideFtProgress();
+        if (data.success) {
+            showFtResults(data.data);
+            showFtMessage('文件传输成功', 'success');
+        } else {
+            showFtMessage('传输失败: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideFtProgress();
+        showFtMessage('传输失败: ' + error.message, 'error');
+    });
+}
+
+function clearComputerDir() {
+    const computerDir = document.getElementById('ft-computer-dir').value;
+    if (!computerDir) {
+        showFtMessage('请先填写电脑源目录', 'error');
+        return;
+    }
+    
+    if (!confirm('确定要清空电脑目录中的所有文件吗？此操作不可恢复！')) {
+        return;
+    }
+    
+    showFtProgress('正在清空电脑目录...');
+    fetch('/api/file-transfer/clear-computer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_dir: computerDir })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideFtProgress();
+        if (data.success) {
+            showFtResults(data.data);
+            showFtMessage('电脑目录清空成功', 'success');
+        } else {
+            showFtMessage('清空失败: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideFtProgress();
+        showFtMessage('清空失败: ' + error.message, 'error');
+    });
+}
+
+function executeFullTransfer() {
+    if (!selectedDeviceId) {
+        showFtMessage('请先选择设备', 'error');
+        return;
+    }
+    const computerDir = document.getElementById('ft-computer-dir').value;
+    const phoneDir = document.getElementById('ft-phone-dir').value;
+    if (!computerDir || !phoneDir) {
+        showFtMessage('请先填写完整路径配置', 'error');
+        return;
+    }
+    
+    showFtProgress('正在执行完整传输流程...');
+    fetch('/api/file-transfer/full', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            device_id: selectedDeviceId, 
+            source_dir: computerDir,
+            target_dir: phoneDir 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideFtProgress();
+        if (data.success) {
+            showFtResults(data.data);
+            showFtMessage('完整传输流程执行成功', 'success');
+        } else {
+            showFtMessage('执行失败: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideFtProgress();
+        showFtMessage('执行失败: ' + error.message, 'error');
+    });
+}
+
+function showFtProgress(text) {
+    document.getElementById('ft-progress-text').textContent = text;
+    document.getElementById('ft-progress').style.display = 'block';
+    document.getElementById('ft-results').style.display = 'none';
+    document.getElementById('ft-error').style.display = 'none';
+}
+
+function hideFtProgress() {
+    document.getElementById('ft-progress').style.display = 'none';
+}
+
+function showFtResults(data) {
+    const resultsDiv = document.getElementById('ft-results');
+    const contentDiv = document.getElementById('ft-results-content');
+    resultsDiv.style.display = 'block';
+    
+    let html = '<div style="background: #f0f0f0; padding: 15px; border-radius: 8px;">';
+    if (data.clear_phone) {
+        html += `<div style="margin-bottom: 10px;"><strong>清理手机目录:</strong> ${data.clear_phone.success ? '成功' : '失败'}</div>`;
+    }
+    if (data.transfer) {
+        html += `<div style="margin-bottom: 10px;"><strong>传输文件:</strong> ${data.transfer.success ? '成功' : '失败'} - ${data.transfer.file_count || 0} 个文件</div>`;
+    }
+    if (data.clear_computer) {
+        html += `<div><strong>清空电脑目录:</strong> ${data.clear_computer.success ? '成功' : '失败'}</div>`;
+    }
+    html += '</div>';
+    contentDiv.innerHTML = html;
+}
+
+function showFtMessage(message, type) {
+    const errorDiv = document.getElementById('ft-error');
+    if (type === 'error') {
+        errorDiv.style.display = 'block';
+        errorDiv.querySelector('.alert-danger').textContent = message;
+    } else {
+        errorDiv.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initFileTransferConfig();
+    refreshFtDeviceList();
+});
+</script>
+{% endblock %}

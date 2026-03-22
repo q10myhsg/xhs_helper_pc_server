@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>⚙️ 参数配置</h1>
+
+<h2>设备选择</h2>
+<button class="btn btn-primary" onclick="refreshConfigDeviceList()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+<div class="device-selector" id="config-device-list" style="margin-bottom: 20px;"></div>
+
+<div class="config-section">
+    <h2>⚙️ 核心参数配置</h2>
+
+    <div class="form-group">
+        <label>养号时间（分钟）</label>
+        <input type="number" id="duration-minutes" min="1" max="120" value="20">
+        <small style="color: #666;">范围：1-120分钟</small>
+    </div>
+
+    <div class="form-group">
+        <label>访问帖子比例（%）</label>
+        <input type="range" id="post-visit-ratio" min="0" max="100" value="50" oninput="document.getElementById('ratio-display').textContent = this.value + '%'">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span id="ratio-display" style="color: #667eea; font-weight: bold;">50%</span>
+            <small style="color: #666;">搜索结果中会访问此比例的帖子</small>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>每个关键词最多访问帖子数</label>
+        <input type="number" id="posts-per-keyword" min="1" max="50" value="10">
+        <small style="color: #666;">范围：1-50条</small>
+    </div>
+    
+    <div class="form-group">
+        <label>发现页浏览时间（秒）</label>
+        <input type="number" id="discovery-browse-time" min="5" max="300" value="10">
+        <small style="color: #666;">范围：5-300秒</small>
+    </div>
+</div>
+
+<div class="config-section">
+    <h2>👁️ 帖子访问控制</h2>
+
+    <div class="form-group">
+        <label>访问时长范围（秒）</label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="number" id="duration-min" min="5" max="60" value="25" style="flex: 1;">
+            <span>-</span>
+            <input type="number" id="duration-max" min="5" max="120" value="45" style="flex: 1;">
+        </div>
+        <small style="color: #666;">模拟真实用户访问时长（随机）</small>
+    </div>
+
+    <div class="form-group">
+        <label>图片滑动间隔（秒）</label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="number" id="slide-interval-min" min="1" max="10" value="3" style="flex: 1;">
+            <span>-</span>
+            <input type="number" id="slide-interval-max" min="1" max="10" value="5" style="flex: 1;">
+        </div>
+    </div>
+</div>
+
+<div class="config-section">
+    <h2>💬 互动行为配置</h2>
+
+    <h3>行为触发概率</h3>
+
+    <div class="form-group">
+        <label>点赞概率（%）</label>
+        <input type="range" id="like-prob" min="0" max="50" value="15" oninput="document.getElementById('like-display').textContent = this.value + '%'">
+        <div style="display: flex; justify-content: space-between;">
+            <span id="like-display" style="color: #667eea; font-weight: bold;">15%</span>
+            <small style="color: #666;">默认15%</small>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>收藏概率（%）</label>
+        <input type="range" id="collect-prob" min="0" max="50" value="10" oninput="document.getElementById('collect-display').textContent = this.value + '%'">
+        <div style="display: flex; justify-content: space-between;">
+            <span id="collect-display" style="color: #667eea; font-weight: bold;">10%</span>
+            <small style="color: #666;">默认10%</small>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>评论概率（%）</label>
+        <input type="range" id="comment-prob" min="0" max="50" value="5" oninput="document.getElementById('comment-display').textContent = this.value + '%'">
+        <div style="display: flex; justify-content: space-between;">
+            <span id="comment-display" style="color: #667eea; font-weight: bold;">5%</span>
+            <small style="color: #666;">默认5%</small>
+        </div>
+    </div>
+
+    <h3>常用评论库</h3>
+    <div id="comment-templates-list"></div>
+
+    <h3>添加常用评论</h3>
+    <div class="form-group">
+        <input type="text" id="new-template" placeholder="输入新的常用评论，例：不错的分享！">
+        <button class="btn btn-primary" onclick="addCommentTemplate()" style="margin-top: 10px;">➕ 添加</button>
+    </div>
+</div>
+
+<div style="margin-top: 30px;">
+    <button class="btn btn-success" onclick="saveAllConfig()">💾 保存所有配置</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshConfigDeviceList() {
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            const deviceList = document.getElementById('config-device-list');
+            deviceList.innerHTML = '';
+            
+            if (data.data.length === 0) {
+                deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+            } else {
+                data.data.forEach((device, index) => {
+                    const deviceOption = document.createElement('div');
+                    deviceOption.className = 'device-option';
+                    deviceOption.style.display = 'flex';
+                    deviceOption.style.alignItems = 'center';
+                    deviceOption.style.gap = '15px';
+                    deviceOption.style.marginBottom = '10px';
+                    deviceOption.innerHTML = `
+                        <input type="radio" id="config-device-${device.id}" name="config-device" value="${device.id}" ${index === 0 ? 'checked' : ''} onchange="loadConfig()">
+                        <label for="config-device-${device.id}" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+                            <span style="font-size: 24px;">📱</span>
+                            <div>
+                                <div style="font-weight: bold;">${device.name}</div>
+                                <div style="font-size: 12px; color: #666;">${device.id} | ${device.status === 'offline' ? '🔴 离线' : '🟢 在线'}</div>
+                            </div>
+                        </label>
+                    `;
+                    deviceList.appendChild(deviceOption);
+                });
+                loadConfig();
+            }
+        })
+        .catch(error => {
+            console.error('获取设备列表失败:', error);
+        });
+}
+
+function loadConfig() {
+    const selectedDevice = document.querySelector('input[name="config-device"]:checked');
+    if (!selectedDevice) return;
+    
+    const deviceId = selectedDevice.value;
+    fetch(`/api/config/${deviceId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const config = data.data;
+                if (config.duration_minutes) document.getElementById('duration-minutes').value = config.duration_minutes;
+                if (config.post_visit_ratio) document.getElementById('post-visit-ratio').value = config.post_visit_ratio;
+                if (config.posts_per_keyword) document.getElementById('posts-per-keyword').value = config.posts_per_keyword;
+                if (config.discovery_browse_time) document.getElementById('discovery-browse-time').value = config.discovery_browse_time;
+                if (config.duration_min) document.getElementById('duration-min').value = config.duration_min;
+                if (config.duration_max) document.getElementById('duration-max').value = config.duration_max;
+                if (config.slide_interval_min) document.getElementById('slide-interval-min').value = config.slide_interval_min;
+                if (config.slide_interval_max) document.getElementById('slide-interval-max').value = config.slide_interval_max;
+                if (config.like_prob) document.getElementById('like-prob').value = config.like_prob;
+                if (config.collect_prob) document.getElementById('collect-prob').value = config.collect_prob;
+                if (config.comment_prob) document.getElementById('comment-prob').value = config.comment_prob;
+                
+                if (config.post_visit_ratio) document.getElementById('ratio-display').textContent = config.post_visit_ratio + '%';
+                if (config.like_prob) document.getElementById('like-display').textContent = config.like_prob + '%';
+                if (config.collect_prob) document.getElementById('collect-display').textContent = config.collect_prob + '%';
+                if (config.comment_prob) document.getElementById('comment-display').textContent = config.comment_prob + '%';
+                
+                loadCommentTemplates(config.comment_templates || []);
+            }
+        })
+        .catch(error => {
+            console.error('加载配置失败:', error);
+        });
+}
+
+function loadCommentTemplates(templates) {
+    const list = document.getElementById('comment-templates-list');
+    list.innerHTML = '';
+    
+    if (templates.length === 0) {
+        list.innerHTML = '<div class="alert alert-info">暂无评论模板</div>';
+        return;
+    }
+    
+    templates.forEach((template, index) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;';
+        item.innerHTML = `
+            <span>${template}</span>
+            <button class="btn btn-danger" onclick="removeCommentTemplate(${index})" style="font-size: 11px; padding: 2px 8px;">删除</button>
+        `;
+        list.appendChild(item);
+    });
+}
+
+function addCommentTemplate() {
+    const input = document.getElementById('new-template');
+    const template = input.value.trim();
+    if (!template) {
+        alert('请输入评论内容');
+        return;
+    }
+    
+    const list = document.getElementById('comment-templates-list');
+    const currentTemplates = Array.from(list.querySelectorAll('span')).map(el => el.textContent.trim());
+    currentTemplates.push(template);
+    loadCommentTemplates([...new Set(currentTemplates)]);
+    input.value = '';
+}
+
+function removeCommentTemplate(index) {
+    const list = document.getElementById('comment-templates-list');
+    const items = list.querySelectorAll('div');
+    if (items[index]) {
+        items[index].remove();
+    }
+}
+
+function saveAllConfig() {
+    const selectedDevice = document.querySelector('input[name="config-device"]:checked');
+    if (!selectedDevice) {
+        alert('请先选择设备');
+        return;
+    }
+    const deviceId = selectedDevice.value;
+    
+    const templates = Array.from(document.querySelectorAll('#comment-templates-list span')).map(el => el.textContent.trim());
+    
+    const config = {
+        duration_minutes: parseInt(document.getElementById('duration-minutes').value),
+        post_visit_ratio: parseInt(document.getElementById('post-visit-ratio').value),
+        posts_per_keyword: parseInt(document.getElementById('posts-per-keyword').value),
+        discovery_browse_time: parseInt(document.getElementById('discovery-browse-time').value),
+        duration_min: parseInt(document.getElementById('duration-min').value),
+        duration_max: parseInt(document.getElementById('duration-max').value),
+        slide_interval_min: parseInt(document.getElementById('slide-interval-min').value),
+        slide_interval_max: parseInt(document.getElementById('slide-interval-max').value),
+        like_prob: parseInt(document.getElementById('like-prob').value),
+        collect_prob: parseInt(document.getElementById('collect-prob').value),
+        comment_prob: parseInt(document.getElementById('comment-prob').value),
+        comment_templates: templates
+    };
+    
+    fetch(`/api/config/${deviceId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('配置保存成功');
+        } else {
+            alert('保存失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('网络错误:', error);
+        alert('网络错误: ' + error.message);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    refreshConfigDeviceList();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>🔍 搜索关键词管理</h1>
+
+<h2>设备选择</h2>
+<button class="btn btn-primary" onclick="refreshKeywordDeviceList()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
+<div class="device-selector" id="keyword-device-list" style="margin-bottom: 20px;"></div>
+
+<div style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px;">
+    <h3>功能操作</h3>
+    <div class="form-group" style="margin-bottom: 10px;">
+        <textarea id="keywords-import" placeholder="每行一个关键词，例：&#10;科技资讯&#10;旅行攻略&#10;美食教程" rows="3" style="width: 100%;"></textarea>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="importKeywords()">➕ 添加关键词</button>
+        <button class="btn btn-success" onclick="saveKeywords()">💾 保存关键词</button>
+        <button class="btn btn-danger" onclick="clearAllKeywords()">🗑️ 清除全部</button>
+    </div>
+</div>
+
+<h2>当前关键词列表</h2>
+<div id="keyword-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshKeywordDeviceList() {
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            const deviceList = document.getElementById('keyword-device-list');
+            deviceList.innerHTML = '';
+            
+            if (data.data.length === 0) {
+                deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
+            } else {
+                data.data.forEach((device, index) => {
+                    const deviceOption = document.createElement('div');
+                    deviceOption.className = 'device-option';
+                    deviceOption.style.display = 'flex';
+                    deviceOption.style.alignItems = 'center';
+                    deviceOption.style.gap = '15px';
+                    deviceOption.style.marginBottom = '10px';
+                    deviceOption.innerHTML = `
+                        <input type="radio" id="keyword-device-${device.id}" name="keyword-device" value="${device.id}" ${index === 0 ? 'checked' : ''} onchange="refreshKeywords()">
+                        <label for="keyword-device-${device.id}" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
+                            <span style="font-size: 24px;">📱</span>
+                            <div>
+                                <div style="font-weight: bold;">${device.name}</div>
+                                <div style="font-size: 12px; color: #666;">${device.id} | ${device.status === 'offline' ? '🔴 离线' : '🟢 在线'}</div>
+                            </div>
+                        </label>
+                    `;
+                    deviceList.appendChild(deviceOption);
+                });
+                refreshKeywords();
+            }
+        })
+        .catch(error => {
+            console.error('获取设备列表失败:', error);
+        });
+}
+
+function refreshKeywords() {
+    const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+    if (!selectedDevice) return;
+    
+    const deviceId = selectedDevice.value;
+    fetch(`/api/config/keywords/${deviceId}`)
+        .then(response => response.json())
+        .then(data => {
+            const keywordList = document.getElementById('keyword-list');
+            keywordList.innerHTML = '';
+            
+            if (data.success && data.data.keywords && data.data.keywords.length > 0) {
+                data.data.keywords.forEach((keyword, index) => {
+                    const keywordItem = document.createElement('div');
+                    keywordItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;';
+                    keywordItem.innerHTML = `
+                        <span class="list-item-text">${keyword}</span>
+                        <button class="btn btn-danger" onclick="removeKeyword(${index})" style="font-size: 11px; padding: 2px 8px;">删除</button>
+                    `;
+                    keywordList.appendChild(keywordItem);
+                });
+            } else {
+                keywordList.innerHTML = '<div class="alert alert-info">暂无关键词</div>';
+            }
+        })
+        .catch(error => {
+            console.error('获取关键词失败:', error);
+        });
+}
+
+function importKeywords() {
+    const textarea = document.getElementById('keywords-import');
+    const keywords = textarea.value.split('\n').map(k => k.trim()).filter(k => k);
+    
+    if (keywords.length === 0) {
+        alert('请输入关键词');
+        return;
+    }
+    
+    const keywordList = document.getElementById('keyword-list');
+    const currentKeywords = Array.from(keywordList.querySelectorAll('.list-item-text')).map(el => el.textContent.trim());
+    
+    const newKeywords = [...new Set([...currentKeywords, ...keywords])];
+    
+    keywordList.innerHTML = '';
+    newKeywords.forEach((keyword, index) => {
+        const keywordItem = document.createElement('div');
+        keywordItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;';
+        keywordItem.innerHTML = `
+            <span class="list-item-text">${keyword}</span>
+            <button class="btn btn-danger" onclick="removeKeyword(${index})" style="font-size: 11px; padding: 2px 8px;">删除</button>
+        `;
+        keywordList.appendChild(keywordItem);
+    });
+    
+    textarea.value = '';
+    alert(`已添加 ${keywords.length} 个关键词`);
+}
+
+function removeKeyword(index) {
+    const keywordItems = document.querySelectorAll('#keyword-list > div');
+    if (keywordItems[index]) {
+        keywordItems[index].remove();
+    }
+}
+
+function saveKeywords() {
+    const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+    if (!selectedDevice) {
+        alert('请先选择设备');
+        return;
+    }
+    const deviceId = selectedDevice.value;
+    
+    const keywordElements = document.querySelectorAll('#keyword-list .list-item-text');
+    const keywords = Array.from(keywordElements).map(element => element.textContent.trim());
+    
+    fetch(`/api/config/keywords/${deviceId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ keywords: keywords })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('关键词已保存');
+        } else {
+            alert('保存关键词失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('网络错误:', error);
+        alert('网络错误: ' + error.message);
+    });
+}
+
+function clearAllKeywords() {
+    const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
+    if (!selectedDevice) {
+        alert('请先选择设备');
+        return;
+    }
+    const deviceId = selectedDevice.value;
+    const deviceLabel = selectedDevice.nextElementSibling.textContent.trim();
+    
+    if (confirm(`确定要清除设备 "${deviceLabel}" 的所有关键词吗？`)) {
+        fetch(`/api/config/keywords/${deviceId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ keywords: [] })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                refreshKeywords();
+                alert(`已清除设备 "${deviceLabel}" 的所有关键词`);
+            } else {
+                alert('清除关键词失败: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('网络错误:', error);
+            alert('网络错误: ' + error.message);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    refreshKeywordDeviceList();
+});
+</script>
+{% endblock %}
