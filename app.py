@@ -838,6 +838,15 @@ def api_pdf_batch_convert_local():
         if not os.path.exists(base_dir):
             return jsonify({"success": False, "error": f"工作区不存在: {base_dir}"})
 
+        # 列出工作区中的PDF文件，帮助调试
+        print(f"[PDF转换] 工作区: {base_dir}")
+        workspace_files = []
+        if os.path.exists(base_dir):
+            for f in os.listdir(base_dir):
+                if f.lower().endswith('.pdf'):
+                    workspace_files.append(f)
+            print(f"[PDF转换] 工作区中的PDF文件: {workspace_files}")
+
         results = []
         total_files = len(files)
 
@@ -858,32 +867,58 @@ def api_pdf_batch_convert_local():
                 folder_path = file_info.get('folder_path', '')
                 original_name = file_info.get('original_name', '')
 
+                print(f"[PDF转换] 处理文件: {original_name}")
+                print(f"[PDF转换]   - relative_path: {relative_path}")
+                print(f"[PDF转换]   - folder_path: {folder_path}")
+
                 filepath = None
+                tried_paths = []
 
-                # 使用用户指定的基础目录 + 相对路径来定位文件
-                # 方式1: base_dir + folder_path + filename
-                if folder_path:
-                    test_path = os.path.join(base_dir, folder_path, original_name)
-                    if os.path.exists(test_path):
-                        filepath = test_path
+                # 方式1: 直接在base_dir中查找文件名匹配的PDF文件
+                # 因为浏览器不会透露真实路径，我们直接在工作区中查找匹配的文件名
+                if workspace_files:
+                    # 精确匹配文件名
+                    if original_name in workspace_files:
+                        test_path = os.path.join(base_dir, original_name)
+                        tried_paths.append(test_path)
+                        if os.path.exists(test_path):
+                            filepath = test_path
+                            print(f"[PDF转换]   ✓ 方式1成功: {filepath}")
 
-                # 方式2: base_dir + relative_path
-                if filepath is None and relative_path:
-                    test_path = os.path.join(base_dir, relative_path)
-                    if os.path.exists(test_path):
-                        filepath = test_path
-
-                # 方式3: base_dir + filename（如果文件直接在基础目录下）
+                # 方式2: base_dir + filename（简单拼接）
                 if filepath is None:
                     test_path = os.path.join(base_dir, original_name)
+                    tried_paths.append(test_path)
                     if os.path.exists(test_path):
                         filepath = test_path
+                        print(f"[PDF转换]   ✓ 方式2成功: {filepath}")
+
+                # 方式3: 如果有relative_path，尝试去掉前面的路径部分，只保留文件名
+                if filepath is None and relative_path and '/' in relative_path:
+                    filename_only = relative_path.split('/')[-1]
+                    test_path = os.path.join(base_dir, filename_only)
+                    tried_paths.append(test_path)
+                    if os.path.exists(test_path):
+                        filepath = test_path
+                        print(f"[PDF转换]   ✓ 方式3成功: {filepath}")
+
+                # 方式4: 扫描工作区，找文件名相似的文件
+                if filepath is None:
+                    for f in workspace_files:
+                        if f.lower() == original_name.lower():
+                            test_path = os.path.join(base_dir, f)
+                            tried_paths.append(test_path)
+                            if os.path.exists(test_path):
+                                filepath = test_path
+                                print(f"[PDF转换]   ✓ 方式4成功（大小写不敏感）: {filepath}")
+                                break
 
                 if filepath is None or not os.path.exists(filepath):
+                    print(f"[PDF转换]   ✗ 未找到文件，尝试过的路径: {tried_paths}")
                     results.append({
                         "original_name": original_name,
                         "success": False,
-                        "error": f"找不到文件，请检查基础目录是否正确: {base_dir}"
+                        "error": f"找不到文件，请确认文件在工作区中: {base_dir}\n工作区中的PDF文件: {', '.join(workspace_files[:5])}{'...' if len(workspace_files) > 5 else ''}"
                     })
                     continue
 
