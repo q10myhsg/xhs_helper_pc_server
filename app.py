@@ -760,6 +760,67 @@ def api_pdf_batch_convert():
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/api/pdf/batch/upload-to-dir", methods=["POST"])
+def api_pdf_batch_upload_to_dir():
+    """批量上传PDF文件到用户指定的目录"""
+    try:
+        base_dir = request.form.get('base_dir', '')
+        relative_paths = request.form.getlist('relative_paths')
+
+        if not base_dir:
+            return jsonify({"success": False, "error": "请填写PDF基础目录"})
+
+        # 创建基础目录（如果不存在）
+        os.makedirs(base_dir, exist_ok=True)
+
+        if 'files' not in request.files:
+            return jsonify({"success": False, "error": "没有文件"})
+
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            return jsonify({"success": False, "error": "没有选择文件"})
+
+        uploaded_files = []
+
+        for index, file in enumerate(files):
+            if file and file.filename.endswith('.pdf'):
+                # 获取相对路径，用于确定子目录结构
+                relative_path = relative_paths[index] if index < len(relative_paths) else file.filename
+
+                # 解析相对路径，创建子目录
+                # relative_path 可能是 "folder/subfolder/file.pdf"
+                if '/' in relative_path:
+                    sub_dir = os.path.dirname(relative_path)
+                    target_dir = os.path.join(base_dir, sub_dir)
+                    os.makedirs(target_dir, exist_ok=True)
+                else:
+                    target_dir = base_dir
+
+                # 使用原始文件名保存
+                filename = os.path.basename(relative_path)
+                filepath = os.path.join(target_dir, filename)
+
+                # 保存文件
+                file.save(filepath)
+
+                uploaded_files.append({
+                    "original_name": filename,
+                    "relative_path": relative_path,
+                    "saved_path": filepath
+                })
+
+        return jsonify({
+            "success": True,
+            "message": f"成功上传 {len(uploaded_files)} 个文件到 {base_dir}",
+            "data": {
+                "files": uploaded_files,
+                "base_dir": base_dir
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/pdf/batch/convert-local", methods=["POST"])
 def api_pdf_batch_convert_local():
     """批量转换本地PDF文件（不经过上传，直接读取本地路径）"""

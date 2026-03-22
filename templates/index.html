@@ -2699,7 +2699,7 @@
             });
         }
 
-        // 批量转换PDF文件（不上传，直接传递路径）
+        // 批量转换PDF文件（先上传到指定目录，再转换）
         function batchConvertPdfs() {
             if (pdfBatchFiles.length === 0) {
                 showPdfMessage('请先选择PDF文件', 'error');
@@ -2720,13 +2720,52 @@
             document.getElementById('pdf-error').style.display = 'none';
             document.getElementById('pdf-convert-btn').disabled = true;
             document.getElementById('pdf-preview-btn').disabled = true;
-            updatePdfProgress(10, '准备转换...');
+            updatePdfProgress(5, '准备上传文件...');
 
             // 保存基础目录到localStorage
             localStorage.setItem('pdf_base_dir', baseDir);
 
-            // 直接开始批量转换（不经过上传步骤）
-            batchConvertWithPaths(baseDir);
+            // 第一步：上传文件到指定目录
+            uploadFilesToDirectory(baseDir);
+        }
+
+        // 上传文件到指定目录
+        function uploadFilesToDirectory(baseDir) {
+            const formData = new FormData();
+            formData.append('base_dir', baseDir);
+
+            // 添加所有文件，保持原始文件名
+            pdfBatchFiles.forEach((pdfFile, index) => {
+                // 从原始文件对象中获取文件
+                const fileInput = document.getElementById('pdf-batch-input');
+                if (fileInput.files[index]) {
+                    formData.append('files', fileInput.files[index]);
+                    formData.append('relative_paths', pdfFile.relative_path);
+                }
+            });
+
+            updatePdfProgress(10, '正在上传文件到指定目录...');
+
+            fetch('/api/pdf/batch/upload-to-dir', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updatePdfProgress(30, '文件上传完成，开始转换...');
+                    // 第二步：使用上传后的路径进行转换
+                    batchConvertWithPaths(baseDir);
+                } else {
+                    throw new Error(data.error);
+                }
+            })
+            .catch(error => {
+                document.getElementById('pdf-batch-progress').style.display = 'none';
+                document.getElementById('pdf-convert-btn').disabled = false;
+                document.getElementById('pdf-preview-btn').disabled = false;
+                showPdfMessage('文件上传失败: ' + error.message, 'error');
+            });
         }
 
         // 使用路径批量转换PDF（不上传文件）
