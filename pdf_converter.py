@@ -1,106 +1,47 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
-PDF转图片工具模块
-功能：将PDF文件的每一页转换为高质量的PNG/JPG图像
-支持单文件转换和批量转换
-支持在偶数页添加水印
-支持生成仅包含前三页的simple PDF版本
+PDF转图片转换器
+支持水印、页眉、页脚添加
 """
 
+import fitz  # PyMuPDF
+from PIL import Image, ImageDraw, ImageFont
 import os
-import shutil
-import tempfile
-from pdf2image import convert_from_path
-from PIL import Image
-
-# 尝试导入PyPDF2用于PDF页面提取
-PYPDF_AVAILABLE = False
-try:
-    try:
-        from pypdf import PdfReader, PdfWriter
-        PYPDF_AVAILABLE = True
-    except ImportError:
-        from PyPDF2 import PdfReader, PdfWriter
-        PYPDF_AVAILABLE = True
-except ImportError:
-    pass
+import io
+import uuid
+from pathlib import Path
 
 
 class PDFConverter:
-    """PDF转换器类"""
-    
-    def __init__(self, upload_folder='static/uploads', output_folder='static/pdf_outputs',
-                 watermark_path=None, header_path=None, footer_path=None):
+    def __init__(self, watermark_path=None, header_path=None, footer_path=None):
         """
         初始化PDF转换器
         
         参数:
-            upload_folder: PDF文件上传目录
-            output_folder: 转换后的图片输出目录
-            watermark_path: 水印图片路径
+            watermark_path: 水印图片路径，默认使用 resources/imgs/default_watermark.png
             header_path: 页眉图片路径
             footer_path: 页脚图片路径
         """
-        self.upload_folder = upload_folder
-        self.output_folder = output_folder
+        # 获取当前文件所在目录
+        self.base_dir = Path(__file__).parent
         
-        # 确保目录存在
-        os.makedirs(upload_folder, exist_ok=True)
-        os.makedirs(output_folder, exist_ok=True)
+        # 默认水印路径（相对路径）
+        default_watermark = self.base_dir / "resources" / "imgs" / "default_watermark.png"
+        self.watermark_path = watermark_path or str(default_watermark)
+        self.header_path = header_path
+        self.footer_path = footer_path
         
-        # 水印图片路径
-        self.watermark_path = watermark_path or os.path.join(os.path.dirname(__file__), 'strong_watermark.png')
-        
-        # 页眉页脚图片路径
-        self.header_path = header_path or os.path.join(os.path.dirname(__file__), 'header.png')
-        self.footer_path = footer_path or os.path.join(os.path.dirname(__file__), 'footer.png')
+        # 加载图片
+        self.watermark_img = self._load_image(self.watermark_path)
+        self.header_img = self._load_image(self.header_path) if self.header_path else None
+        self.footer_img = self._load_image(self.footer_path) if self.footer_path else None
     
-    def create_simple_pdf(self, pdf_path, output_folder):
-        """
-        创建只包含PDF前3页的simple版本
-        
-        参数:
-            pdf_path: 原始PDF文件路径
-            output_folder: 输出目录
-        
-        返回:
-            str: 创建的simple PDF文件路径，如果失败返回None
-        """
-        if not PYPDF_AVAILABLE:
-            return None
-        
-        try:
-            if not os.path.exists(pdf_path):
-                return None
-            
-            pdf_filename = os.path.splitext(os.path.basename(pdf_path))[0]
-            
-            # 去掉文件名中的"-组卷网"字符
-            if "-组卷网" in pdf_filename:
-                pdf_filename = pdf_filename.replace("-组卷网", "")
-            
-            simple_pdf_path = os.path.join(output_folder, f"{pdf_filename}_simple.pdf")
-            
-            with open(pdf_path, 'rb') as file:
-                reader = PdfReader(file)
-                writer = PdfWriter()
-                
-                num_pages_to_extract = min(3, len(reader.pages))
-                
-                for i in range(num_pages_to_extract):
-                    page = reader.pages[i]
-                    writer.add_page(page)
-                
-                with open(simple_pdf_path, 'wb') as output_pdf:
-                    writer.write(output_pdf)
-            
-            return simple_pdf_path
-            
-        except Exception as e:
-            print(f"创建simple PDF版本时出错：{str(e)}")
-            return None
+    def _load_image(self, path):
+        """加载图片"""
+        if path and os.path.exists(path):
+            return Image.open(path).convert("RGBA")
+        return None
     
     def parse_page_range(self, page_range_str, total_pages):
         """
@@ -158,286 +99,252 @@ class PDFConverter:
         
         return pages if pages else set(range(1, total_pages + 1))
     
-    def convert_pdf_to_images(self, pdf_path, dpi=300, fmt='png', add_watermark=True,
-                              generate_simple_pdf=True, start_page=1, end_page=None,
+    def convert_pdf_to_images(self, pdf_path, dpi=200, fmt='png', 
+                              add_watermark=True, generate_simple_pdf=False,
+                              start_page=1, end_page=None,
                               add_header=False, add_footer=False,
-                              watermark_page_range='even', watermark_position=None,
-                              header_position=None, footer_position=None):
+                              watermark_page_range='even',
+                              watermark_position=None,
+                              header_position=None,
+                              footer_position=None):
         """
-        将PDF文件的每一页转换为图像
+        将PDF转换为图片
         
         参数:
-            pdf_path: PDF文件的路径
-            dpi: 图像的DPI（清晰度），默认为300
-            fmt: 输出图像格式，默认为'png'
-            add_watermark: 是否添加水印，默认为True
-            generate_simple_pdf: 是否生成仅包含前三页的simple PDF版本，默认为True
-            start_page: 起始页码，默认为1
-            end_page: 结束页码，默认为None（全部）
-            add_header: 是否添加页眉，默认为False
-            add_footer: 是否添加页脚，默认为False
-            watermark_page_range: 水印页码范围，可选值: 'odd', 'even', 'all', 或自定义格式如'1,3,5'或'1-5'
-            watermark_position: 水印位置，{'x': 0.5, 'y': 0.5} 表示相对位置（0-1）
-            header_position: 页眉位置，{'y': 0} 表示顶部偏移
-            footer_position: 页脚位置，{'y': 0} 表示底部偏移
-        
-        返回:
-            dict: 包含图像路径列表和simple PDF路径的字典
-        """
-        if not os.path.exists(pdf_path):
-            raise FileNotFoundError(f"PDF文件不存在: {pdf_path}")
-        
-        pdf_filename = os.path.splitext(os.path.basename(pdf_path))[0]
-        
-        # 去掉文件名中的"-组卷网"字符
-        if "-组卷网" in pdf_filename:
-            pdf_filename = pdf_filename.replace("-组卷网", "")
-        
-        # 创建输出子文件夹
-        output_subfolder = os.path.join(self.output_folder, pdf_filename)
-        os.makedirs(output_subfolder, exist_ok=True)
-        
-        # 生成simple PDF版本
-        simple_pdf_path = None
-        if generate_simple_pdf:
-            simple_pdf_path = self.create_simple_pdf(pdf_path, output_subfolder)
-        
-        # 尝试不同的poppler路径
-        poppler_paths = ['/usr/local/bin', '/opt/homebrew/bin', '']
-        images = None
-        
-        for poppler_path in poppler_paths:
-            try:
-                if poppler_path:
-                    images = convert_from_path(pdf_path, dpi=dpi, fmt=fmt, poppler_path=poppler_path)
-                else:
-                    images = convert_from_path(pdf_path, dpi=dpi, fmt=fmt)
-                break
-            except Exception as e:
-                continue
-        
-        if images is None:
-            raise RuntimeError("无法找到或使用poppler。请确认已正确安装并在PATH中。")
-        
-        # 保存指定页码范围的图像
-        output_paths = []
-        
-        if start_page < 1:
-            start_page = 1
-        
-        if end_page is None:
-            end_page = len(images)
-        else:
-            end_page = min(end_page, len(images))
-        
-        total_pages = len(images)
-        page_digits = len(str(total_pages))
-        
-        # 解析水印页码范围
-        watermark_pages = set()
-        if add_watermark:
-            watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
-        
-        for i in range(len(images)):
-            current_page = i + 1
-            if current_page < start_page or current_page > end_page:
-                continue
-            
-            image = images[i]
-            formatted_page = str(current_page).zfill(page_digits)
-            output_filename = f"{pdf_filename}_page_{formatted_page}.{fmt}"
-            output_path = os.path.join(output_subfolder, output_filename)
-            
-            # 检查当前页是否在水印页码范围内
-            if add_watermark and current_page in watermark_pages:
-                try:
-                    if os.path.exists(self.watermark_path):
-                        image = self._add_watermark_to_image(image, watermark_position)
-                except Exception as e:
-                    print(f"添加水印时出错: {str(e)}")
-            
-            # 添加页眉和页脚
-            if add_header or add_footer:
-                try:
-                    image = self._add_header_footer_to_image(image, add_header, add_footer, header_position, footer_position)
-                except Exception as e:
-                    print(f"添加页眉页脚时出错: {str(e)}")
-            
-            # 保存图像
-            try:
-                image.save(output_path, fmt.upper())
-                output_paths.append(output_path)
-            except Exception as e:
-                print(f"保存图像失败: {str(e)}")
-        
-        return {
-            'images': output_paths,
-            'simple_pdf': simple_pdf_path,
-            'output_folder': output_subfolder
-        }
-    
-    def _add_watermark_to_image(self, image, position=None):
-        """
-        为图像添加水印
-        
-        参数:
-            image: PIL图像对象
-            position: 水印位置，{'x': 0.5, 'y': 0.5} 表示相对位置（0-1），None表示居中
-        """
-        if not os.path.exists(self.watermark_path):
-            return image
-        
-        image = image.convert('RGBA')
-        watermark = Image.open(self.watermark_path)
-        
-        page_width, page_height = image.size
-        
-        # 将水印图片缩放到页面宽度的70%
-        new_width = int(page_width * 0.7)
-        width_percent = (new_width / float(watermark.size[0]))
-        new_height = int((float(watermark.size[1]) * float(width_percent)))
-        
-        watermark_resized = watermark.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        
-        # 计算水印位置
-        if position is None:
-            # 默认居中
-            position_x = (page_width - new_width) // 2
-            position_y = (page_height - new_height) // 2
-        else:
-            # 使用相对位置
-            x_ratio = position.get('x', 0.5)
-            y_ratio = position.get('y', 0.5)
-            position_x = int((page_width - new_width) * x_ratio)
-            position_y = int((page_height - new_height) * y_ratio)
-        
-        # 确保位置在有效范围内
-        position_x = max(0, min(position_x, page_width - new_width))
-        position_y = max(0, min(position_y, page_height - new_height))
-        
-        # 粘贴水印
-        if watermark_resized.mode == 'RGBA':
-            base = image.copy()
-            base.paste(watermark_resized, (position_x, position_y), watermark_resized.split()[3])
-            image = base
-        else:
-            watermark_resized = watermark_resized.convert('RGBA')
-            base = image.copy()
-            base.paste(watermark_resized, (position_x, position_y), watermark_resized.split()[3])
-            image = base
-        
-        return image.convert('RGB')
-    
-    def _add_header_footer_to_image(self, image, add_header, add_footer, header_position=None, footer_position=None):
-        """
-        为图像添加页眉页脚
-        
-        参数:
-            image: PIL图像对象
+            pdf_path: PDF文件路径
+            dpi: 输出图片DPI
+            fmt: 输出格式 (png, jpg)
+            add_watermark: 是否添加水印
+            generate_simple_pdf: 是否生成精简版PDF
+            start_page: 起始页码
+            end_page: 结束页码
             add_header: 是否添加页眉
             add_footer: 是否添加页脚
-            header_position: 页眉位置，{'y': 0} 表示顶部偏移（像素）
-            footer_position: 页脚位置，{'y': 0} 表示底部偏移（像素）
+            watermark_page_range: 水印页面范围 ('odd', 'even', 'all', 或自定义)
+            watermark_position: 水印位置 {'x': 0-100, 'y': 0-100}
+            header_position: 页眉位置 {'top': 像素值}
+            footer_position: 页脚位置 {'bottom': 像素值}
+        
+        返回:
+            dict: 包含生成的图片路径列表和简版PDF路径
         """
-        image = image.convert('RGBA')
-        page_width, page_height = image.size
+        pdf_path = Path(pdf_path)
+        if not pdf_path.exists():
+            raise FileNotFoundError(f"PDF文件不存在: {pdf_path}")
         
-        # 添加页眉
-        if add_header and os.path.exists(self.header_path):
-            header_image = Image.open(self.header_path)
-            header_resized = header_image.resize(
-                (page_width, int(header_image.size[1] * (page_width / header_image.size[0]))),
-                Image.Resampling.LANCZOS
-            )
+        # 打开PDF
+        doc = fitz.open(str(pdf_path))
+        total_pages = len(doc)
+        
+        # 确定页码范围
+        start = max(1, start_page)
+        end = min(total_pages, end_page) if end_page else total_pages
+        
+        # 解析水印页面范围
+        watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
+        
+        # 创建输出目录: PDF相同文件夹/imgs/文件名/
+        output_dir = pdf_path.parent / "imgs" / pdf_path.stem
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        images = []
+        simple_pdf_images = []
+        
+        for page_num in range(start - 1, end):
+            page = doc[page_num]
             
-            # 计算页眉位置
-            header_y = 0
-            if header_position and 'y' in header_position:
-                header_y = header_position['y']
+            # 设置缩放比例
+            zoom = dpi / 72
+            mat = fitz.Matrix(zoom, zoom)
             
-            header_y = max(0, header_y)
+            # 渲染页面为图片
+            pix = page.get_pixmap(matrix=mat)
+            img_data = pix.tobytes("png")
+            img = Image.open(io.BytesIO(img_data)).convert("RGBA")
             
-            if header_resized.mode == 'RGBA':
-                base = image.copy()
-                base.paste(header_resized, (0, header_y), header_resized.split()[3])
-                image = base
+            # 添加页眉
+            if add_header and self.header_img:
+                img = self._add_header_to_image(img, self.header_img, header_position)
+            
+            # 添加页脚
+            if add_footer and self.footer_img:
+                img = self._add_footer_to_image(img, self.footer_img, footer_position)
+            
+            # 添加水印（只在指定页面添加）
+            if add_watermark and self.watermark_img and (page_num + 1) in watermark_pages:
+                img = self._add_watermark_to_image(img, self.watermark_img, watermark_position)
+            
+            # 保存图片
+            output_filename = f"{pdf_path.stem}_page_{page_num + 1:02d}.{fmt}"
+            output_path = output_dir / output_filename
+            
+            # 转换为RGB保存（去除透明通道）
+            if fmt.lower() in ['jpg', 'jpeg']:
+                img_rgb = img.convert("RGB")
+                img_rgb.save(output_path, quality=95)
             else:
-                base = image.copy()
-                base.paste(header_resized, (0, header_y))
-                image = base
+                img.save(output_path)
+            
+            images.append(str(output_path))
+            
+            # 为简版PDF保存
+            if generate_simple_pdf:
+                simple_pdf_images.append(img.convert("RGB"))
         
-        # 添加页脚
-        if add_footer and os.path.exists(self.footer_path):
-            footer_image = Image.open(self.footer_path)
-            footer_resized = footer_image.resize(
-                (page_width, int(footer_image.size[1] * (page_width / footer_image.size[0]))),
-                Image.Resampling.LANCZOS
+        doc.close()
+        
+        # 生成简版PDF
+        simple_pdf_path = None
+        if generate_simple_pdf and simple_pdf_images:
+            simple_pdf_filename = f"{pdf_path.stem}_simple.pdf"
+            simple_pdf_path = output_dir / simple_pdf_filename
+            simple_pdf_images[0].save(
+                simple_pdf_path,
+                save_all=True,
+                append_images=simple_pdf_images[1:],
+                resolution=dpi
             )
-            
-            # 计算页脚位置
-            footer_y = page_height - footer_resized.size[1]
-            if footer_position and 'y' in footer_position:
-                footer_y = page_height - footer_resized.size[1] - footer_position['y']
-            
-            footer_y = max(0, min(footer_y, page_height - footer_resized.size[1]))
-            
-            if footer_resized.mode == 'RGBA':
-                base = image.copy()
-                base.paste(footer_resized, (0, footer_y), footer_resized.split()[3])
-                image = base
-            else:
-                base = image.copy()
-                base.paste(footer_resized, (0, footer_y))
-                image = base
+            simple_pdf_path = str(simple_pdf_path)
         
-        return image.convert('RGB')
+        return {
+            'images': images,
+            'simple_pdf': simple_pdf_path,
+            'output_dir': str(output_dir)
+        }
     
-    def create_key_page(self, output_folder):
+    def _add_watermark_to_image(self, img, watermark, position=None):
         """
-        在output_folder下创建key_page目录，并拷贝每个PDF的前两页图片
+        添加水印到图片
         
         参数:
-            output_folder: 输出图像的保存目录
+            img: 目标图片
+            watermark: 水印图片
+            position: 位置 {'x': 0-100, 'y': 0-100}，默认居中
         """
-        key_page_dir = os.path.join(output_folder, 'key_page')
-        os.makedirs(key_page_dir, exist_ok=True)
+        img_width, img_height = img.size
         
-        image_files = []
-        for f in os.listdir(output_folder):
-            if f.lower().endswith(('.png', '.jpg', '.jpeg')):
-                image_files.append(f)
+        # 调整水印大小（不超过图片的30%）
+        wm_max_width = int(img_width * 0.3)
+        wm_max_height = int(img_height * 0.3)
         
-        if image_files:
-            image_files.sort()
-            selected_pages = image_files[:2]
-            
-            for img_file in selected_pages:
-                src_path = os.path.join(output_folder, img_file)
-                dst_path = os.path.join(key_page_dir, img_file)
-                shutil.copy2(src_path, dst_path)
+        wm_width, wm_height = watermark.size
+        scale = min(wm_max_width / wm_width, wm_max_height / wm_height, 1.0)
         
-        return key_page_dir
+        new_width = int(wm_width * scale)
+        new_height = int(wm_height * scale)
+        watermark_resized = watermark.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # 计算位置
+        if position:
+            x_percent = position.get('x', 50)
+            y_percent = position.get('y', 50)
+            x = int((img_width - new_width) * x_percent / 100)
+            y = int((img_height - new_height) * y_percent / 100)
+        else:
+            # 默认居中
+            x = (img_width - new_width) // 2
+            y = (img_height - new_height) // 2
+        
+        # 创建透明层
+        transparent = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        transparent.paste(watermark_resized, (x, y), watermark_resized)
+        
+        # 合并
+        result = Image.alpha_composite(img, transparent)
+        return result
     
-    def cleanup_old_files(self, max_age_hours=24):
+    def _add_header_to_image(self, img, header, position=None):
         """
-        清理超过指定时间的旧文件
+        添加页眉到图片
         
         参数:
-            max_age_hours: 最大保留时间（小时），默认24小时
+            img: 目标图片
+            header: 页眉图片
+            position: 位置 {'top': 像素值}
         """
-        import time
+        img_width, img_height = img.size
         
-        current_time = time.time()
-        max_age_seconds = max_age_hours * 3600
+        # 调整页眉宽度匹配图片
+        header_width = img_width
+        header_height = int(header.size[1] * (header_width / header.size[0]))
+        header_resized = header.resize((header_width, header_height), Image.Resampling.LANCZOS)
         
-        for folder_name in os.listdir(self.output_folder):
-            folder_path = os.path.join(self.output_folder, folder_name)
-            if os.path.isdir(folder_path):
-                folder_age = current_time - os.path.getctime(folder_path)
-                if folder_age > max_age_seconds:
-                    shutil.rmtree(folder_path)
-                    print(f"已清理旧文件夹: {folder_path}")
+        # 计算位置
+        top_offset = position.get('top', 0) if position else 0
+        x = 0
+        y = top_offset
+        
+        # 创建透明层
+        transparent = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        transparent.paste(header_resized, (x, y), header_resized)
+        
+        # 合并
+        result = Image.alpha_composite(img, transparent)
+        return result
+    
+    def _add_footer_to_image(self, img, footer, position=None):
+        """
+        添加页脚到图片
+        
+        参数:
+            img: 目标图片
+            footer: 页脚图片
+            position: 位置 {'bottom': 像素值}
+        """
+        img_width, img_height = img.size
+        
+        # 调整页脚宽度匹配图片
+        footer_width = img_width
+        footer_height = int(footer.size[1] * (footer_width / footer.size[0]))
+        footer_resized = footer.resize((footer_width, footer_height), Image.Resampling.LANCZOS)
+        
+        # 计算位置
+        bottom_offset = position.get('bottom', 0) if position else 0
+        x = 0
+        y = img_height - footer_height - bottom_offset
+        
+        # 创建透明层
+        transparent = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        transparent.paste(footer_resized, (x, y), footer_resized)
+        
+        # 合并
+        result = Image.alpha_composite(img, transparent)
+        return result
 
 
-# 全局转换器实例
-pdf_converter = PDFConverter()
+# 便捷函数
+def convert_pdf(pdf_path, **kwargs):
+    """
+    便捷的PDF转换函数
+    
+    参数:
+        pdf_path: PDF文件路径
+        **kwargs: 传递给 PDFConverter.convert_pdf_to_images 的参数
+    
+    返回:
+        dict: 转换结果
+    """
+    converter = PDFConverter()
+    return converter.convert_pdf_to_images(pdf_path, **kwargs)
+
+
+if __name__ == "__main__":
+    # 测试代码
+    import sys
+    
+    if len(sys.argv) > 1:
+        pdf_file = sys.argv[1]
+        converter = PDFConverter()
+        result = converter.convert_pdf_to_images(
+            pdf_file,
+            dpi=200,
+            add_watermark=True,
+            generate_simple_pdf=True
+        )
+        print(f"转换完成！")
+        print(f"生成图片: {len(result['images'])} 张")
+        print(f"输出目录: {result['output_dir']}")
+        if result['simple_pdf']:
+            print(f"简版PDF: {result['simple_pdf']}")
+    else:
+        print("用法: python pdf_converter.py <pdf文件路径>")
