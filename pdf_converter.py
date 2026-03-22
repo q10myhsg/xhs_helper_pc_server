@@ -146,11 +146,14 @@ class PDFConverter:
         # 解析水印页面范围
         watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
 
-        # 创建输出目录: PDF相同文件夹/image/文件名/
-        output_dir = pdf_path.parent / "image" / pdf_path.stem
+        # 创建输出目录: PDF相同文件夹/imgs/文件名/
+        output_dir = pdf_path.parent / "imgs" / pdf_path.stem
         output_dir.mkdir(parents=True, exist_ok=True)
 
         output_paths = []
+
+        # 计算页码位数，用于格式化
+        page_digits = len(str(total_pages))
 
         for i in range(start, end):
             img = images[i].convert("RGBA")
@@ -168,8 +171,9 @@ class PDFConverter:
             if add_watermark and self.watermark_img and page_num in watermark_pages:
                 img = self._add_watermark_to_image(img, self.watermark_img, watermark_position)
 
-            # 保存图片
-            output_filename = f"{pdf_path.stem}_page_{page_num:02d}.{fmt}"
+            # 保存图片 - 使用动态位数格式化页码
+            formatted_page = str(page_num).zfill(page_digits)
+            output_filename = f"{pdf_path.stem}_page_{formatted_page}.{fmt}"
             output_path = output_dir / output_filename
 
             # 转换为RGB保存（去除透明通道）
