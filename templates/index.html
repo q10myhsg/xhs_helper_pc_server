@@ -565,13 +565,9 @@
                     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">配置会自动保存，下次打开时自动恢复</p>
 
                     <div class="form-group">
-                        <label>电脑源目录</label>
-                        <input type="file" id="ft-dir-selector" webkitdirectory directory multiple style="display: none;" onchange="handleFtDirSelect(event)">
-                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-                            <button class="btn btn-primary" onclick="document.getElementById('ft-dir-selector').click()">📁 选择文件夹</button>
-                            <span id="ft-selected-dir-name" style="color: #666;">未选择文件夹</span>
-                        </div>
-                        <input type="hidden" id="ft-computer-dir">
+                        <label for="ft-computer-dir">电脑源目录</label>
+                        <input type="text" id="ft-computer-dir" placeholder="例如: /Users/username/Documents/待传输文件" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px;">
+                        <p style="color: #999; font-size: 12px;">请输入电脑上的完整文件夹路径</p>
                     </div>
 
                     <div class="form-group">
@@ -580,13 +576,6 @@
                     </div>
 
                     <button class="btn btn-secondary" onclick="saveFileTransferConfig()">💾 保存配置</button>
-                </div>
-
-                <div class="config-section">
-                    <h2>📂 电脑目录内容</h2>
-                    <div id="ft-dir-content" style="margin-top: 15px;">
-                        <div class="alert alert-info">请先选择文件夹</div>
-                    </div>
                 </div>
 
                 <div class="config-section">
@@ -2984,13 +2973,12 @@
             }
         }
 
-        // ==================== 文件传输功能 ====================
+        // ==================== 文件传输功能（简化版） ====================
         
         let fileTransferConfig = {
             computer_dir: '',
             phone_dir: '/sdcard/Download/传输专用目录'
         };
-        let ftSelectedFiles = []; // 存储选择的文件列表
         let ftSelectedDevice = null; // 当前选择的设备
 
         // 初始化文件传输配置
@@ -3019,6 +3007,7 @@
 
         // 更新文件传输UI
         function updateFileTransferUI() {
+            document.getElementById('ft-computer-dir').value = fileTransferConfig.computer_dir || '';
             document.getElementById('ft-phone-dir').value = fileTransferConfig.phone_dir || '/sdcard/Download/传输专用目录';
         }
 
@@ -3079,56 +3068,9 @@
             refreshFtDeviceList(); // 刷新UI显示选中状态
         }
 
-        // 处理文件夹选择
-        function handleFtDirSelect(event) {
-            const files = event.target.files;
-            if (files.length === 0) return;
-            
-            // 获取文件夹路径（从第一个文件的路径推断）
-            const firstFile = files[0];
-            const fullPath = firstFile.webkitRelativePath || firstFile.name;
-            const dirName = fullPath.split('/')[0];
-            
-            document.getElementById('ft-selected-dir-name').textContent = dirName + ' (' + files.length + ' 个文件)';
-            
-            // 存储文件列表
-            ftSelectedFiles = Array.from(files);
-            
-            // 显示文件列表
-            displayFtFileList();
-        }
-
-        // 显示文件列表
-        function displayFtFileList() {
-            const contentDiv = document.getElementById('ft-dir-content');
-            
-            if (ftSelectedFiles.length === 0) {
-                contentDiv.innerHTML = '<div class="alert alert-info">请先选择文件夹</div>';
-                return;
-            }
-            
-            let html = `<div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px;">`;
-            html += `<p style="margin-bottom: 10px; font-weight: bold;">共 ${ftSelectedFiles.length} 个文件</p>`;
-            html += `<ul style="list-style: none; padding: 0; max-height: 300px; overflow-y: auto;">`;
-            
-            // 只显示前20个文件，避免列表过长
-            const displayFiles = ftSelectedFiles.slice(0, 20);
-            displayFiles.forEach(file => {
-                const size = file.size ? `(${(file.size / 1024).toFixed(1)} KB)` : '';
-                const path = file.webkitRelativePath || file.name;
-                html += `<li style="padding: 3px 0; border-bottom: 1px solid #eee; font-size: 13px;">📄 ${path} <span style="color: #999;">${size}</span></li>`;
-            });
-            
-            if (ftSelectedFiles.length > 20) {
-                html += `<li style="padding: 5px 0; color: #666; font-style: italic;">... 还有 ${ftSelectedFiles.length - 20} 个文件</li>`;
-            }
-            
-            html += '</ul></div>';
-            contentDiv.innerHTML = html;
-        }
-
         // 保存配置
         function saveFileTransferConfig() {
+            fileTransferConfig.computer_dir = document.getElementById('ft-computer-dir').value;
             fileTransferConfig.phone_dir = document.getElementById('ft-phone-dir').value;
             
             localStorage.setItem('fileTransferConfig', JSON.stringify(fileTransferConfig));
@@ -3158,32 +3100,14 @@
             return ftSelectedDevice;
         }
 
-        // 显示目录内容
-        function displayDirContent(data) {
-            const contentDiv = document.getElementById('ft-dir-content');
-            
-            if (!data.exists) {
-                contentDiv.innerHTML = '<div class="alert alert-warning">目录不存在</div>';
-                return;
+        // 获取电脑目录路径
+        function getComputerDir() {
+            const computerDir = document.getElementById('ft-computer-dir').value.trim();
+            if (!computerDir) {
+                showFtMessage('请先输入电脑源目录路径', 'error');
+                return null;
             }
-            
-            if (data.file_count === 0) {
-                contentDiv.innerHTML = '<div class="alert alert-info">目录为空</div>';
-                return;
-            }
-            
-            let html = `<div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px;">`;
-            html += `<p style="margin-bottom: 10px; font-weight: bold;">共 ${data.file_count} 个项目</p>`;
-            html += `<ul style="list-style: none; padding: 0; max-height: 300px; overflow-y: auto;">`;
-            
-            data.files.forEach(file => {
-                const icon = file.type === 'directory' ? '📁' : '📄';
-                const size = file.size ? `(${(file.size / 1024).toFixed(1)} KB)` : '';
-                html += `<li style="padding: 5px 0; border-bottom: 1px solid #eee;">${icon} ${file.name} <span style="color: #999; font-size: 12px;">${size}</span></li>`;
-            });
-            
-            html += '</ul></div>';
-            contentDiv.innerHTML = html;
+            return computerDir;
         }
 
         // 清理手机目录
@@ -3229,37 +3153,28 @@
 
         // 仅传输文件
         function transferFilesOnly() {
+            const computerDir = getComputerDir();
             const phoneDir = document.getElementById('ft-phone-dir').value;
             const deviceId = getSelectedFtDevice();
             
-            if (!deviceId) return;
+            if (!computerDir || !deviceId) return;
             
             if (!phoneDir) {
                 showFtMessage('请先配置手机目标目录', 'error');
                 return;
             }
             
-            if (ftSelectedFiles.length === 0) {
-                showFtMessage('请先选择要传输的文件夹', 'error');
-                return;
-            }
-            
             showFtProgress(true, '正在传输文件...');
             hideFtResults();
             
-            // 创建FormData并添加文件
-            const formData = new FormData();
-            formData.append('phone_dir', phoneDir);
-            formData.append('device_id', deviceId);
-            
-            // 添加所有文件
-            ftSelectedFiles.forEach(file => {
-                formData.append('files', file, file.webkitRelativePath || file.name);
-            });
-            
             fetch('/api/file-transfer/transfer', {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    computer_dir: computerDir,
+                    phone_dir: phoneDir,
+                    device_id: deviceId
+                })
             })
             .then(response => response.json())
             .then(data => {
@@ -3278,74 +3193,48 @@
             });
         }
 
-        // 清空电脑目录（清除选择的文件）
+        // 清空电脑目录（仅清空路径输入）
         function clearComputerDir() {
-            if (ftSelectedFiles.length === 0) {
-                showFtMessage('当前没有选择任何文件', 'error');
-                return;
-            }
-            
-            if (!confirm('确定要清除选择的文件吗？')) {
-                return;
-            }
-            
-            // 清除文件列表
-            ftSelectedFiles = [];
-            document.getElementById('ft-selected-dir-name').textContent = '未选择文件夹';
-            document.getElementById('ft-dir-selector').value = '';
-            displayFtFileList();
-            
-            showFtMessage('已清除选择的文件', 'success');
+            document.getElementById('ft-computer-dir').value = '';
+            showFtMessage('已清空电脑目录路径', 'success');
         }
 
         // 执行完整传输流程
         function executeFullTransfer() {
+            const computerDir = getComputerDir();
             const phoneDir = document.getElementById('ft-phone-dir').value;
             const deviceId = getSelectedFtDevice();
             
-            if (!deviceId) return;
+            if (!computerDir || !deviceId) return;
             
             if (!phoneDir) {
                 showFtMessage('请先配置手机目标目录', 'error');
                 return;
             }
             
-            if (ftSelectedFiles.length === 0) {
-                showFtMessage('请先选择要传输的文件夹', 'error');
-                return;
-            }
-            
-            if (!confirm('确定要执行完整传输流程吗？\n\n流程：清理手机目录 → 传输文件 → 清空选择')) {
+            if (!confirm('确定要执行完整传输流程吗？\n\n流程：清理手机目录 → 传输文件 → 清空路径')) {
                 return;
             }
             
             showFtProgress(true, '正在执行完整传输流程...');
             hideFtResults();
             
-            // 创建FormData并添加文件
-            const formData = new FormData();
-            formData.append('phone_dir', phoneDir);
-            formData.append('device_id', deviceId);
-            
-            // 添加所有文件
-            ftSelectedFiles.forEach(file => {
-                formData.append('files', file, file.webkitRelativePath || file.name);
-            });
-            
             fetch('/api/file-transfer/full-transfer', {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    computer_dir: computerDir,
+                    phone_dir: phoneDir,
+                    device_id: deviceId
+                })
             })
             .then(response => response.json())
             .then(data => {
                 showFtProgress(false);
                 
                 if (data.success) {
-                    // 清除文件列表
-                    ftSelectedFiles = [];
-                    document.getElementById('ft-selected-dir-name').textContent = '未选择文件夹';
-                    document.getElementById('ft-dir-selector').value = '';
-                    displayFtFileList();
+                    // 清空电脑目录路径
+                    document.getElementById('ft-computer-dir').value = '';
                     
                     showFtResults(data.steps);
                     showFtMessage('完整传输流程执行成功', 'success');
