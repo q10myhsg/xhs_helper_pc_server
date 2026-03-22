@@ -102,7 +102,7 @@ class PDFConverter:
         
         return pages if pages else set(range(1, total_pages + 1))
     
-    def convert_pdf_to_images(self, pdf_path, dpi=200, fmt='png', 
+    def convert_pdf_to_images(self, pdf_path, dpi=200, fmt='png',
                               add_watermark=True, generate_simple_pdf=False,
                               start_page=1, end_page=None,
                               add_header=False, add_footer=False,
@@ -112,13 +112,13 @@ class PDFConverter:
                               footer_position=None):
         """
         将PDF转换为图片
-        
+
         参数:
             pdf_path: PDF文件路径
             dpi: 输出图片DPI
             fmt: 输出格式 (png, jpg)
             add_watermark: 是否添加水印
-            generate_simple_pdf: 是否生成精简版PDF
+            generate_simple_pdf: 是否生成精简版PDF（前3页，无处理）
             start_page: 起始页码
             end_page: 结束页码
             add_header: 是否添加页眉
@@ -127,77 +127,82 @@ class PDFConverter:
             watermark_position: 水印位置 {'x': 0-100, 'y': 0-100}
             header_position: 页眉位置 {'top': 像素值}
             footer_position: 页脚位置 {'bottom': 像素值}
-        
+
         返回:
             dict: 包含生成的图片路径列表和简版PDF路径
         """
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF文件不存在: {pdf_path}")
-        
+
         # 转换PDF为图片
         images = convert_from_path(str(pdf_path), dpi=dpi)
         total_pages = len(images)
-        
+
         # 确定页码范围
         start = max(0, start_page - 1)
         end = min(total_pages, end_page) if end_page else total_pages
-        
+
         # 解析水印页面范围
         watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
-        
+
         # 创建输出目录: PDF相同文件夹/imgs/文件名/
         output_dir = pdf_path.parent / "imgs" / pdf_path.stem
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         output_paths = []
-        simple_pdf_images = []
-        
+
         for i in range(start, end):
             img = images[i].convert("RGBA")
             page_num = i + 1
-            
+
             # 添加页眉
             if add_header and self.header_img:
                 img = self._add_header_to_image(img, self.header_img, header_position)
-            
+
             # 添加页脚
             if add_footer and self.footer_img:
                 img = self._add_footer_to_image(img, self.footer_img, footer_position)
-            
+
             # 添加水印（只在指定页面添加）
             if add_watermark and self.watermark_img and page_num in watermark_pages:
                 img = self._add_watermark_to_image(img, self.watermark_img, watermark_position)
-            
+
             # 保存图片
             output_filename = f"{pdf_path.stem}_page_{page_num:02d}.{fmt}"
             output_path = output_dir / output_filename
-            
+
             # 转换为RGB保存（去除透明通道）
             if fmt.lower() in ['jpg', 'jpeg']:
                 img_rgb = img.convert("RGB")
                 img_rgb.save(output_path, quality=95)
             else:
                 img.save(output_path)
-            
+
             output_paths.append(str(output_path))
-            
-            # 为简版PDF保存
-            if generate_simple_pdf:
-                simple_pdf_images.append(img.convert("RGB"))
-        
-        # 生成简版PDF
+
+        # 生成精简版PDF（前3页，无水印等处理）
         simple_pdf_path = None
-        if generate_simple_pdf and simple_pdf_images:
-            simple_pdf_filename = f"{pdf_path.stem}_simple.pdf"
-            simple_pdf_path = output_dir / simple_pdf_filename
-            simple_pdf_images[0].save(
-                simple_pdf_path,
-                save_all=True,
-                append_images=simple_pdf_images[1:],
-                resolution=dpi
-            )
-            simple_pdf_path = str(simple_pdf_path)
+        if generate_simple_pdf:
+            # 取前3页（或更少如果PDF页数不足）
+            simple_page_count = min(3, total_pages)
+            simple_images = []
+
+            for i in range(simple_page_count):
+                # 使用原始图片，不做任何处理
+                img = images[i].convert("RGB")
+                simple_images.append(img)
+
+            if simple_images:
+                simple_pdf_filename = f"{pdf_path.stem}_simple.pdf"
+                simple_pdf_path = output_dir / simple_pdf_filename
+                simple_images[0].save(
+                    simple_pdf_path,
+                    save_all=True,
+                    append_images=simple_images[1:],
+                    resolution=dpi
+                )
+                simple_pdf_path = str(simple_pdf_path)
         
         return {
             'images': output_paths,
