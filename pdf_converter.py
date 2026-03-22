@@ -10,9 +10,20 @@ from PIL import Image
 import os
 from pathlib import Path
 
+# 兼容不同版本的Pillow
+# Pillow 9.0.0+ 使用 Image.Resampling.LANCZOS
+# 旧版本使用 Image.LANCZOS 或 Image.ANTIALIAS
+try:
+    RESAMPLING_LANCZOS = Image.Resampling.LANCZOS
+except AttributeError:
+    try:
+        RESAMPLING_LANCZOS = Image.LANCZOS
+    except AttributeError:
+        RESAMPLING_LANCZOS = Image.ANTIALIAS
+
 
 class PDFConverter:
-    def __init__(self, watermark_path=None, header_path=None, footer_path=None, upload_folder='static/uploads'):
+    def __init__(self, watermark_path=None, header_path=None, footer_path=None, upload_folder='static/uploads', watermark_scale=100):
         """
         初始化PDF转换器
         
@@ -21,6 +32,7 @@ class PDFConverter:
             header_path: 页眉图片路径
             footer_path: 页脚图片路径
             upload_folder: 上传文件保存目录
+            watermark_scale: 水印缩放比例（百分比），默认100表示原图大小
         """
         # 获取当前文件所在目录
         self.base_dir = Path(__file__).parent
@@ -34,6 +46,7 @@ class PDFConverter:
         self.watermark_path = watermark_path or str(default_watermark)
         self.header_path = header_path
         self.footer_path = footer_path
+        self.watermark_scale = watermark_scale  # 水印缩放比例
         
         # 加载图片
         self.watermark_img = self._load_image(self.watermark_path)
@@ -42,8 +55,19 @@ class PDFConverter:
     
     def _load_image(self, path):
         """加载图片"""
-        if path and os.path.exists(path):
-            return Image.open(path).convert("RGBA")
+        if not path:
+            return None
+        
+        # 处理URL路径（以/static开头）转换为文件系统路径
+        if path.startswith('/static/'):
+            # 移除开头的/，转换为相对路径
+            relative_path = path[1:]  # 去掉开头的/
+            full_path = str(self.base_dir / relative_path)
+        else:
+            full_path = path
+        
+        if os.path.exists(full_path):
+            return Image.open(full_path).convert("RGBA")
         return None
     
     def parse_page_range(self, page_range_str, total_pages):
@@ -109,7 +133,8 @@ class PDFConverter:
                               watermark_page_range='even',
                               watermark_position=None,
                               header_position=None,
-                              footer_position=None):
+                              footer_position=None,
+                              output_dir=None):
         """
         将PDF转换为图片
 
@@ -127,6 +152,7 @@ class PDFConverter:
             watermark_position: 水印位置 {'x': 0-100, 'y': 0-100}
             header_position: 页眉位置 {'top': 像素值}
             footer_position: 页脚位置 {'bottom': 像素值}
+            output_dir: 输出目录（可选，默认使用PDF所在目录/imgs/文件名/）
 
         返回:
             dict: 包含生成的图片路径列表和简版PDF路径
@@ -146,9 +172,42 @@ class PDFConverter:
         # 解析水印页面范围
         watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
 
-        # 创建输出目录: PDF相同文件夹/imgs/文件名/
-        output_dir = pdf_path.parent / "imgs" / pdf_path.stem
-        output_dir.mkdir(parents=True, exist_ok=True)
+        # 创建输出目录
+        if output_dir:
+            # 使用指定的输出目录
+            output_dir = Path(output_dir)
+        else:
+            # 默认使用PDF相同文件夹/imgs/文件名/
+            output_dir = pdf_path.parent / "imgs" / pdf_path.stem
+        
+        # 记录原始目标目录（用于后续清理）
+        original_output_dir = output_dir
+        use_fallback = False
+        
+        # 尝试创建目录，如果失败则使用备用目录
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError) as e:
+            # 如果没有权限写入目标目录，使用服务器static目录作为备用
+            use_fallback = True
+            fallback_dir = self.base_dir / "static" / "outputs" / pdf_path.stem
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            output_dir = fallback_dir
+            print(f"警告: 无法写入 {original_output_dir}，使用备用目录: {fallback_dir}")
+            
+            # 尝试删除原目录（如果存在且为空）
+            try:
+                if original_output_dir.exists():
+                    # 检查目录是否为空
+                    if not any(original_output_dir.iterdir()):
+                        original_output_dir.rmdir()
+                        # 尝试删除父目录 imgs（如果为空）
+                        imgs_parent = original_output_dir.parent
+                        if imgs_parent.exists() and not any(imgs_parent.iterdir()):
+                            imgs_parent.rmdir()
+                        print(f"已清理空目录: {original_output_dir}")
+            except Exception as cleanup_error:
+                print(f"清理目录失败: {cleanup_error}")
 
         output_paths = []
 
@@ -176,12 +235,44 @@ class PDFConverter:
             output_filename = f"{pdf_path.stem}_page_{formatted_page}.{fmt}"
             output_path = output_dir / output_filename
 
-            # 转换为RGB保存（去除透明通道）
-            if fmt.lower() in ['jpg', 'jpeg']:
-                img_rgb = img.convert("RGB")
-                img_rgb.save(output_path, quality=95)
-            else:
-                img.save(output_path)
+            # 尝试保存，如果失败且是第一次保存，切换到备用目录
+            try:
+                # 转换为RGB保存（去除透明通道）
+                if fmt.lower() in ['jpg', 'jpeg']:
+                    img_rgb = img.convert("RGB")
+                    img_rgb.save(output_path, quality=95)
+                else:
+                    img.save(output_path)
+            except (PermissionError, OSError) as save_error:
+                if not use_fallback and i == start:
+                    # 第一次保存失败，切换到备用目录
+                    use_fallback = True
+                    fallback_dir = self.base_dir / "static" / "outputs" / pdf_path.stem
+                    fallback_dir.mkdir(parents=True, exist_ok=True)
+                    output_dir = fallback_dir
+                    print(f"警告: 无法写入 {original_output_dir}，切换到备用目录: {fallback_dir}")
+                    
+                    # 尝试删除原目录（如果存在且为空）
+                    try:
+                        if original_output_dir.exists():
+                            if not any(original_output_dir.iterdir()):
+                                original_output_dir.rmdir()
+                                imgs_parent = original_output_dir.parent
+                                if imgs_parent.exists() and not any(imgs_parent.iterdir()):
+                                    imgs_parent.rmdir()
+                                print(f"已清理空目录: {original_output_dir}")
+                    except Exception as cleanup_error:
+                        print(f"清理目录失败: {cleanup_error}")
+                    
+                    # 重新保存到备用目录
+                    output_path = output_dir / output_filename
+                    if fmt.lower() in ['jpg', 'jpeg']:
+                        img_rgb = img.convert("RGB")
+                        img_rgb.save(output_path, quality=95)
+                    else:
+                        img.save(output_path)
+                else:
+                    raise save_error
 
             output_paths.append(str(output_path))
 
@@ -225,16 +316,23 @@ class PDFConverter:
         """
         img_width, img_height = img.size
         
-        # 调整水印大小（不超过图片的30%）
-        wm_max_width = int(img_width * 0.3)
-        wm_max_height = int(img_height * 0.3)
-        
         wm_width, wm_height = watermark.size
-        scale = min(wm_max_width / wm_width, wm_max_height / wm_height, 1.0)
         
-        new_width = int(wm_width * scale)
-        new_height = int(wm_height * scale)
-        watermark_resized = watermark.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        # 根据用户设置的缩放比例调整水印大小
+        # watermark_scale 是百分比，100表示原图大小
+        scale_percent = self.watermark_scale / 100.0
+        
+        # 计算新的尺寸
+        new_width = int(wm_width * scale_percent)
+        new_height = int(wm_height * scale_percent)
+        
+        # 确保水印不超过图片大小
+        if new_width > img_width or new_height > img_height:
+            scale = min(img_width / new_width, img_height / new_height, 1.0)
+            new_width = int(new_width * scale)
+            new_height = int(new_height * scale)
+        
+        watermark_resized = watermark.resize((new_width, new_height), RESAMPLING_LANCZOS)
         
         # 计算位置
         if position:
@@ -269,7 +367,7 @@ class PDFConverter:
         # 调整页眉宽度匹配图片
         header_width = img_width
         header_height = int(header.size[1] * (header_width / header.size[0]))
-        header_resized = header.resize((header_width, header_height), Image.Resampling.LANCZOS)
+        header_resized = header.resize((header_width, header_height), RESAMPLING_LANCZOS)
         
         # 计算位置
         top_offset = position.get('top', 0) if position else 0
@@ -298,7 +396,7 @@ class PDFConverter:
         # 调整页脚宽度匹配图片
         footer_width = img_width
         footer_height = int(footer.size[1] * (footer_width / footer.size[0]))
-        footer_resized = footer.resize((footer_width, footer_height), Image.Resampling.LANCZOS)
+        footer_resized = footer.resize((footer_width, footer_height), RESAMPLING_LANCZOS)
         
         # 计算位置
         bottom_offset = position.get('bottom', 0) if position else 0

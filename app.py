@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_file
+from flask import Flask, request, jsonify, render_template, send_file, send_from_directory
 import json
 import threading
 import os
@@ -699,7 +699,8 @@ def api_pdf_batch_convert():
                 converter = PDFConverter(
                     watermark_path=config.get('watermark') or None,
                     header_path=config.get('header') or None,
-                    footer_path=config.get('footer') or None
+                    footer_path=config.get('footer') or None,
+                    watermark_scale=settings.get('watermark_scale', 100)
                 )
 
                 # 执行转换
@@ -762,7 +763,7 @@ def api_pdf_batch_convert():
 
 @app.route("/api/pdf/batch/upload-to-dir", methods=["POST"])
 def api_pdf_batch_upload_to_dir():
-    """批量上传PDF文件到用户指定的目录"""
+    """批量上传PDF文件到服务器uploads目录，记录目标目录信息用于后续转换"""
     try:
         base_dir = request.form.get('base_dir', '')
         relative_paths = request.form.getlist('relative_paths')
@@ -770,9 +771,6 @@ def api_pdf_batch_upload_to_dir():
         # 如果未指定工作区，使用默认工作区
         if not base_dir:
             base_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
-
-        # 创建基础目录（如果不存在）
-        os.makedirs(base_dir, exist_ok=True)
 
         if 'files' not in request.files:
             return jsonify({"success": False, "error": "没有文件"})
@@ -785,34 +783,29 @@ def api_pdf_batch_upload_to_dir():
 
         for index, file in enumerate(files):
             if file and file.filename.endswith('.pdf'):
-                # 获取相对路径，用于确定子目录结构
+                # 获取相对路径
                 relative_path = relative_paths[index] if index < len(relative_paths) else file.filename
-
-                # 解析相对路径，创建子目录
-                # relative_path 可能是 "folder/subfolder/file.pdf"
-                if '/' in relative_path:
-                    sub_dir = os.path.dirname(relative_path)
-                    target_dir = os.path.join(base_dir, sub_dir)
-                    os.makedirs(target_dir, exist_ok=True)
-                else:
-                    target_dir = base_dir
-
-                # 使用原始文件名保存
                 filename = os.path.basename(relative_path)
-                filepath = os.path.join(target_dir, filename)
 
-                # 保存文件
+                # 生成唯一文件名，保存到服务器uploads目录
+                unique_id = str(uuid.uuid4())
+                saved_filename = f"{unique_id}_{filename}"
+                filepath = os.path.join(pdf_converter.upload_folder, saved_filename)
+
+                # 保存文件到服务器uploads目录
                 file.save(filepath)
 
                 uploaded_files.append({
                     "original_name": filename,
-                    "relative_path": relative_path,
-                    "saved_path": filepath
+                    "saved_name": saved_filename,
+                    "saved_path": filepath,
+                    "target_dir": base_dir,  # 用户指定的目标目录（用于输出）
+                    "relative_path": relative_path
                 })
 
         return jsonify({
             "success": True,
-            "message": f"成功上传 {len(uploaded_files)} 个文件到 {base_dir}",
+            "message": f"成功上传 {len(uploaded_files)} 个文件",
             "data": {
                 "files": uploaded_files,
                 "base_dir": base_dir
@@ -820,8 +813,6 @@ def api_pdf_batch_upload_to_dir():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
-
-
 @app.route("/api/pdf/batch/convert-local", methods=["POST"])
 def api_pdf_batch_convert_local():
     """批量转换本地PDF文件（不经过上传，直接读取本地路径）"""
@@ -851,7 +842,8 @@ def api_pdf_batch_convert_local():
         converter = PDFConverter(
             watermark_path=config.get('watermark') or None,
             header_path=config.get('header') or None,
-            footer_path=config.get('footer') or None
+            footer_path=config.get('footer') or None,
+            watermark_scale=settings.get('watermark_scale', 100)
         )
 
         for index, file_info in enumerate(files):
@@ -903,11 +895,15 @@ def api_pdf_batch_convert_local():
                     add_footer=settings.get('add_footer', False)
                 )
 
+                # 将本地路径转换为URL
+                images_urls = [local_path_to_url(img_path) for img_path in result['images']]
+                simple_pdf_url = local_path_to_url(result['simple_pdf'])
+                
                 results.append({
                     "original_name": original_name,
                     "success": True,
-                    "images": result['images'],
-                    "simple_pdf": result['simple_pdf'],
+                    "images": images_urls,
+                    "simple_pdf": simple_pdf_url,
                     "output_dir": result['output_dir'],
                     "total_pages": len(result['images']),
                     "progress": {
@@ -1020,6 +1016,46 @@ def api_upload_pdf_image():
                 "path": config[image_type],
                 "filename": filename
             }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/images/delete", methods=["POST"])
+def api_delete_pdf_image():
+    """删除PDF图片（水印/页眉/页脚）"""
+    try:
+        data = request.json
+        image_type = data.get('type')
+        
+        if not image_type or image_type not in ['watermark', 'header', 'footer']:
+            return jsonify({"success": False, "error": "无效的图片类型"})
+        
+        # 加载当前配置
+        config = load_pdf_images_config()
+        image_path = config.get(image_type)
+        
+        # 如果配置中有图片路径，删除实际文件
+        if image_path:
+            # 将URL路径转换为文件系统路径
+            if image_path.startswith('/static/'):
+                # 移除开头的/，转换为相对路径
+                relative_path = image_path[1:]  # 去掉开头的/
+                full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+                
+                # 删除文件（如果存在）
+                if os.path.exists(full_path):
+                    try:
+                        os.remove(full_path)
+                    except Exception as e:
+                        print(f"删除文件失败: {full_path}, 错误: {e}")
+        
+        # 更新配置，移除该类型的图片
+        config[image_type] = None
+        save_pdf_images_config(config)
+        
+        return jsonify({
+            "success": True,
+            "message": f"{image_type} 图片已删除"
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -1199,6 +1235,91 @@ def not_found(error):
 @app.errorhandler(500)
 def server_error(error):
     return jsonify({"success": False, "error": "服务器错误"}), 500
+
+
+# ==================== 辅助函数 ====================
+
+def local_path_to_url(path):
+    """
+    将本地文件路径转换为可通过服务器访问的URL
+    """
+    if not path:
+        return None
+    
+    # 如果已经是URL格式，直接返回
+    if path.startswith('/static/'):
+        return path
+    if path.startswith('http://') or path.startswith('https://'):
+        return path
+    
+    # 将本地路径转换为 /local-file?path=xxx URL
+    # 对路径进行URL编码
+    from urllib.parse import quote
+    encoded_path = quote(path, safe='')
+    return f"/local-file?path={encoded_path}"
+
+
+# ==================== 本地文件访问路由 ====================
+
+@app.route('/local-file')
+def serve_local_file():
+    """
+    提供本地文件访问服务
+    用于访问生成的PDF图片（位于用户本地目录）
+    使用查询参数: ?path=xxx
+    """
+    try:
+        from urllib.parse import unquote
+        import logging
+        
+        # 从查询参数获取路径
+        encoded_path = request.args.get('path', '')
+        
+        if not encoded_path:
+            return jsonify({"success": False, "error": "缺少path参数"}), 400
+        
+        # 解码路径
+        decoded_path = unquote(encoded_path)
+        
+        # 可能需要二次解码
+        while '%' in decoded_path:
+            new_path = unquote(decoded_path)
+            if new_path == decoded_path:
+                break
+            decoded_path = new_path
+        
+        logging.info(f"Local file request: decoded={decoded_path}")
+        
+        # 安全检查：确保路径是允许的目录之一
+        allowed_prefixes = [
+            '/Users/',
+            '/home/',
+            'C:/',
+            'D:/',
+        ]
+        
+        is_allowed = any(decoded_path.startswith(prefix) for prefix in allowed_prefixes)
+        if not is_allowed:
+            return jsonify({"success": False, "error": "访问被拒绝"}), 403
+        
+        # 检查文件是否存在
+        if not os.path.exists(decoded_path):
+            logging.warning(f"File not found: {decoded_path}")
+            return jsonify({"success": False, "error": "文件不存在"}), 404
+        
+        # 检查是否是文件（不是目录）
+        if not os.path.isfile(decoded_path):
+            return jsonify({"success": False, "error": "不是文件"}), 400
+        
+        # 发送文件
+        directory = os.path.dirname(decoded_path)
+        filename = os.path.basename(decoded_path)
+        return send_from_directory(directory, filename)
+        
+    except Exception as e:
+        import logging
+        logging.error(f"Error serving local file: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
     # 确保配置文件存在

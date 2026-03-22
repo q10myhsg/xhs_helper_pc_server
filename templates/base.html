@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书自动化 - 智能养号系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-brand">🚀 小红书自动化系统</div>
+        <ul class="navbar-nav">
+            <li class="nav-item"><a href="/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">仪表板</a></li>
+            <li class="nav-item"><a href="/device" class="nav-link {% if active_page == 'device' %}active{% endif %}">设备管理</a></li>
+            <li class="nav-item"><a href="/keyword" class="nav-link {% if active_page == 'keyword' %}active{% endif %}">关键词</a></li>
+            <li class="nav-item"><a href="/config" class="nav-link {% if active_page == 'config' %}active{% endif %}">参数配置</a></li>
+            <li class="nav-item"><a href="/pdf" class="nav-link {% if active_page == 'pdf' %}active{% endif %}">PDF转图片</a></li>
+            <li class="nav-item"><a href="/file-transfer" class="nav-link {% if active_page == 'file-transfer' %}active{% endif %}">文件传输</a></li>
+            <li class="nav-item"><a href="/activation" class="nav-link">激活</a></li>
+        </ul>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="container">
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

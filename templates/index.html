@@ -256,10 +256,10 @@
 
                     <!-- 工作区配置 -->
                     <div class="form-group" style="background: #f0f8ff; padding: 15px; border-radius: 8px; border: 1px solid #b0d4f1; margin-bottom: 15px;">
-                        <label style="font-weight: bold; color: #333;">📁 工作区（可选）</label>
-                        <p style="color: #666; font-size: 12px; margin: 5px 0;">指定PDF处理的工作目录，不填写则使用默认下载目录</p>
-                        <input type="text" id="pdf-base-dir" placeholder="默认: ~/Downloads/xhs_helper_workspace" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
-                        <small style="color: #999; display: block; margin-top: 5px;">💡 提示：不填写时自动使用 ~/Downloads/xhs_helper_workspace</small>
+                        <label style="font-weight: bold; color: #333;">📁 工作区 <span style="color: #ff2442;">*</span></label>
+                        <p style="color: #666; font-size: 12px; margin: 5px 0;">指定PDF文件所在的目录（必填）</p>
+                        <input type="text" id="pdf-base-dir" placeholder="例如: /Users/username/Desktop/PDFs" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
+                        <small style="color: #999; display: block; margin-top: 5px;">💡 提示：填写包含PDF文件的文件夹路径，如 /Users/wenyangzang/Desktop/1</small>
                     </div>
 
                     <div class="form-group">
@@ -400,6 +400,24 @@
                                     <small style="color: #666;">水印位置预览</small>
                                 </div>
                             </div>
+                            
+                            <div>
+                                <h4>🔍 水印大小调整</h4>
+                                <div class="form-group">
+                                    <label>缩放比例</label>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="range" id="pdf-watermark-scale" min="10" max="200" value="100" style="flex: 1;" oninput="updateWatermarkScalePreview()">
+                                        <span id="watermark-scale-value" style="min-width: 50px; text-align: center;">100%</span>
+                                    </div>
+                                    <small style="color: #999; display: block; margin-top: 5px;">100% = 原图大小，超过100%会放大，小于100%会缩小</small>
+                                </div>
+                                <div style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; text-align: center;">
+                                    <div id="watermark-scale-preview" style="width: 100px; height: 60px; background: white; border: 1px solid #ddd; margin: 0 auto; position: relative; display: flex; align-items: center; justify-content: center;">
+                                        <div id="watermark-scale-box" style="width: 40px; height: 30px; background: rgba(255, 36, 66, 0.3); border: 2px solid #ff2442; transition: all 0.2s;"></div>
+                                    </div>
+                                    <small style="color: #666;">水印大小预览</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -429,46 +447,100 @@
                         <h3 style="color: #667eea; margin-bottom: 15px;">🎨 图片素材设置</h3>
                         <p style="color: #666; font-size: 14px; margin-bottom: 15px;">上传自定义水印、页眉、页脚图片，将自动记住您的选择</p>
                         
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
                             <!-- 水印图片 -->
-                            <div class="form-group">
-                                <label>水印图片</label>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <input type="file" id="pdf-watermark-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
-                                    <button class="btn btn-secondary" onclick="document.getElementById('pdf-watermark-input').click()">📁 选择</button>
-                                    <span id="pdf-watermark-name" style="color: #666; font-size: 12px;">使用默认</span>
-                                    <button class="btn btn-danger" onclick="clearPdfImage('watermark')" style="font-size: 11px; padding: 2px 6px;">清除</button>
-                                </div>
-                                <div id="pdf-watermark-preview" style="margin-top: 8px; display: none;">
-                                    <img src="" style="max-width: 100%; max-height: 60px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div class="form-group" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px dashed #dee2e6; transition: all 0.3s ease;" id="watermark-upload-area" ondragover="handleDragOver(event, 'watermark')" ondragleave="handleDragLeave(event, 'watermark')" ondrop="handleDrop(event, 'watermark')">
+                                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                    <div style="flex: 0 0 100px; text-align: center;">
+                                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                            <span style="font-size: 32px;">💧</span>
+                                        </div>
+                                        <label style="margin-top: 8px; font-weight: 600; color: #333;">水印图片</label>
+                                    </div>
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <input type="file" id="pdf-watermark-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
+                                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                            <button class="btn btn-primary" onclick="document.getElementById('pdf-watermark-input').click()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                                📁 选择文件
+                                            </button>
+                                            <span id="pdf-watermark-status" style="color: #666; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
+                                        </div>
+                                        <div id="pdf-watermark-progress" style="display: none; margin-top: 10px;">
+                                            <div style="background: #e0e0e0; border-radius: 4px; height: 4px; overflow: hidden;">
+                                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: 0%; transition: width 0.3s;" id="pdf-watermark-progress-bar"></div>
+                                            </div>
+                                            <span style="font-size: 12px; color: #666;">上传中...</span>
+                                        </div>
+                                        <div id="pdf-watermark-name" style="margin-top: 8px; color: #333; font-weight: 500;">使用默认水印</div>
+                                    </div>
+                                    <div id="pdf-watermark-preview" style="flex: 0 0 auto; display: none;">
+                                        <img src="" style="max-width: 120px; max-height: 80px; border: 2px solid #667eea; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                    </div>
+                                    <button class="btn btn-danger" onclick="clearPdfImage('watermark')" style="font-size: 12px; padding: 6px 12px;">🗑️ 清除</button>
                                 </div>
                             </div>
 
                             <!-- 页眉图片 -->
-                            <div class="form-group">
-                                <label>页眉图片</label>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <input type="file" id="pdf-header-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
-                                    <button class="btn btn-secondary" onclick="document.getElementById('pdf-header-input').click()">📁 选择</button>
-                                    <span id="pdf-header-name" style="color: #666; font-size: 12px;">未选择</span>
-                                    <button class="btn btn-danger" onclick="clearPdfImage('header')" style="font-size: 11px; padding: 2px 6px;">清除</button>
-                                </div>
-                                <div id="pdf-header-preview" style="margin-top: 8px; display: none;">
-                                    <img src="" style="max-width: 100%; max-height: 40px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div class="form-group" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px dashed #dee2e6; transition: all 0.3s ease;" id="header-upload-area" ondragover="handleDragOver(event, 'header')" ondragleave="handleDragLeave(event, 'header')" ondrop="handleDrop(event, 'header')">
+                                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                    <div style="flex: 0 0 100px; text-align: center;">
+                                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                            <span style="font-size: 32px;">📄</span>
+                                        </div>
+                                        <label style="margin-top: 8px; font-weight: 600; color: #333;">页眉图片</label>
+                                    </div>
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <input type="file" id="pdf-header-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
+                                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                            <button class="btn btn-primary" onclick="document.getElementById('pdf-header-input').click()" style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);">
+                                                📁 选择文件
+                                            </button>
+                                            <span id="pdf-header-status" style="color: #666; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
+                                        </div>
+                                        <div id="pdf-header-progress" style="display: none; margin-top: 10px;">
+                                            <div style="background: #e0e0e0; border-radius: 4px; height: 4px; overflow: hidden;">
+                                                <div style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); height: 100%; width: 0%; transition: width 0.3s;" id="pdf-header-progress-bar"></div>
+                                            </div>
+                                            <span style="font-size: 12px; color: #666;">上传中...</span>
+                                        </div>
+                                        <div id="pdf-header-name" style="margin-top: 8px; color: #333; font-weight: 500;">未选择</div>
+                                    </div>
+                                    <div id="pdf-header-preview" style="flex: 0 0 auto; display: none;">
+                                        <img src="" style="max-width: 120px; max-height: 60px; border: 2px solid #48bb78; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                    </div>
+                                    <button class="btn btn-danger" onclick="clearPdfImage('header')" style="font-size: 12px; padding: 6px 12px;">🗑️ 清除</button>
                                 </div>
                             </div>
 
                             <!-- 页脚图片 -->
-                            <div class="form-group">
-                                <label>页脚图片</label>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <input type="file" id="pdf-footer-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
-                                    <button class="btn btn-secondary" onclick="document.getElementById('pdf-footer-input').click()">📁 选择</button>
-                                    <span id="pdf-footer-name" style="color: #666; font-size: 12px;">未选择</span>
-                                    <button class="btn btn-danger" onclick="clearPdfImage('footer')" style="font-size: 11px; padding: 2px 6px;">清除</button>
-                                </div>
-                                <div id="pdf-footer-preview" style="margin-top: 8px; display: none;">
-                                    <img src="" style="max-width: 100%; max-height: 40px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div class="form-group" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px dashed #dee2e6; transition: all 0.3s ease;" id="footer-upload-area" ondragover="handleDragOver(event, 'footer')" ondragleave="handleDragLeave(event, 'footer')" ondrop="handleDrop(event, 'footer')">
+                                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                    <div style="flex: 0 0 100px; text-align: center;">
+                                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                            <span style="font-size: 32px;">📃</span>
+                                        </div>
+                                        <label style="margin-top: 8px; font-weight: 600; color: #333;">页脚图片</label>
+                                    </div>
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <input type="file" id="pdf-footer-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
+                                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                            <button class="btn btn-primary" onclick="document.getElementById('pdf-footer-input').click()" style="background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);">
+                                                📁 选择文件
+                                            </button>
+                                            <span id="pdf-footer-status" style="color: #666; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
+                                        </div>
+                                        <div id="pdf-footer-progress" style="display: none; margin-top: 10px;">
+                                            <div style="background: #e0e0e0; border-radius: 4px; height: 4px; overflow: hidden;">
+                                                <div style="background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); height: 100%; width: 0%; transition: width 0.3s;" id="pdf-footer-progress-bar"></div>
+                                            </div>
+                                            <span style="font-size: 12px; color: #666;">上传中...</span>
+                                        </div>
+                                        <div id="pdf-footer-name" style="margin-top: 8px; color: #333; font-weight: 500;">未选择</div>
+                                    </div>
+                                    <div id="pdf-footer-preview" style="flex: 0 0 auto; display: none;">
+                                        <img src="" style="max-width: 120px; max-height: 60px; border: 2px solid #ed8936; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                    </div>
+                                    <button class="btn btn-danger" onclick="clearPdfImage('footer')" style="font-size: 12px; padding: 6px 12px;">🗑️ 清除</button>
                                 </div>
                             </div>
                         </div>
@@ -650,6 +722,10 @@
             initPdfImagesConfig();
             // 初始化文件传输配置
             initFileTransferConfig();
+            // 恢复所有用户输入数据
+            restoreAllFormData();
+            // 设置自动保存监听
+            setupAutoSaveListeners();
         });
 
         // 刷新设备管理页面的设备列表
@@ -2202,6 +2278,94 @@
             loadDeviceStatuses();
         };
 
+        // ==================== 页面数据持久化功能 ====================
+
+        // 需要持久化的表单元素ID列表（排除文件输入）
+        const persistentFormIds = [
+            // PDF转换配置
+            'pdf-output-format', 'pdf-dpi', 'pdf-start-page', 'pdf-end-page',
+            'pdf-add-watermark', 'pdf-add-header', 'pdf-add-footer', 'pdf-generate-simple',
+            'pdf-watermark-page-mode', 'pdf-watermark-custom-pages',
+            'pdf-watermark-pos-x', 'pdf-watermark-pos-y', 'pdf-watermark-scale',
+            'pdf-header-offset', 'pdf-footer-offset',
+            'pdf-base-dir',
+            // 核心参数配置
+            'min-interval', 'max-interval', 'min-like', 'max-like',
+ 'min-view', 'max-view', 'view-duration', 'scroll-count',
+            'search-keyword', 'use-random-keyword',
+            'like-probability', 'follow-probability', 'collect-probability',
+            'comment-probability', 'comment-content',
+            // 访问控制
+            'min-fans', 'max-fans', 'skip-if-viewed',
+            // 互动配置
+            'follow-author', 'collect-post', 'comment-post',
+            // 文件传输配置
+            'ft-source-path', 'ft-target-path'
+        ];
+
+        // 保存所有表单数据到localStorage
+        function saveAllFormData() {
+            const formData = {};
+            persistentFormIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        formData[id] = element.checked;
+                    } else {
+                        formData[id] = element.value;
+                    }
+                }
+            });
+            localStorage.setItem('xhsFormData', JSON.stringify(formData));
+        }
+
+        // 从localStorage恢复所有表单数据
+        function restoreAllFormData() {
+            const savedData = localStorage.getItem('xhsFormData');
+            if (!savedData) return;
+
+            try {
+                const formData = JSON.parse(savedData);
+                Object.keys(formData).forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        if (element.type === 'checkbox') {
+                            element.checked = formData[id];
+                            // 触发change事件以更新相关UI
+                            element.dispatchEvent(new Event('change'));
+                        } else {
+                            element.value = formData[id];
+                        }
+                    }
+                });
+                console.log('表单数据已恢复');
+            } catch (e) {
+                console.error('恢复表单数据失败:', e);
+            }
+        }
+
+        // 设置自动保存监听器
+        function setupAutoSaveListeners() {
+            persistentFormIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    // 输入框在blur时保存
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
+                        element.addEventListener('blur', saveAllFormData);
+                        element.addEventListener('change', saveAllFormData);
+                    }
+                }
+            });
+
+            // 滑块在input时实时保存
+            ['pdf-watermark-pos-x', 'pdf-watermark-pos-y', 'pdf-watermark-scale', 'pdf-header-offset', 'pdf-footer-offset'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', saveAllFormData);
+                }
+            });
+        }
+
         // ==================== PDF转换功能 ====================
         
         let currentPdfFilename = null;
@@ -2268,6 +2432,64 @@
         function handlePdfImageUpload(event, type) {
             const file = event.target.files[0];
             if (!file) return;
+            processPdfImageFile(file, type);
+        }
+
+        // 处理拖放上传
+        function handleDragOver(event, type) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById(`${type}-upload-area`).style.borderColor = '#667eea';
+            document.getElementById(`${type}-upload-area`).style.background = '#e8f0fe';
+        }
+
+        function handleDragLeave(event, type) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById(`${type}-upload-area`).style.borderColor = '#dee2e6';
+            document.getElementById(`${type}-upload-area`).style.background = '#f8f9fa';
+        }
+
+        function handleDrop(event, type) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById(`${type}-upload-area`).style.borderColor = '#dee2e6';
+            document.getElementById(`${type}-upload-area`).style.background = '#f8f9fa';
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    processPdfImageFile(file, type);
+                } else {
+                    showPdfMessage('请上传图片文件（JPG、PNG、GIF）', 'error');
+                }
+            }
+        }
+
+        // 处理图片文件上传
+        function processPdfImageFile(file, type) {
+            // 验证文件类型
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
+            if (!validTypes.includes(file.type)) {
+                showPdfMessage('不支持的文件格式，请上传 JPG、PNG 或 GIF 格式的图片', 'error');
+                return;
+            }
+
+            // 显示进度条
+            const progressDiv = document.getElementById(`pdf-${type}-progress`);
+            const progressBar = document.getElementById(`pdf-${type}-progress-bar`);
+            const statusSpan = document.getElementById(`pdf-${type}-status`);
+            progressDiv.style.display = 'block';
+            statusSpan.textContent = '上传中...';
+            
+            // 模拟进度
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                progressBar.style.width = progress + '%';
+                if (progress >= 90) clearInterval(progressInterval);
+            }, 100);
 
             const formData = new FormData();
             formData.append('file', file);
@@ -2279,36 +2501,67 @@
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    pdfImagesConfig[type] = data.data.path;
-                    localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
-                    updatePdfImagesUI();
-                    showPdfMessage(`${type === 'watermark' ? '水印' : type === 'header' ? '页眉' : '页脚'}上传成功`, 'success');
-                } else {
-                    showPdfMessage('上传失败: ' + data.error, 'error');
-                }
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressBar.style.width = '0%';
+                    
+                    if (data.success) {
+                        pdfImagesConfig[type] = data.data.path;
+                        localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+                        updatePdfImagesUI();
+                        showPdfMessage(`${type === 'watermark' ? '水印' : type === 'header' ? '页眉' : '页脚'}上传成功`, 'success');
+                    } else {
+                        statusSpan.textContent = '上传失败';
+                        showPdfMessage('上传失败: ' + data.error, 'error');
+                    }
+                }, 300);
             })
             .catch(error => {
+                clearInterval(progressInterval);
+                progressDiv.style.display = 'none';
+                progressBar.style.width = '0%';
+                statusSpan.textContent = '上传出错';
                 showPdfMessage('上传错误: ' + error.message, 'error');
             });
         }
 
         // 清除PDF图片
         function clearPdfImage(type) {
-            pdfImagesConfig[type] = null;
-            localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
-            
-            // 更新UI
-            const nameMap = {
-                'watermark': '使用默认水印',
-                'header': '未选择',
-                'footer': '未选择'
-            };
-            document.getElementById(`pdf-${type}-name`).textContent = nameMap[type];
-            document.getElementById(`pdf-${type}-preview`).style.display = 'none';
-            document.getElementById(`pdf-${type}-input`).value = '';
-            
-            showPdfMessage('已清除', 'success');
+            // 先调用后端API删除服务器上的图片和配置
+            fetch('/api/pdf/images/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: type })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新前端配置
+                    pdfImagesConfig[type] = null;
+                    localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+                    
+                    // 更新UI
+                    const nameMap = {
+                        'watermark': '使用默认水印',
+                        'header': '未选择',
+                        'footer': '未选择'
+                    };
+                    document.getElementById(`pdf-${type}-name`).textContent = nameMap[type];
+                    document.getElementById(`pdf-${type}-preview`).style.display = 'none';
+                    document.getElementById(`pdf-${type}-input`).value = '';
+                    document.getElementById(`pdf-${type}-status`).textContent = '支持 JPG、PNG、GIF 格式';
+                    
+                    showPdfMessage('已清除', 'success');
+                } else {
+                    showPdfMessage('清除失败: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showPdfMessage('清除失败: ' + error.message, 'error');
+            });
         }
 
         // PDF批量处理相关变量
@@ -2436,6 +2689,21 @@
             dot.style.top = y + '%';
         }
 
+        // 更新水印缩放预览
+        function updateWatermarkScalePreview() {
+            const scale = document.getElementById('pdf-watermark-scale').value;
+            document.getElementById('watermark-scale-value').textContent = scale + '%';
+            
+            const box = document.getElementById('watermark-scale-box');
+            const baseWidth = 40;
+            const baseHeight = 30;
+            const newWidth = baseWidth * (scale / 100);
+            const newHeight = baseHeight * (scale / 100);
+            
+            box.style.width = newWidth + 'px';
+            box.style.height = newHeight + 'px';
+        }
+
         // 验证自定义页码格式
         function validateWatermarkPages(input) {
             const pattern = /^[\d,\-\s]+$/;
@@ -2483,8 +2751,8 @@
             const headerOffset = parseInt(document.getElementById('pdf-header-offset').value);
             const footerOffset = parseInt(document.getElementById('pdf-footer-offset').value);
             return {
-                header: { y: headerOffset },
-                footer: { y: footerOffset }
+                header: { top: headerOffset },
+                footer: { bottom: footerOffset }
             };
         }
 
@@ -2502,13 +2770,11 @@
                 return;
             }
 
-            // 获取工作区路径，未填写则使用默认值
+            // 获取工作区路径（必须填写）
             let baseDir = document.getElementById('pdf-base-dir').value.trim();
             if (!baseDir) {
-                // 使用默认工作区：~/Downloads/xhs_helper_workspace
-                baseDir = `${window.location.protocol}//${window.location.host}/workspace`;
-                // 实际上后端会处理默认路径
-                baseDir = ''; // 空字符串表示使用后端默认
+                showPdfMessage('请先填写工作区目录路径', 'error');
+                return;
             }
 
             // 显示进度
@@ -2516,15 +2782,13 @@
             document.getElementById('pdf-batch-results').style.display = 'none';
             document.getElementById('pdf-error').style.display = 'none';
             document.getElementById('pdf-convert-btn').disabled = true;
-            updatePdfProgress(5, '准备上传文件...');
+            updatePdfProgress(10, '准备转换文件...');
 
-            // 保存工作区到localStorage（如果用户填写了）
-            if (baseDir) {
-                localStorage.setItem('pdf_base_dir', baseDir);
-            }
+            // 保存工作区到localStorage
+            localStorage.setItem('pdf_base_dir', baseDir);
 
-            // 第一步：上传文件到指定目录
-            uploadFilesToDirectory(baseDir);
+            // 直接调用转换（不经过上传）
+            batchConvertWithPaths(baseDir);
         }
 
         // 上传文件到指定目录
@@ -2583,6 +2847,7 @@
                 add_footer: document.getElementById('pdf-add-footer').checked,
                 watermark_page_range: watermarkPageRange,
                 watermark_position: watermarkPosition,
+                watermark_scale: parseInt(document.getElementById('pdf-watermark-scale').value) || 100,
                 header_position: positions.header,
                 footer_position: positions.footer
             };
@@ -2726,6 +2991,9 @@
             document.getElementById('watermark-pos-x-value').textContent = '50%';
             document.getElementById('watermark-pos-y-value').textContent = '50%';
             updateWatermarkPositionPreview();
+            document.getElementById('pdf-watermark-scale').value = 100;
+            document.getElementById('watermark-scale-value').textContent = '100%';
+            updateWatermarkScalePreview();
             
             showPdfMessage('已清空所有数据', 'success');
         }
