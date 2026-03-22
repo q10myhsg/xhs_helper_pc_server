@@ -143,7 +143,7 @@ function clearPhoneDir() {
     fetch('/api/file-transfer/clear-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: selectedDeviceId, target_dir: phoneDir })
+        body: JSON.stringify({ device_id: selectedDeviceId, phone_dir: phoneDir })
     })
     .then(response => response.json())
     .then(data => {
@@ -214,7 +214,7 @@ function clearComputerDir() {
     fetch('/api/file-transfer/clear-computer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source_dir: computerDir })
+        body: JSON.stringify({ computer_dir: computerDir })
     })
     .then(response => response.json())
     .then(data => {
@@ -287,15 +287,23 @@ function showFtResults(data) {
     resultsDiv.style.display = 'block';
     
     let html = '<div style="background: #f0f0f0; padding: 15px; border-radius: 8px;">';
-    if (data.clear_phone) {
-        html += `<div style="margin-bottom: 10px;"><strong>清理手机目录:</strong> ${data.clear_phone.success ? '成功' : '失败'}</div>`;
+    
+    // 检查是否是完整传输（有steps字段）还是单步操作
+    if (data.steps) {
+        if (data.steps.clear_phone) {
+            html += `<div style="margin-bottom: 10px;"><strong>清理手机目录:</strong> ${data.steps.clear_phone.success ? '成功' : '失败'}</div>`;
+        }
+        if (data.steps.transfer) {
+            html += `<div style="margin-bottom: 10px;"><strong>传输文件:</strong> ${data.steps.transfer.success ? '成功' : '失败'} - ${data.steps.transfer.file_count || 0} 个文件</div>`;
+        }
+        if (data.steps.clear_computer) {
+            html += `<div><strong>清空电脑目录:</strong> ${data.steps.clear_computer.success ? '成功' : '失败'}</div>`;
+        }
+    } else {
+        // 单步操作
+        html += `<div><strong>操作结果:</strong> 成功</div>`;
     }
-    if (data.transfer) {
-        html += `<div style="margin-bottom: 10px;"><strong>传输文件:</strong> ${data.transfer.success ? '成功' : '失败'} - ${data.transfer.file_count || 0} 个文件</div>`;
-    }
-    if (data.clear_computer) {
-        html += `<div><strong>清空电脑目录:</strong> ${data.clear_computer.success ? '成功' : '失败'}</div>`;
-    }
+    
     html += '</div>';
     contentDiv.innerHTML = html;
 }
