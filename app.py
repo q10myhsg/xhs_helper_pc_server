@@ -673,18 +673,18 @@ def api_pdf_batch_convert():
         data = request.json
         files = data.get('files', [])
         settings = data.get('settings', {})
-        
+
         if not files:
             return jsonify({"success": False, "error": "没有选择文件"})
-        
+
         results = []
         total_files = len(files)
-        
+
         for index, file_info in enumerate(files):
             try:
                 filename = file_info.get('saved_name')
                 filepath = os.path.join(pdf_converter.upload_folder, filename)
-                
+
                 if not os.path.exists(filepath):
                     results.append({
                         "original_name": file_info.get('original_name'),
@@ -692,7 +692,7 @@ def api_pdf_batch_convert():
                         "error": "文件不存在"
                     })
                     continue
-                
+
                 # 加载用户配置的图片路径
                 config = load_pdf_images_config()
                 from pdf_converter import PDFConverter
@@ -701,7 +701,7 @@ def api_pdf_batch_convert():
                     header_path=config.get('header') or None,
                     footer_path=config.get('footer') or None
                 )
-                
+
                 # 执行转换
                 result = converter.convert_pdf_to_images(
                     filepath,
@@ -714,18 +714,18 @@ def api_pdf_batch_convert():
                     add_header=settings.get('add_header', False),
                     add_footer=settings.get('add_footer', False)
                 )
-                
+
                 # 获取相对路径
                 images_urls = []
                 for img_path in result['images']:
                     rel_path = os.path.relpath(img_path, 'static')
                     images_urls.append(f"/static/{rel_path}")
-                
+
                 simple_pdf_url = None
                 if result['simple_pdf']:
                     rel_path = os.path.relpath(result['simple_pdf'], 'static')
                     simple_pdf_url = f"/static/{rel_path}"
-                
+
                 results.append({
                     "original_name": file_info.get('original_name'),
                     "saved_name": filename,
@@ -738,14 +738,139 @@ def api_pdf_batch_convert():
                         "total": total_files
                     }
                 })
-                
+
             except Exception as e:
                 results.append({
                     "original_name": file_info.get('original_name'),
                     "success": False,
                     "error": str(e)
                 })
-        
+
+        return jsonify({
+            "success": True,
+            "message": "批量转换完成",
+            "data": {
+                "results": results,
+                "total": total_files,
+                "success_count": sum(1 for r in results if r['success']),
+                "failed_count": sum(1 for r in results if not r['success'])
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/pdf/batch/convert-local", methods=["POST"])
+def api_pdf_batch_convert_local():
+    """批量转换本地PDF文件（不经过上传，直接读取本地路径）"""
+    try:
+        data = request.json
+        files = data.get('files', [])
+        settings = data.get('settings', {})
+
+        if not files:
+            return jsonify({"success": False, "error": "没有选择文件"})
+
+        results = []
+        total_files = len(files)
+
+        # 加载用户配置的图片路径
+        config = load_pdf_images_config()
+        from pdf_converter import PDFConverter
+        converter = PDFConverter(
+            watermark_path=config.get('watermark') or None,
+            header_path=config.get('header') or None,
+            footer_path=config.get('footer') or None
+        )
+
+        for index, file_info in enumerate(files):
+            try:
+                # 从文件信息中获取路径
+                # 浏览器只能提供相对路径，需要根据配置的基础目录拼接完整路径
+                relative_path = file_info.get('relative_path', '')
+                folder_path = file_info.get('folder_path', '')
+                original_name = file_info.get('original_name', '')
+
+                # 尝试多种方式定位文件
+                # 方式1：使用配置的默认PDF目录 + 相对路径
+                pdf_base_dirs = [
+                    "/Users/wenyangzang/Desktop/1/01.math/六上/题型精练/人教/PDFS",
+                    "/Users/wenyangzang/Desktop",
+                    os.path.expanduser("~/Desktop"),
+                ]
+
+                filepath = None
+
+                # 首先尝试直接使用folder_path（如果它是绝对路径）
+                if folder_path and os.path.isabs(folder_path):
+                    test_path = os.path.join(folder_path, original_name)
+                    if os.path.exists(test_path):
+                        filepath = test_path
+
+                # 尝试各种基础目录组合
+                if filepath is None:
+                    for base_dir in pdf_base_dirs:
+                        # 尝试 base_dir + folder_path + filename
+                        if folder_path:
+                            test_path = os.path.join(base_dir, folder_path, original_name)
+                            if os.path.exists(test_path):
+                                filepath = test_path
+                                break
+
+                        # 尝试 base_dir + relative_path
+                        if relative_path:
+                            test_path = os.path.join(base_dir, relative_path)
+                            if os.path.exists(test_path):
+                                filepath = test_path
+                                break
+
+                        # 尝试 base_dir + filename
+                        test_path = os.path.join(base_dir, original_name)
+                        if os.path.exists(test_path):
+                            filepath = test_path
+                            break
+
+                if filepath is None or not os.path.exists(filepath):
+                    results.append({
+                        "original_name": original_name,
+                        "success": False,
+                        "error": f"找不到文件，请确保文件在以下位置之一: {pdf_base_dirs}"
+                    })
+                    continue
+
+                # 执行转换 - 输出到PDF所在目录的imgs子文件夹
+                result = converter.convert_pdf_to_images(
+                    filepath,
+                    dpi=settings.get('dpi', 300),
+                    fmt=settings.get('format', 'png'),
+                    add_watermark=settings.get('add_watermark', True),
+                    generate_simple_pdf=settings.get('generate_simple_pdf', True),
+                    start_page=settings.get('start_page', 1),
+                    end_page=settings.get('end_page'),
+                    add_header=settings.get('add_header', False),
+                    add_footer=settings.get('add_footer', False)
+                )
+
+                results.append({
+                    "original_name": original_name,
+                    "success": True,
+                    "images": result['images'],
+                    "simple_pdf": result['simple_pdf'],
+                    "output_dir": result['output_dir'],
+                    "total_pages": len(result['images']),
+                    "progress": {
+                        "current": index + 1,
+                        "total": total_files
+                    }
+                })
+
+            except Exception as e:
+                results.append({
+                    "original_name": file_info.get('original_name', 'unknown'),
+                    "success": False,
+                    "error": str(e)
+                })
+
         return jsonify({
             "success": True,
             "message": "批量转换完成",

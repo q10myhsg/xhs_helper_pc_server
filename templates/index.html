@@ -2388,52 +2388,65 @@
         }
 
         // PDF批量处理相关变量
-        let pdfBatchFiles = [];  // 存储批量上传的PDF文件信息
+        let pdfBatchFiles = [];  // 存储批量选择的PDF文件信息（只存路径，不存文件对象）
         let pdfBatchResults = []; // 存储批量转换结果
 
         // 处理批量PDF文件选择
         function handlePdfBatchSelect(event) {
             const files = Array.from(event.target.files).filter(f => f.name.endsWith('.pdf'));
-            
+
             if (files.length === 0) {
                 showPdfMessage('请选择PDF文件', 'error');
                 return;
             }
-            
+
             // 校验是否来自同一文件夹
             const paths = files.map(f => f.webkitRelativePath || f.name);
             const folders = new Set(paths.map(p => {
                 const lastSlash = p.lastIndexOf('/');
                 return lastSlash > 0 ? p.substring(0, lastSlash) : '';
             }));
-            
+
             if (folders.size > 1) {
                 showPdfMessage('错误：只能在同一个文件夹下选择PDF文件', 'error');
                 event.target.value = ''; // 清空选择
                 return;
             }
-            
-            pdfBatchFiles = files.map(file => ({
-                file: file,
-                original_name: file.name,
-                size: file.size,
-                uploaded: false,
-                saved_name: null
-            }));
-            
+
+            // 获取文件夹路径（从第一个文件的完整路径推断）
+            const firstFile = files[0];
+            const fullPath = firstFile.webkitRelativePath || firstFile.name;
+            const lastSlashIndex = fullPath.lastIndexOf('/');
+            const folderPath = lastSlashIndex > 0 ? fullPath.substring(0, lastSlashIndex) : '';
+
+            // 只存储文件信息，不上传文件
+            pdfBatchFiles = files.map(file => {
+                const fileFullPath = file.webkitRelativePath || file.name;
+                const fileName = file.name;
+                // 推断完整路径：使用文件夹路径 + 文件名
+                // 注意：浏览器无法获取真实绝对路径，这里使用相对路径
+                // 后端需要根据这个相对路径找到实际文件
+                return {
+                    original_name: fileName,
+                    relative_path: fileFullPath,
+                    folder_path: folderPath,
+                    size: file.size
+                };
+            });
+
             displayPdfFileList();
             updatePdfPreviewSelect();
             document.getElementById('pdf-batch-count').textContent = `已选择 ${files.length} 个文件`;
             document.getElementById('pdf-file-list').style.display = 'block';
-            
+
             // 启用按钮
             if (files.length > 0) {
                 document.getElementById('pdf-preview-file-select').disabled = false;
                 document.getElementById('pdf-preview-btn').disabled = false;
                 document.getElementById('pdf-convert-btn').disabled = false;
             }
-            
-            showPdfMessage(`成功选择 ${files.length} 个PDF文件`, 'success');
+
+            showPdfMessage(`成功选择 ${files.length} 个PDF文件（无需上传，直接本地转换）`, 'success');
         }
 
         // 显示PDF文件列表
@@ -2672,59 +2685,32 @@
             });
         }
 
-        // 批量转换PDF文件
+        // 批量转换PDF文件（不上传，直接传递路径）
         function batchConvertPdfs() {
             if (pdfBatchFiles.length === 0) {
                 showPdfMessage('请先选择PDF文件', 'error');
                 return;
             }
-            
-            // 上传所有文件
-            const formData = new FormData();
-            pdfBatchFiles.forEach(pdfFile => {
-                formData.append('files', pdfFile.file);
-            });
-            
+
             // 显示进度
             document.getElementById('pdf-batch-progress').style.display = 'block';
             document.getElementById('pdf-batch-results').style.display = 'none';
             document.getElementById('pdf-error').style.display = 'none';
             document.getElementById('pdf-convert-btn').disabled = true;
             document.getElementById('pdf-preview-btn').disabled = true;
-            updatePdfProgress(0, '正在上传文件...');
-            
-            // 第一步：批量上传
-            fetch('/api/pdf/batch/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updatePdfProgress(30, '文件上传完成，开始转换...');
-                    // 保存上传后的文件名
-                    pdfBatchFiles = data.data.files;
-                    // 第二步：批量转换
-                    return batchConvertUploadedPdfs();
-                } else {
-                    throw new Error(data.error);
-                }
-            })
-            .catch(error => {
-                document.getElementById('pdf-batch-progress').style.display = 'none';
-                document.getElementById('pdf-convert-btn').disabled = false;
-                document.getElementById('pdf-preview-btn').disabled = false;
-                showPdfMessage('批量转换失败: ' + error.message, 'error');
-            });
+            updatePdfProgress(10, '准备转换...');
+
+            // 直接开始批量转换（不经过上传步骤）
+            batchConvertWithPaths();
         }
 
-        // 批量转换已上传的PDF
-        function batchConvertUploadedPdfs() {
+        // 使用路径批量转换PDF（不上传文件）
+        function batchConvertWithPaths() {
             // 获取水印和位置设置
             const watermarkPageRange = getWatermarkPageRange();
             const watermarkPosition = getWatermarkPosition();
             const positions = getHeaderFooterPositions();
-            
+
             const settings = {
                 format: document.getElementById('pdf-output-format').value,
                 dpi: parseInt(document.getElementById('pdf-dpi').value),
@@ -2739,14 +2725,15 @@
                 header_position: positions.header,
                 footer_position: positions.footer
             };
-            
-            updatePdfProgress(50, '正在转换文件...');
-            
-            return fetch('/api/pdf/batch/convert', {
+
+            updatePdfProgress(30, '正在转换文件...');
+
+            // 直接传递文件路径信息进行转换
+            fetch('/api/pdf/batch/convert-local', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    files: pdfBatchFiles,
+                    files: pdfBatchFiles,  // 包含 relative_path, folder_path 等信息
                     settings: settings
                 })
             })
@@ -2755,7 +2742,7 @@
                 document.getElementById('pdf-batch-progress').style.display = 'none';
                 document.getElementById('pdf-convert-btn').disabled = false;
                 document.getElementById('pdf-preview-btn').disabled = false;
-                
+
                 if (data.success) {
                     pdfBatchResults = data.data.results;
                     displayBatchResults(data.data);
@@ -2763,6 +2750,12 @@
                 } else {
                     showPdfMessage('转换失败: ' + data.error, 'error');
                 }
+            })
+            .catch(error => {
+                document.getElementById('pdf-batch-progress').style.display = 'none';
+                document.getElementById('pdf-convert-btn').disabled = false;
+                document.getElementById('pdf-preview-btn').disabled = false;
+                showPdfMessage('批量转换失败: ' + error.message, 'error');
             });
         }
 
