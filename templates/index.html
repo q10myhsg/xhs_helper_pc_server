@@ -3031,7 +3031,13 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.data.length > 0) {
-                        displayFtDeviceList(data.data);
+                        // 只过滤在线设备
+                        const onlineDevices = data.data.filter(device => device.status === 'online');
+                        if (onlineDevices.length > 0) {
+                            displayFtDeviceList(onlineDevices);
+                        } else {
+                            deviceListDiv.innerHTML = '<div class="alert alert-warning">暂无在线设备，请检查ADB连接</div>';
+                        }
                     } else {
                         deviceListDiv.innerHTML = '<div class="alert alert-warning">暂无在线设备，请检查ADB连接</div>';
                     }
