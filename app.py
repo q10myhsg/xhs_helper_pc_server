@@ -767,9 +767,17 @@ def api_pdf_batch_convert_local():
         data = request.json
         files = data.get('files', [])
         settings = data.get('settings', {})
+        base_dir = data.get('base_dir', '')
 
         if not files:
             return jsonify({"success": False, "error": "没有选择文件"})
+
+        if not base_dir:
+            return jsonify({"success": False, "error": "请填写PDF基础目录"})
+
+        # 验证基础目录是否存在
+        if not os.path.exists(base_dir):
+            return jsonify({"success": False, "error": f"基础目录不存在: {base_dir}"})
 
         results = []
         total_files = len(files)
@@ -786,55 +794,36 @@ def api_pdf_batch_convert_local():
         for index, file_info in enumerate(files):
             try:
                 # 从文件信息中获取路径
-                # 浏览器只能提供相对路径，需要根据配置的基础目录拼接完整路径
                 relative_path = file_info.get('relative_path', '')
                 folder_path = file_info.get('folder_path', '')
                 original_name = file_info.get('original_name', '')
 
-                # 尝试多种方式定位文件
-                # 方式1：使用配置的默认PDF目录 + 相对路径
-                pdf_base_dirs = [
-                    "/Users/wenyangzang/Desktop/1/01.math/六上/题型精练/人教/PDFS",
-                    "/Users/wenyangzang/Desktop",
-                    os.path.expanduser("~/Desktop"),
-                ]
-
                 filepath = None
 
-                # 首先尝试直接使用folder_path（如果它是绝对路径）
-                if folder_path and os.path.isabs(folder_path):
-                    test_path = os.path.join(folder_path, original_name)
+                # 使用用户指定的基础目录 + 相对路径来定位文件
+                # 方式1: base_dir + folder_path + filename
+                if folder_path:
+                    test_path = os.path.join(base_dir, folder_path, original_name)
                     if os.path.exists(test_path):
                         filepath = test_path
 
-                # 尝试各种基础目录组合
+                # 方式2: base_dir + relative_path
+                if filepath is None and relative_path:
+                    test_path = os.path.join(base_dir, relative_path)
+                    if os.path.exists(test_path):
+                        filepath = test_path
+
+                # 方式3: base_dir + filename（如果文件直接在基础目录下）
                 if filepath is None:
-                    for base_dir in pdf_base_dirs:
-                        # 尝试 base_dir + folder_path + filename
-                        if folder_path:
-                            test_path = os.path.join(base_dir, folder_path, original_name)
-                            if os.path.exists(test_path):
-                                filepath = test_path
-                                break
-
-                        # 尝试 base_dir + relative_path
-                        if relative_path:
-                            test_path = os.path.join(base_dir, relative_path)
-                            if os.path.exists(test_path):
-                                filepath = test_path
-                                break
-
-                        # 尝试 base_dir + filename
-                        test_path = os.path.join(base_dir, original_name)
-                        if os.path.exists(test_path):
-                            filepath = test_path
-                            break
+                    test_path = os.path.join(base_dir, original_name)
+                    if os.path.exists(test_path):
+                        filepath = test_path
 
                 if filepath is None or not os.path.exists(filepath):
                     results.append({
                         "original_name": original_name,
                         "success": False,
-                        "error": f"找不到文件，请确保文件在以下位置之一: {pdf_base_dirs}"
+                        "error": f"找不到文件，请检查基础目录是否正确: {base_dir}"
                     })
                     continue
 
