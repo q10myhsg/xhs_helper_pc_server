@@ -774,62 +774,6 @@ def api_upload_pdf_image():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-@app.route("/api/pdf/preview", methods=["POST"])
-def api_pdf_preview():
-    """生成PDF预览（第一页带水印/页眉/页脚效果）"""
-    try:
-        data = request.json
-        filename = data.get('filename')
-        add_watermark = data.get('add_watermark', True)
-        add_header = data.get('add_header', False)
-        add_footer = data.get('add_footer', False)
-        
-        if not filename:
-            return jsonify({"success": False, "error": "文件名不能为空"})
-        
-        filepath = os.path.join(pdf_converter.upload_folder, filename)
-        if not os.path.exists(filepath):
-            return jsonify({"success": False, "error": "文件不存在"})
-        
-        # 加载用户配置的图片路径
-        config = load_pdf_images_config()
-        
-        # 创建临时转换器，使用用户配置的图片
-        from pdf_converter import PDFConverter
-        preview_converter = PDFConverter(
-            watermark_path=config.get('watermark') or None,
-            header_path=config.get('header') or None,
-            footer_path=config.get('footer') or None
-        )
-        
-        # 只转换第一页作为预览
-        result = preview_converter.convert_pdf_to_images(
-            filepath,
-            dpi=150,  # 预览用较低DPI，加快速度
-            fmt='png',
-            add_watermark=add_watermark,
-            generate_simple_pdf=False,
-            start_page=1,
-            end_page=1,
-            add_header=add_header,
-            add_footer=add_footer
-        )
-        
-        if result['images']:
-            # 返回预览图片URL
-            rel_path = os.path.relpath(result['images'][0], 'static')
-            preview_url = f"/static/{rel_path}"
-            return jsonify({
-                "success": True,
-                "data": {
-                    "preview_url": preview_url
-                }
-            })
-        else:
-            return jsonify({"success": False, "error": "预览生成失败"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
-
 # ==================== 文件传输 API ====================
 
 # 文件传输配置存储文件
