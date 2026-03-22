@@ -346,124 +346,127 @@
                     </div>
                 </div>
 
-                <!-- 水印高级设置（默认隐藏） -->
-                <div class="config-section" id="watermark-options-section" style="display: none;">
-                    <h2>💧 水印高级设置</h2>
+                <!-- 高级设置（默认隐藏） -->
+                <div class="config-section" id="advanced-options-section" style="display: none;">
+                    <h2>🔧 高级设置</h2>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <h4>📄 水印应用页面范围</h4>
-                            <div class="form-group">
-                                <label>选择模式</label>
-                                <select id="pdf-watermark-page-mode" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="toggleWatermarkPageInput()">
-                                    <option value="even">偶数页</option>
-                                    <option value="odd">奇数页</option>
-                                    <option value="all">全部页面</option>
-                                    <option value="custom">自定义页码</option>
-                                </select>
+                    <!-- 水印高级设置 -->
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="color: #667eea; margin-bottom: 15px;">💧 水印高级设置</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4>📄 水印应用页面范围</h4>
+                                <div class="form-group">
+                                    <label>选择模式</label>
+                                    <select id="pdf-watermark-page-mode" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="toggleWatermarkPageInput()">
+                                        <option value="even">偶数页</option>
+                                        <option value="odd">奇数页</option>
+                                        <option value="all">全部页面</option>
+                                        <option value="custom">自定义页码</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" id="watermark-custom-pages-group" style="display: none;">
+                                    <label>自定义页码</label>
+                                    <input type="text" id="pdf-watermark-custom-pages" placeholder="例如: 1,3,5 或 1-5 或 1,3,5-7" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <small style="color: #999;">支持格式：离散页码(1,3,5)、连续范围(1-5)、混合(1,3,5-7)</small>
+                                    <div id="watermark-page-validation" style="color: #dc3545; font-size: 12px; margin-top: 5px; display: none;"></div>
+                                </div>
                             </div>
                             
-                            <div class="form-group" id="watermark-custom-pages-group" style="display: none;">
-                                <label>自定义页码</label>
-                                <input type="text" id="pdf-watermark-custom-pages" placeholder="例如: 1,3,5 或 1-5 或 1,3,5-7" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                <small style="color: #999;">支持格式：离散页码(1,3,5)、连续范围(1-5)、混合(1,3,5-7)</small>
-                                <div id="watermark-page-validation" style="color: #dc3545; font-size: 12px; margin-top: 5px; display: none;"></div>
+                            <div>
+                                <h4>📍 水印位置调整</h4>
+                                <div class="form-group">
+                                    <label>水平位置</label>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="range" id="pdf-watermark-pos-x" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
+                                        <span id="watermark-pos-x-value" style="min-width: 40px; text-align: center;">50%</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>垂直位置</label>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="range" id="pdf-watermark-pos-y" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
+                                        <span id="watermark-pos-y-value" style="min-width: 40px; text-align: center;">50%</span>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; text-align: center;">
+                                    <div id="watermark-position-preview" style="width: 100px; height: 60px; background: white; border: 1px solid #ddd; margin: 0 auto; position: relative;">
+                                        <div id="watermark-position-dot" style="width: 8px; height: 8px; background: #ff2442; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>
+                                    </div>
+                                    <small style="color: #666;">水印位置预览</small>
+                                </div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- 页眉页脚位置设置 -->
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="color: #667eea; margin-bottom: 15px;">📐 页眉页脚位置设置</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="form-group">
+                                <label>页眉顶部偏移（像素）</label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="range" id="pdf-header-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('header-offset-value').textContent = this.value + 'px'">
+                                    <span id="header-offset-value" style="min-width: 50px; text-align: center;">0px</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>页脚底部偏移（像素）</label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="range" id="pdf-footer-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('footer-offset-value').textContent = this.value + 'px'">
+                                    <span id="footer-offset-value" style="min-width: 50px; text-align: center;">0px</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图片素材设置 -->
+                    <div>
+                        <h3 style="color: #667eea; margin-bottom: 15px;">🎨 图片素材设置</h3>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">上传自定义水印、页眉、页脚图片，将自动记住您的选择</p>
                         
-                        <div>
-                            <h4>📍 水印位置调整</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                            <!-- 水印图片 -->
                             <div class="form-group">
-                                <label>水平位置</label>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="range" id="pdf-watermark-pos-x" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
-                                    <span id="watermark-pos-x-value" style="min-width: 40px; text-align: center;">50%</span>
+                                <label>水印图片</label>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <input type="file" id="pdf-watermark-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
+                                    <button class="btn btn-secondary" onclick="document.getElementById('pdf-watermark-input').click()">📁 选择</button>
+                                    <span id="pdf-watermark-name" style="color: #666; font-size: 12px;">使用默认</span>
+                                    <button class="btn btn-danger" onclick="clearPdfImage('watermark')" style="font-size: 11px; padding: 2px 6px;">清除</button>
+                                </div>
+                                <div id="pdf-watermark-preview" style="margin-top: 8px; display: none;">
+                                    <img src="" style="max-width: 100%; max-height: 60px; border: 1px solid #ddd; border-radius: 4px;">
                                 </div>
                             </div>
+
+                            <!-- 页眉图片 -->
                             <div class="form-group">
-                                <label>垂直位置</label>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="range" id="pdf-watermark-pos-y" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
-                                    <span id="watermark-pos-y-value" style="min-width: 40px; text-align: center;">50%</span>
+                                <label>页眉图片</label>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <input type="file" id="pdf-header-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
+                                    <button class="btn btn-secondary" onclick="document.getElementById('pdf-header-input').click()">📁 选择</button>
+                                    <span id="pdf-header-name" style="color: #666; font-size: 12px;">未选择</span>
+                                    <button class="btn btn-danger" onclick="clearPdfImage('header')" style="font-size: 11px; padding: 2px 6px;">清除</button>
+                                </div>
+                                <div id="pdf-header-preview" style="margin-top: 8px; display: none;">
+                                    <img src="" style="max-width: 100%; max-height: 40px; border: 1px solid #ddd; border-radius: 4px;">
                                 </div>
                             </div>
-                            <div style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; text-align: center;">
-                                <div id="watermark-position-preview" style="width: 100px; height: 60px; background: white; border: 1px solid #ddd; margin: 0 auto; position: relative;">
-                                    <div id="watermark-position-dot" style="width: 8px; height: 8px; background: #ff2442; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>
+
+                            <!-- 页脚图片 -->
+                            <div class="form-group">
+                                <label>页脚图片</label>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <input type="file" id="pdf-footer-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
+                                    <button class="btn btn-secondary" onclick="document.getElementById('pdf-footer-input').click()">📁 选择</button>
+                                    <span id="pdf-footer-name" style="color: #666; font-size: 12px;">未选择</span>
+                                    <button class="btn btn-danger" onclick="clearPdfImage('footer')" style="font-size: 11px; padding: 2px 6px;">清除</button>
                                 </div>
-                                <small style="color: #666;">水印位置预览</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 页眉页脚位置设置 -->
-                <div class="config-section">
-                    <h2>📐 页眉页脚位置设置</h2>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div class="form-group">
-                            <label>页眉顶部偏移（像素）</label>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <input type="range" id="pdf-header-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('header-offset-value').textContent = this.value + 'px'">
-                                <span id="header-offset-value" style="min-width: 50px; text-align: center;">0px</span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>页脚底部偏移（像素）</label>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <input type="range" id="pdf-footer-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('footer-offset-value').textContent = this.value + 'px'">
-                                <span id="footer-offset-value" style="min-width: 50px; text-align: center;">0px</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 图片素材设置 -->
-                <div class="config-section">
-                    <h2>🎨 图片素材设置（可选）</h2>
-                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">上传自定义水印、页眉、页脚图片，将自动记住您的选择</p>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                        <!-- 水印图片 -->
-                        <div class="form-group">
-                            <label>水印图片</label>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <input type="file" id="pdf-watermark-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
-                                <button class="btn btn-secondary" onclick="document.getElementById('pdf-watermark-input').click()">📁 选择</button>
-                                <span id="pdf-watermark-name" style="color: #666; font-size: 12px;">使用默认</span>
-                                <button class="btn btn-danger" onclick="clearPdfImage('watermark')" style="font-size: 11px; padding: 2px 6px;">清除</button>
-                            </div>
-                            <div id="pdf-watermark-preview" style="margin-top: 8px; display: none;">
-                                <img src="" style="max-width: 100%; max-height: 60px; border: 1px solid #ddd; border-radius: 4px;">
-                            </div>
-                        </div>
-
-                        <!-- 页眉图片 -->
-                        <div class="form-group">
-                            <label>页眉图片</label>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <input type="file" id="pdf-header-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
-                                <button class="btn btn-secondary" onclick="document.getElementById('pdf-header-input').click()">📁 选择</button>
-                                <span id="pdf-header-name" style="color: #666; font-size: 12px;">未选择</span>
-                                <button class="btn btn-danger" onclick="clearPdfImage('header')" style="font-size: 11px; padding: 2px 6px;">清除</button>
-                            </div>
-                            <div id="pdf-header-preview" style="margin-top: 8px; display: none;">
-                                <img src="" style="max-width: 100%; max-height: 40px; border: 1px solid #ddd; border-radius: 4px;">
-                            </div>
-                        </div>
-
-                        <!-- 页脚图片 -->
-                        <div class="form-group">
-                            <label>页脚图片</label>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <input type="file" id="pdf-footer-input" accept="image/*" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
-                                <button class="btn btn-secondary" onclick="document.getElementById('pdf-footer-input').click()">📁 选择</button>
-                                <span id="pdf-footer-name" style="color: #666; font-size: 12px;">未选择</span>
-                                <button class="btn btn-danger" onclick="clearPdfImage('footer')" style="font-size: 11px; padding: 2px 6px;">清除</button>
-                            </div>
-                            <div id="pdf-footer-preview" style="margin-top: 8px; display: none;">
-                                <img src="" style="max-width: 100%; max-height: 40px; border: 1px solid #ddd; border-radius: 4px;">
+                                <div id="pdf-footer-preview" style="margin-top: 8px; display: none;">
+                                    <img src="" style="max-width: 100%; max-height: 40px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2400,17 +2403,12 @@
         // 切换水印选项显示
         function toggleWatermarkOptions() {
             const isEnabled = document.getElementById('pdf-add-watermark').checked;
-            const section = document.getElementById('watermark-options-section');
-            // 如果水印未启用，隐藏高级设置区域
-            if (!isEnabled) {
-                section.style.display = 'none';
-            }
-            // 注意：显示高级设置需要通过点击"高级设置"按钮
+            // 高级设置区域由"高级设置"按钮控制，这里不做处理
         }
 
-        // 切换水印高级设置显示/隐藏
+        // 切换高级设置显示/隐藏
         function toggleWatermarkAdvancedOptions() {
-            const section = document.getElementById('watermark-options-section');
+            const section = document.getElementById('advanced-options-section');
             const isVisible = section.style.display !== 'none';
             section.style.display = isVisible ? 'none' : 'block';
         }
