@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>🎯 养号配置</h1>
+
+<div class="nurturing-container" style="display: grid; grid-template-columns: 300px 1fr; gap: 20px;">
+    
+    <div class="device-panel" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="margin-top: 0; margin-bottom: 15px;">📱 设备选择</h2>
+        <button class="btn btn-primary" onclick="refreshNurturingDevices()" style="width: 100%; margin-bottom: 15px;">🔄 刷新设备</button>
+        <div id="nurturing-device-list"></div>
+        
+        <div class="device-actions" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+            <h3 style="margin-bottom: 10px;">设备操作</h3>
+            <button class="btn btn-secondary" onclick="openDeviceAlias()" style="width: 100%; margin-bottom: 8px;">✏️ 设置别名</button>
+            <button class="btn btn-danger" onclick="deleteSelectedDevice()" style="width: 100%;">🗑️ 删除设备</button>
+        </div>
+    </div>
+    
+    <div class="config-panel" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <div id="config-content">
+            <div class="alert alert-info" style="margin-bottom: 20px;">
+                <strong>提示：</strong> 请先从左侧选择设备
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="alias-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3>设置设备别名</h3>
+            <span class="close" onclick="closeAliasModal()" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="nurturing-device-alias">设备别名</label>
+                <input type="text" id="nurturing-device-alias" placeholder="请输入设备别名，如：测试手机1" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+        </div>
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeAliasModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveDeviceAlias()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedDeviceId = null;
+
+function refreshNurturingDevices() {
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            const deviceList = document.getElementById('nurturing-device-list');
+            deviceList.innerHTML = '';
+            
+            if (data.data.length === 0) {
+                deviceList.innerHTML = '<div class="alert alert-info" style="padding: 10px; background: #f0f0f0; border-radius: 4px; text-align: center;">暂无已连接的设备</div>';
+                clearConfig();
+            } else {
+                data.data.forEach((device, index) => {
+                    const deviceOption = document.createElement('div');
+                    deviceOption.className = 'device-option';
+                    deviceOption.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; cursor: pointer; margin-bottom: 8px; border: 2px solid transparent;';
+                    deviceOption.dataset.deviceId = device.id;
+                    
+                    if (selectedDeviceId === device.id) {
+                        deviceOption.style.borderColor = '#667eea';
+                        deviceOption.style.background = 'rgba(102, 126, 234, 0.1)';
+                    } else {
+                        deviceOption.style.background = '#f9f9f9';
+                    }
+                    
+                    deviceOption.innerHTML = `
+                        <span style="font-size: 24px;">📱</span>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: bold; font-size: 14px;">${device.name}</div>
+                            <div style="font-size: 11px; color: #666;">
+                                ${device.status === 'offline' ? '🔴 离线' : '🟢 在线'}
+                            </div>
+                        </div>
+                    `;
+                    
+                    deviceOption.onclick = () => selectDevice(device.id);
+                    deviceList.appendChild(deviceOption);
+                });
+                
+                if (!selectedDeviceId && data.data.length > 0) {
+                    selectDevice(data.data[0].id);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('获取设备列表失败:', error);
+        });
+}
+
+function selectDevice(deviceId) {
+    selectedDeviceId = deviceId;
+    refreshNurturingDevices();
+    loadConfig(deviceId);
+}
+
+function clearConfig() {
+    document.getElementById('config-content').innerHTML = `
+        <div class="alert alert-info" style="margin-bottom: 20px;">
+            <strong>提示：</strong> 请先从左侧选择设备
+        </div>
+    `;
+}
+
+function loadConfig(deviceId) {
+    fetch(`/api/config/${deviceId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+            const config = data.data;
+            renderConfig(config);
+        }
+    })
+    .catch(error => {
+        console.error('加载配置失败:', error);
+    });
+}
+
+function renderConfig(config) {
+    const configContent = document.getElementById('config-content');
+    configContent.innerHTML = `
+        <div class="config-section">
+            <h2>⚙️ 核心参数配置</h2>
+            <div class="form-group">
+                <label>养号时间（分钟）</label>
+                <input type="number" id="nurture-duration-minutes" min="1" max="120" value="${config.duration_minutes || 20}">
+                <small style="color: #666;">范围：1-120分钟</small>
+            </div>
+            <div class="form-group">
+                <label>访问帖子比例（%）</label>
+                <input type="range" id="nurture-post-visit-ratio" min="0" max="100" value="${config.post_visit_ratio || 50}" oninput="document.getElementById('nurture-ratio-display').textContent = this.value + '%'">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="nurture-ratio-display" style="color: #667eea; font-weight: bold;">${config.post_visit_ratio || 50}%</span>
+                    <small style="color: #666;">搜索结果中会访问此比例的帖子</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>每个关键词最多访问帖子数</label>
+                <input type="number" id="nurture-posts-per-keyword" min="1" max="50" value="${config.posts_per_keyword || 10}">
+                <small style="color: #666;">范围：1-50条</small>
+            </div>
+            <div class="form-group">
+                <label>发现页浏览时间（秒）</label>
+                <input type="number" id="nurture-discovery-browse-time" min="5" max="300" value="${config.discovery_browse_time || 10}">
+                <small style="color: #666;">范围：5-300秒</small>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h2>👁️ 帖子访问控制</h2>
+            <div class="form-group">
+                <label>访问时长范围（秒）</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="nurture-duration-min" min="5" max="60" value="${config.duration_min || 25}" style="flex: 1;">
+                    <span>-</span>
+                    <input type="number" id="nurture-duration-max" min="5" max="120" value="${config.duration_max || 45}" style="flex: 1;">
+                </div>
+                <small style="color: #666;">模拟真实用户访问时长（随机）</small>
+            </div>
+            <div class="form-group">
+                <label>图片滑动间隔（秒）</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="nurture-slide-interval-min" min="1" max="10" value="${config.slide_interval_min || 3}" style="flex: 1;">
+                    <span>-</span>
+                    <input type="number" id="nurture-slide-interval-max" min="1" max="10" value="${config.slide_interval_max || 5}" style="flex: 1;">
+                </div>
+            </div>
+        </div>
+        
+        <div class="config-section">
+            <h2>💬 互动行为配置</h2>
+            <h3>行为触发概率</h3>
+            <div class="form-group">
+                <label>点赞概率（%）</label>
+                <input type="range" id="nurture-like-prob" min="0" max="50" value="${config.like_prob || 15}" oninput="document.getElementById('nurture-like-display').textContent = this.value + '%'">
+                <div style="display: flex; justify-content: space-between;">
+                    <span id="nurture-like-display" style="color: #667eea; font-weight: bold;">${config.like_prob || 15}%</span>
+                    <small style="color: #666;">默认15%</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>收藏概率（%）</label>
+                <input type="range" id="nurture-collect-prob" min="0" max="50" value="${config.collect_prob || 10}" oninput="document.getElementById('nurture-collect-display').textContent = this.value + '%'">
+                <div style="display: flex; justify-content: space-between;">
+                    <span id="nurture-collect-display" style="color: #667eea; font-weight: bold;">${config.collect_prob || 10}%</span>
+                    <small style="color: #666;">默认10%</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>评论概率（%）</label>
+                <input type="range" id="nurture-comment-prob" min="0" max="50" value="${config.comment_prob || 5}" oninput="document.getElementById('nurture-comment-display').textContent = this.value + '%'">
+                <div style="display: flex; justify-content: space-between;">
+                    <span id="nurture-comment-display" style="color: #667eea; font-weight: bold;">${config.comment_prob || 5}%</span>
+                    <small style="color: #666;">默认5%</small>
+                </div>
+            </div>
+            <h3>常用评论库</h3>
+            <div id="nurture-comment-templates-list"></div>
+            <h3>添加常用评论</h3>
+            <div class="form-group">
+                <input type="text" id="nurture-new-template" placeholder="输入新的常用评论，例：不错的分享！">
+                <button class="btn btn-primary" onclick="addNurtureCommentTemplate()" style="margin-top: 10px;">➕ 添加</button>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <button class="btn btn-success" onclick="saveNurturingConfig()">💾 保存配置</button>
+        </div>
+    `;
+    
+    loadNurtureCommentTemplates(config.comment_templates || []);
+}
+
+function loadNurtureCommentTemplates(templates) {
+    const list = document.getElementById('nurture-comment-templates-list');
+    list.innerHTML = '';
+    
+    if (templates.length === 0) {
+        list.innerHTML = '<div class="alert alert-info">暂无评论模板</div>';
+        return;
+    }
+    
+    templates.forEach((template, index) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;';
+        item.innerHTML = `
+            <span>${template}</span>
+            <button class="btn btn-danger" onclick="removeNurtureCommentTemplate(${index})" style="font-size: 11px; padding: 2px 8px;">删除</button>
+        `;
+        list.appendChild(item);
+    });
+}
+
+function addNurtureCommentTemplate() {
+    const input = document.getElementById('nurture-new-template');
+    const template = input.value.trim();
+    if (!template) {
+        alert('请输入评论内容');
+        return;
+    }
+    
+    const list = document.getElementById('nurture-comment-templates-list');
+    const currentTemplates = Array.from(list.querySelectorAll('span')).map(el => el.textContent.trim());
+    currentTemplates.push(template);
+    loadNurtureCommentTemplates([...new Set(currentTemplates)]);
+    input.value = '';
+}
+
+function removeNurtureCommentTemplate(index) {
+    const list = document.getElementById('nurture-comment-templates-list');
+    const items = list.querySelectorAll('div');
+    if (items[index]) {
+        items[index].remove();
+    }
+}
+
+function saveNurturingConfig() {
+    if (!selectedDeviceId) {
+        alert('请先选择设备');
+        return;
+    }
+    
+    const templates = Array.from(document.querySelectorAll('#nurture-comment-templates-list span')).map(el => el.textContent.trim());
+    
+    const config = {
+        duration_minutes: parseInt(document.getElementById('nurture-duration-minutes').value),
+        post_visit_ratio: parseInt(document.getElementById('nurture-post-visit-ratio').value),
+        posts_per_keyword: parseInt(document.getElementById('nurture-posts-per-keyword').value),
+        discovery_browse_time: parseInt(document.getElementById('nurture-discovery-browse-time').value),
+        duration_min: parseInt(document.getElementById('nurture-duration-min').value),
+        duration_max: parseInt(document.getElementById('nurture-duration-max').value),
+        slide_interval_min: parseInt(document.getElementById('nurture-slide-interval-min').value),
+        slide_interval_max: parseInt(document.getElementById('nurture-slide-interval-max').value),
+        like_prob: parseInt(document.getElementById('nurture-like-prob').value),
+        collect_prob: parseInt(document.getElementById('nurture-collect-prob').value),
+        comment_prob: parseInt(document.getElementById('nurture-comment-prob').value),
+        comment_templates: templates
+    };
+    
+    fetch(`/api/config/${selectedDeviceId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('配置保存成功');
+        } else {
+            alert('保存失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('网络错误:', error);
+        alert('网络错误: ' + error.message);
+    });
+}
+
+function openDeviceAlias() {
+    if (!selectedDeviceId) {
+        alert('请先选择设备');
+        return;
+    }
+    
+    fetch(`/api/device/alias?device_id=${selectedDeviceId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data.alias) {
+                document.getElementById('nurturing-device-alias').value = data.data.alias;
+            } else {
+                document.getElementById('nurturing-device-alias').value = '';
+            }
+        })
+        .catch(error => {
+            console.error('获取设备别名失败:', error);
+            document.getElementById('nurturing-device-alias').value = '';
+        });
+    
+    document.getElementById('alias-modal').style.display = 'block';
+}
+
+function closeAliasModal() {
+    document.getElementById('alias-modal').style.display = 'none';
+    document.getElementById('nurturing-device-alias').value = '';
+}
+
+function saveDeviceAlias() {
+    const alias = document.getElementById('nurturing-device-alias').value.trim();
+    
+    if (!alias) {
+        alert('请输入设备别名');
+        return;
+    }
+    
+    fetch('/api/device/alias', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ device_id: selectedDeviceId, alias: alias })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeAliasModal();
+            refreshNurturingDevices();
+        } else {
+            alert('设置设备别名失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('网络错误: ' + error.message);
+    });
+}
+
+function deleteSelectedDevice() {
+    if (!selectedDeviceId) {
+        alert('请先选择设备');
+        return;
+    }
+    
+    if (confirm('确定要删除此设备吗？')) {
+        fetch(`/api/device/${selectedDeviceId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('设备删除成功');
+                selectedDeviceId = null;
+                refreshNurturingDevices();
+            } else {
+                alert('删除失败: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('网络错误: ' + error.message);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    refreshNurturingDevices();
+});
+</script>
+{% endblock %}

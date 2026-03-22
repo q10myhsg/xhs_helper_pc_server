@@ -41,6 +41,11 @@ def keyword_page():
     """关键词管理页面"""
     return render_template("keyword.html", active_page="keyword")
 
+@app.route("/nurturing")
+def nurturing_page():
+    """养号配置页面"""
+    return render_template("nurturing.html", active_page="nurturing")
+
 @app.route("/config")
 def config_page():
     """参数配置页面"""
