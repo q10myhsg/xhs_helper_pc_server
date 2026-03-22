@@ -254,12 +254,12 @@
                     <h2>📤 步骤1: 选择PDF文件</h2>
                     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">请在同一文件夹内选择多个PDF文件进行批量处理</p>
 
-                    <!-- PDF基础目录配置 -->
+                    <!-- 工作区配置 -->
                     <div class="form-group" style="background: #f0f8ff; padding: 15px; border-radius: 8px; border: 1px solid #b0d4f1; margin-bottom: 15px;">
-                        <label style="font-weight: bold; color: #333;">📁 PDF基础目录（必填）</label>
-                        <p style="color: #666; font-size: 12px; margin: 5px 0;">请输入PDF文件所在的绝对路径，例如：/Users/xxx/Desktop/PDFs</p>
-                        <input type="text" id="pdf-base-dir" placeholder="/Users/xxx/Desktop/PDFs" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
-                        <small style="color: #999; display: block; margin-top: 5px;">💡 提示：系统会记住您上次使用的目录</small>
+                        <label style="font-weight: bold; color: #333;">📁 工作区（可选）</label>
+                        <p style="color: #666; font-size: 12px; margin: 5px 0;">指定PDF处理的工作目录，不填写则使用默认下载目录</p>
+                        <input type="text" id="pdf-base-dir" placeholder="默认: ~/Downloads/xhs_helper_workspace" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
+                        <small style="color: #999; display: block; margin-top: 5px;">💡 提示：不填写时自动使用 ~/Downloads/xhs_helper_workspace</small>
                     </div>
 
                     <div class="form-group">
@@ -321,6 +321,7 @@
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
                                     <input type="checkbox" id="pdf-add-watermark" checked style="width: auto;" onchange="toggleWatermarkOptions()">
                                     <span>添加水印</span>
+                                    <button type="button" class="btn btn-sm" onclick="toggleWatermarkAdvancedOptions()" style="margin-left: 10px; padding: 2px 8px; font-size: 11px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">高级设置</button>
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
                                     <input type="checkbox" id="pdf-add-header" style="width: auto;">
@@ -345,8 +346,8 @@
                     </div>
                 </div>
 
-                <!-- 水印高级设置 -->
-                <div class="config-section" id="watermark-options-section">
+                <!-- 水印高级设置（默认隐藏） -->
+                <div class="config-section" id="watermark-options-section" style="display: none;">
                     <h2>💧 水印高级设置</h2>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -2400,8 +2401,18 @@
         function toggleWatermarkOptions() {
             const isEnabled = document.getElementById('pdf-add-watermark').checked;
             const section = document.getElementById('watermark-options-section');
-            section.style.opacity = isEnabled ? '1' : '0.5';
-            section.style.pointerEvents = isEnabled ? 'auto' : 'none';
+            // 如果水印未启用，隐藏高级设置区域
+            if (!isEnabled) {
+                section.style.display = 'none';
+            }
+            // 注意：显示高级设置需要通过点击"高级设置"按钮
+        }
+
+        // 切换水印高级设置显示/隐藏
+        function toggleWatermarkAdvancedOptions() {
+            const section = document.getElementById('watermark-options-section');
+            const isVisible = section.style.display !== 'none';
+            section.style.display = isVisible ? 'none' : 'block';
         }
 
         // 切换水印自定义页码输入
@@ -2476,7 +2487,13 @@
             };
         }
 
-        // 预览选中的PDF文件
+        // 获取默认工作区路径
+        function getDefaultWorkspace() {
+            // 尝试获取用户主目录下的Downloads/xhs_helper_workspace
+            const homeDir = navigator.platform.indexOf('Win') !== -1 ? '%USERPROFILE%' : '~';
+            return `${homeDir}/Downloads/xhs_helper_workspace`;
+        }
+
         // 批量转换PDF文件（先上传到指定目录，再转换）
         function batchConvertPdfs() {
             if (pdfBatchFiles.length === 0) {
@@ -2484,12 +2501,13 @@
                 return;
             }
 
-            // 获取并验证基础目录
-            const baseDir = document.getElementById('pdf-base-dir').value.trim();
+            // 获取工作区路径，未填写则使用默认值
+            let baseDir = document.getElementById('pdf-base-dir').value.trim();
             if (!baseDir) {
-                showPdfMessage('请先填写PDF基础目录', 'error');
-                document.getElementById('pdf-base-dir').focus();
-                return;
+                // 使用默认工作区：~/Downloads/xhs_helper_workspace
+                baseDir = `${window.location.protocol}//${window.location.host}/workspace`;
+                // 实际上后端会处理默认路径
+                baseDir = ''; // 空字符串表示使用后端默认
             }
 
             // 显示进度
@@ -2499,8 +2517,10 @@
             document.getElementById('pdf-convert-btn').disabled = true;
             updatePdfProgress(5, '准备上传文件...');
 
-            // 保存基础目录到localStorage
-            localStorage.setItem('pdf_base_dir', baseDir);
+            // 保存工作区到localStorage（如果用户填写了）
+            if (baseDir) {
+                localStorage.setItem('pdf_base_dir', baseDir);
+            }
 
             // 第一步：上传文件到指定目录
             uploadFilesToDirectory(baseDir);

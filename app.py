@@ -767,8 +767,9 @@ def api_pdf_batch_upload_to_dir():
         base_dir = request.form.get('base_dir', '')
         relative_paths = request.form.getlist('relative_paths')
 
+        # 如果未指定工作区，使用默认工作区
         if not base_dir:
-            return jsonify({"success": False, "error": "请填写PDF基础目录"})
+            base_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
 
         # 创建基础目录（如果不存在）
         os.makedirs(base_dir, exist_ok=True)
@@ -833,12 +834,13 @@ def api_pdf_batch_convert_local():
         if not files:
             return jsonify({"success": False, "error": "没有选择文件"})
 
+        # 如果未指定工作区，使用默认工作区
         if not base_dir:
-            return jsonify({"success": False, "error": "请填写PDF基础目录"})
+            base_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
 
         # 验证基础目录是否存在
         if not os.path.exists(base_dir):
-            return jsonify({"success": False, "error": f"基础目录不存在: {base_dir}"})
+            return jsonify({"success": False, "error": f"工作区不存在: {base_dir}"})
 
         results = []
         total_files = len(files)
