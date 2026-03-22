@@ -251,7 +251,7 @@
 
                 <!-- 步骤1: 选择PDF文件 -->
                 <div class="config-section">
-                    <h2>📤 步骤1: 选择PDF文件</h2>
+                    <h2 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; font-size: 20px; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">📤 步骤1: 选择PDF文件</h2>
                     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">请在同一文件夹内选择多个PDF文件进行批量处理</p>
 
                     <!-- 工作区配置 -->
@@ -281,7 +281,7 @@
 
                 <!-- 步骤2: 配置转换选项 -->
                 <div class="config-section">
-                    <h2>⚙️ 步骤2: 配置转换选项</h2>
+                    <h2 style="background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 15px 20px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; font-size: 20px; box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);">⚙️ 步骤2: 配置转换选项</h2>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div>
@@ -321,7 +321,7 @@
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
                                     <input type="checkbox" id="pdf-add-watermark" checked style="width: auto;" onchange="toggleWatermarkOptions()">
                                     <span>添加水印</span>
-                                    <button type="button" class="btn btn-sm" onclick="toggleWatermarkAdvancedOptions()" style="margin-left: 10px; padding: 2px 8px; font-size: 11px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">高级设置</button>
+                                    <!-- <button type="button" class="btn btn-sm" style="margin-left: 10px; padding: 2px 8px; font-size: 11px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">高级设置</button> -->
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
                                     <input type="checkbox" id="pdf-add-header" style="width: auto;">
@@ -346,9 +346,12 @@
                     </div>
                 </div>
 
+
+                 <h2   onclick="toggleWatermarkAdvancedOptions()">🔧 高级设置</h2>
+
                 <!-- 高级设置（默认隐藏） -->
                 <div class="config-section" id="advanced-options-section" style="display: none;">
-                    <h2>🔧 高级设置</h2>
+                   
                     
                     <!-- 水印高级设置 -->
                     <div style="margin-bottom: 30px;">
@@ -474,7 +477,7 @@
 
                 <!-- 步骤3: 开始转换 -->
                 <div class="config-section">
-                    <h2>🚀 步骤3: 开始转换</h2>
+                    <h2 style="background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); color: white; padding: 15px 20px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; font-size: 20px; box-shadow: 0 2px 8px rgba(237, 137, 54, 0.3);">🚀 步骤3: 开始转换</h2>
                     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">文件将上传到指定目录后进行转换</p>
 
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
