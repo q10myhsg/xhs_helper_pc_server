@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 class PDFConverter:
-    def __init__(self, watermark_path=None, header_path=None, footer_path=None):
+    def __init__(self, watermark_path=None, header_path=None, footer_path=None, upload_folder='static/uploads'):
         """
         初始化PDF转换器
         
@@ -20,9 +20,14 @@ class PDFConverter:
             watermark_path: 水印图片路径，默认使用 resources/imgs/default_watermark.png
             header_path: 页眉图片路径
             footer_path: 页脚图片路径
+            upload_folder: 上传文件保存目录
         """
         # 获取当前文件所在目录
         self.base_dir = Path(__file__).parent
+        
+        # 上传文件夹
+        self.upload_folder = str(self.base_dir / upload_folder)
+        os.makedirs(self.upload_folder, exist_ok=True)
         
         # 默认水印路径（相对路径）
         default_watermark = self.base_dir / "resources" / "imgs" / "default_watermark.png"
