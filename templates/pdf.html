@@ -1,342 +1,695 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>📄 PDF转图片工具</h1>
-<p style="color: #666; margin-bottom: 30px;">支持批量处理多个PDF文件，增强水印功能，支持页面范围选择和位置调整</p>
+<style>
+.pdf-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
-<!-- 步骤1: 选择PDF文件 -->
-<div>
-    <h2>📤 步骤1: 选择PDF文件</h2>
-    <p style="color: #666; margin-bottom: 15px;">请在同一文件夹内选择多个PDF文件进行批量处理</p>
-    
-    <!-- 工作区配置 -->
-    <div class="alert alert-info" style="margin-bottom: 20px;">
-        <strong>📁 工作区 <span style="color: #f5576c;">*</span></strong>
-        <p style="margin-top: 8px; font-size: 14px;">指定PDF文件所在的目录（必填）</p>
-        <div class="form-group" style="margin-bottom: 0; margin-top: 10px;">
-            <input type="text" id="pdf-base-dir" placeholder="例如: /Users/username/Desktop/PDFs">
+.pdf-step-card {
+    background: white;
+    border-radius: 16px;
+    padding: 0;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pdf-step-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+.pdf-step-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px 28px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.pdf-step-header.step-2 {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.pdf-step-header.step-3 {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.pdf-step-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.pdf-step-title {
+    flex: 1;
+}
+
+.pdf-step-title h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.pdf-step-title p {
+    margin: 4px 0 0 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.pdf-step-body {
+    padding: 28px;
+}
+
+.pdf-form-group {
+    margin-bottom: 20px;
+}
+
+.pdf-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.pdf-form-group input[type="text"],
+.pdf-form-group input[type="number"],
+.pdf-form-group select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e8e8e8;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.pdf-form-group input:focus,
+.pdf-form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102,126,234,0.1);
+}
+
+.pdf-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pdf-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.pdf-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+}
+
+.pdf-btn-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+}
+
+.pdf-btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(56,239,125,0.4);
+}
+
+.pdf-btn-secondary {
+    background: #f5f5f5;
+    color: #333;
+}
+
+.pdf-btn-secondary:hover {
+    background: #e8e8e8;
+}
+
+.pdf-btn-danger {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.pdf-btn-danger:hover {
+    background: #fecaca;
+}
+
+.pdf-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.pdf-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #f9f9f9;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pdf-checkbox-label:hover {
+    background: #f0f0f0;
+}
+
+.pdf-checkbox-label input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.pdf-info-box {
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+    border-left: 4px solid #667eea;
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.pdf-file-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 8px;
+}
+
+.pdf-file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.pdf-file-item:last-child {
+    margin-bottom: 0;
+}
+
+.pdf-upload-area {
+    background: #fafafa;
+    border: 2px dashed #ddd;
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.2s;
+}
+
+.pdf-upload-area:hover {
+    border-color: #667eea;
+    background: #f5f5f5;
+}
+
+.pdf-upload-area.drag-over {
+    border-color: #667eea;
+    background: #667eea10;
+}
+
+.pdf-progress-bar {
+    height: 8px;
+    background: #e8e8e8;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pdf-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.pdf-advanced-toggle {
+    background: #f5f5f5;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    width: 100%;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.pdf-advanced-toggle:hover {
+    background: #e8e8e8;
+}
+
+.pdf-preview-box {
+    width: 100px;
+    height: 60px;
+    background: white;
+    border: 2px solid #e8e8e8;
+    border-radius: 8px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+}
+
+.pdf-preview-dot {
+    width: 10px;
+    height: 10px;
+    background: #667eea;
+    border-radius: 50%;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.1s;
+}
+
+.pdf-preview-scale {
+    background: rgba(102,126,234,0.3);
+    border: 2px solid #667eea;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.pdf-image-preview {
+    max-width: 120px;
+    max-height: 80px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.pdf-results-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.pdf-results-card.success {
+    border-left: 4px solid #38ef7d;
+}
+
+.pdf-results-card.error {
+    border-left: 4px solid #f5576c;
+}
+
+@media (max-width: 768px) {
+    .pdf-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="pdf-container">
+    <h1 style="margin-bottom: 8px; font-size: 28px;">📄 PDF转图片工具</h1>
+    <p style="color: #888; margin-bottom: 32px; font-size: 15px;">支持批量处理多个PDF文件，增强水印功能，支持页面范围选择和位置调整</p>
+
+    <!-- 步骤1: 选择PDF文件 -->
+    <div class="pdf-step-card">
+        <div class="pdf-step-header">
+            <div class="pdf-step-icon">📤</div>
+            <div class="pdf-step-title">
+                <h2>步骤1: 选择PDF文件</h2>
+                <p>请在同一文件夹内选择多个PDF文件进行批量处理</p>
+            </div>
         </div>
-        <small style="color: #888; display: block; margin-top: 8px;">💡 提示：填写包含PDF文件的文件夹路径，如 /Users/wenyangzang/Desktop/1</small>
-    </div>
-
-    <div class="form-group">
-        <input type="file" id="pdf-batch-input" accept=".pdf" multiple style="display: none;" onchange="handlePdfBatchSelect(event)">
-        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-primary" onclick="document.getElementById('pdf-batch-input').click()">
-                <span>📁</span> 选择PDF文件（可多选）
-            </button>
-            <span id="pdf-batch-count" style="color: #888;">未选择文件</span>
-        </div>
-        <small style="color: #888; display: block; margin-top: 10px;">⚠️ 提示：只能在同一个文件夹下面多选用PDF</small>
-    </div>
-
-    <!-- PDF文件列表 -->
-    <div id="pdf-file-list" style="margin-top: 20px; display: none;">
-        <h3>📋 已选择的文件</h3>
-        <div id="pdf-files-container" style="max-height: 200px; overflow-y: auto; background: #f9fafb; border-radius: 5px; padding: 10px;"></div>
-    </div>
-</div>
-
-<!-- 步骤2: 配置转换选项 -->
-<div style="margin-top: 40px;">
-    <h2>⚙️ 步骤2: 配置转换选项</h2>
-    <p style="color: #666; margin-bottom: 20px;">设置输出格式、DPI、水印等参数</p>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-        <div>
-            <h3>📄 输出设置</h3>
-            <div class="form-group">
-                <label>输出格式</label>
-                <select id="pdf-output-format">
-                    <option value="png">PNG（推荐）</option>
-                    <option value="jpg">JPG</option>
-                </select>
+        <div class="pdf-step-body">
+            <!-- 工作区配置 -->
+            <div class="pdf-form-group" style="background: #f0f9ff; padding: 18px; border-radius: 12px; border: 1px solid #b3e0ff;">
+                <label style="font-weight: 600; color: #0066cc; margin-bottom: 6px;">📁 工作区 <span style="color: #f5576c;">*</span></label>
+                <p style="color: #666; font-size: 13px; margin: 0 0 10px 0;">指定PDF文件所在的目录（必填）</p>
+                <input type="text" id="pdf-base-dir" placeholder="例如: /Users/username/Desktop/PDFs">
+                <small style="color: #888; display: block; margin-top: 8px;">💡 提示：填写包含PDF文件的文件夹路径，如 /Users/wenyangzang/Desktop/1</small>
             </div>
 
-            <div class="form-group">
-                <label>DPI清晰度</label>
-                <select id="pdf-dpi">
-                    <option value="150">150 DPI（低）</option>
-                    <option value="200">200 DPI（中）</option>
-                    <option value="300" selected>300 DPI（高）</option>
-                    <option value="400">400 DPI（超高）</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>页码范围</label>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <input type="number" id="pdf-start-page" min="1" value="1" placeholder="起始页">
-                    <span style="color: #888;">-</span>
-                    <input type="number" id="pdf-end-page" min="1" placeholder="结束页">
+            <div class="pdf-form-group">
+                <input type="file" id="pdf-batch-input" accept=".pdf" multiple style="display: none;" onchange="handlePdfBatchSelect(event)">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <button class="pdf-btn pdf-btn-primary" onclick="document.getElementById('pdf-batch-input').click()">
+                        <span>📁</span> 选择PDF文件（可多选）
+                    </button>
+                    <span id="pdf-batch-count" style="color: #888;">未选择文件</span>
                 </div>
-                <small style="color: #888; display: block; margin-top: 6px;">留空表示转换全部页面</small>
-            </div>
-        </div>
-
-        <div>
-            <h3>🎨 图片素材选项</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-                <label class="list-item" style="cursor: pointer; margin-bottom: 8px;">
-                    <input type="checkbox" id="pdf-add-watermark" checked onchange="toggleWatermarkOptions()">
-                    <span>添加水印</span>
-                </label>
-                <label class="list-item" style="cursor: pointer; margin-bottom: 8px;">
-                    <input type="checkbox" id="pdf-add-header">
-                    <span>添加页眉</span>
-                </label>
-                <label class="list-item" style="cursor: pointer; margin-bottom: 8px;">
-                    <input type="checkbox" id="pdf-add-footer">
-                    <span>添加页脚</span>
-                </label>
-                <label class="list-item" style="cursor: pointer;">
-                    <input type="checkbox" id="pdf-generate-simple" checked>
-                    <span>生成精简版PDF（前3页）</span>
-                </label>
+                <small style="color: #888; display: block; margin-top: 10px;">⚠️ 提示：只能在同一个文件夹下面多选用PDF</small>
             </div>
 
-            <div class="alert alert-info">
-                <small>💡 <strong>提示：</strong>水印、页眉、页脚图片可在下方素材设置中配置</small>
+            <!-- PDF文件列表 -->
+            <div id="pdf-file-list" style="margin-top: 20px; display: none;">
+                <h4 style="margin-bottom: 12px; color: #333;">📋 已选择的文件</h4>
+                <div class="pdf-file-list" id="pdf-files-container"></div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 高级设置 -->
-<div style="margin-top: 40px;">
-    <button class="btn btn-secondary" onclick="toggleWatermarkAdvancedOptions()" style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-        <span style="display: flex; align-items: center; gap: 8px;">
-            <span>🔧</span> 高级设置
-        </span>
-        <span id="advanced-toggle-icon" style="transition: transform 0.2s;">▼</span>
-    </button>
-</div>
+    <!-- 步骤2: 配置转换选项 -->
+    <div class="pdf-step-card">
+        <div class="pdf-step-header step-2">
+            <div class="pdf-step-icon">⚙️</div>
+            <div class="pdf-step-title">
+                <h2>步骤2: 配置转换选项</h2>
+                <p>设置输出格式、DPI、水印等参数</p>
+            </div>
+        </div>
+        <div class="pdf-step-body">
+            <div class="pdf-grid">
+                <div>
+                    <h4 style="margin-bottom: 16px; color: #333;">📄 输出设置</h4>
+                    <div class="pdf-form-group">
+                        <label>输出格式</label>
+                        <select id="pdf-output-format">
+                            <option value="png">PNG（推荐）</option>
+                            <option value="jpg">JPG</option>
+                        </select>
+                    </div>
 
-<div id="advanced-options-section" style="display: none; margin-top: 20px;">
-    <!-- 水印高级设置 -->
-    <div style="margin-bottom: 40px;">
-        <h3>💧 水印高级设置</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="pdf-form-group">
+                        <label>DPI清晰度</label>
+                        <select id="pdf-dpi">
+                            <option value="150">150 DPI（低）</option>
+                            <option value="200">200 DPI（中）</option>
+                            <option value="300" selected>300 DPI（高）</option>
+                            <option value="400">400 DPI（超高）</option>
+                        </select>
+                    </div>
+
+                    <div class="pdf-form-group">
+                        <label>页码范围</label>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <input type="number" id="pdf-start-page" min="1" value="1" placeholder="起始页">
+                            <span style="color: #888;">-</span>
+                            <input type="number" id="pdf-end-page" min="1" placeholder="结束页">
+                        </div>
+                        <small style="color: #888; display: block; margin-top: 6px;">留空表示转换全部页面</small>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 style="margin-bottom: 16px; color: #333;">🎨 图片素材选项</h4>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label class="pdf-checkbox-label">
+                            <input type="checkbox" id="pdf-add-watermark" checked onchange="toggleWatermarkOptions()">
+                            <span>添加水印</span>
+                        </label>
+                        <label class="pdf-checkbox-label">
+                            <input type="checkbox" id="pdf-add-header">
+                            <span>添加页眉</span>
+                        </label>
+                        <label class="pdf-checkbox-label">
+                            <input type="checkbox" id="pdf-add-footer">
+                            <span>添加页脚</span>
+                        </label>
+                        <label class="pdf-checkbox-label">
+                            <input type="checkbox" id="pdf-generate-simple" checked>
+                            <span>生成精简版PDF（前3页）</span>
+                        </label>
+                    </div>
+
+                    <div class="pdf-info-box" style="margin-top: 16px;">
+                        <small style="color: #667eea;">
+                            💡 <strong>提示：</strong>水印、页眉、页脚图片可在下方素材设置中配置
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 高级设置 -->
+    <div style="margin-bottom: 24px;">
+        <button class="pdf-advanced-toggle" onclick="toggleWatermarkAdvancedOptions()">
+            <span style="display: flex; align-items: center; gap: 8px;">
+                <span>🔧</span> 高级设置
+            </span>
+            <span id="advanced-toggle-icon" style="transition: transform 0.2s;">▼</span>
+        </button>
+    </div>
+
+    <div class="pdf-step-card" id="advanced-options-section" style="display: none;">
+        <div class="pdf-step-body">
+            <!-- 水印高级设置 -->
+            <div style="margin-bottom: 36px;">
+                <h3 style="color: #667eea; margin-bottom: 20px; font-size: 18px;">💧 水印高级设置</h3>
+                <div class="pdf-grid">
+                    <div>
+                        <h4 style="margin-bottom: 16px;">📄 水印应用页面范围</h4>
+                        <div class="pdf-form-group">
+                            <label>选择模式</label>
+                            <select id="pdf-watermark-page-mode" onchange="toggleWatermarkPageInput()">
+                                <option value="even">偶数页</option>
+                                <option value="odd">奇数页</option>
+                                <option value="all">全部页面</option>
+                                <option value="custom">自定义页码</option>
+                            </select>
+                        </div>
+                        
+                        <div class="pdf-form-group" id="watermark-custom-pages-group" style="display: none;">
+                            <label>自定义页码</label>
+                            <input type="text" id="pdf-watermark-custom-pages" placeholder="例如: 1,3,5 或 1-5 或 1,3,5-7">
+                            <small style="color: #888; display: block; margin-top: 6px;">支持格式：离散页码(1,3,5)、连续范围(1-5)、混合(1,3,5-7)</small>
+                            <div id="watermark-page-validation" style="color: #dc2626; font-size: 12px; margin-top: 8px; display: none;"></div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 style="margin-bottom: 16px;">📍 水印位置调整</h4>
+                        <div class="pdf-form-group">
+                            <label>水平位置</label>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <input type="range" id="pdf-watermark-pos-x" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
+                                <span id="watermark-pos-x-value" style="min-width: 45px; text-align: center; font-weight: 500; color: #667eea;">50%</span>
+                            </div>
+                        </div>
+                        <div class="pdf-form-group">
+                            <label>垂直位置</label>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <input type="range" id="pdf-watermark-pos-y" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
+                                <span id="watermark-pos-y-value" style="min-width: 45px; text-align: center; font-weight: 500; color: #667eea;">50%</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px; padding: 16px; background: #f9f9f9; border-radius: 12px; text-align: center;">
+                            <div class="pdf-preview-box">
+                                <div class="pdf-preview-dot" id="watermark-position-dot"></div>
+                            </div>
+                            <small style="color: #888; display: block; margin-top: 8px;">水印位置预览</small>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 style="margin-bottom: 16px;">🔍 水印大小调整</h4>
+                        <div class="pdf-form-group">
+                            <label>缩放比例</label>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <input type="range" id="pdf-watermark-scale" min="10" max="200" value="100" style="flex: 1;" oninput="updateWatermarkScalePreview()">
+                                <span id="watermark-scale-value" style="min-width: 55px; text-align: center; font-weight: 500; color: #667eea;">100%</span>
+                            </div>
+                            <small style="color: #888; display: block; margin-top: 8px;">100% = 原图大小，超过100%会放大，小于100%会缩小</small>
+                        </div>
+                        <div style="margin-top: 16px; padding: 16px; background: #f9f9f9; border-radius: 12px; text-align: center;">
+                            <div class="pdf-preview-box" style="display: flex; align-items: center; justify-content: center;">
+                                <div class="pdf-preview-scale" id="watermark-scale-box" style="width: 40px; height: 30px;"></div>
+                            </div>
+                            <small style="color: #888; display: block; margin-top: 8px;">水印大小预览</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 页眉页脚位置设置 -->
+            <div style="margin-bottom: 36px;">
+                <h3 style="color: #667eea; margin-bottom: 20px; font-size: 18px;">📐 页眉页脚位置设置</h3>
+                <div class="pdf-grid">
+                    <div class="pdf-form-group">
+                        <label>页眉顶部偏移（像素）</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="pdf-header-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('header-offset-value').textContent = this.value + 'px'">
+                            <span id="header-offset-value" style="min-width: 55px; text-align: center; font-weight: 500; color: #667eea;">0px</span>
+                        </div>
+                    </div>
+                    <div class="pdf-form-group">
+                        <label>页脚底部偏移（像素）</label>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="pdf-footer-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('footer-offset-value').textContent = this.value + 'px'">
+                            <span id="footer-offset-value" style="min-width: 55px; text-align: center; font-weight: 500; color: #667eea;">0px</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 图片素材设置 -->
             <div>
-                <h4 style="margin-bottom: 16px;">📄 水印应用页面范围</h4>
-                <div class="form-group">
-                    <label>选择模式</label>
-                    <select id="pdf-watermark-page-mode" onchange="toggleWatermarkPageInput()">
-                        <option value="even">偶数页</option>
-                        <option value="odd">奇数页</option>
-                        <option value="all">全部页面</option>
-                        <option value="custom">自定义页码</option>
-                    </select>
-                </div>
+                <h3 style="color: #667eea; margin-bottom: 20px; font-size: 18px;">🎨 图片素材设置</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 20px;">上传自定义水印、页眉、页脚图片，将自动记住您的选择</p>
                 
-                <div class="form-group" id="watermark-custom-pages-group" style="display: none;">
-                    <label>自定义页码</label>
-                    <input type="text" id="pdf-watermark-custom-pages" placeholder="例如: 1,3,5 或 1-5 或 1,3,5-7">
-                    <small style="color: #888; display: block; margin-top: 6px;">支持格式：离散页码(1,3,5)、连续范围(1-5)、混合(1,3,5-7)</small>
-                    <div id="watermark-page-validation" style="color: #dc2626; font-size: 12px; margin-top: 8px; display: none;"></div>
-                </div>
-            </div>
-            
-            <div>
-                <h4 style="margin-bottom: 16px;">📍 水印位置调整</h4>
-                <div class="form-group">
-                    <label>水平位置</label>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <input type="range" id="pdf-watermark-pos-x" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
-                        <span id="watermark-pos-x-value" style="min-width: 45px; text-align: center; font-weight: 500; color: #667eea;">50%</span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>垂直位置</label>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <input type="range" id="pdf-watermark-pos-y" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
-                        <span id="watermark-pos-y-value" style="min-width: 45px; text-align: center; font-weight: 500; color: #667eea;">50%</span>
-                    </div>
-                </div>
-                <div style="margin-top: 16px; padding: 16px; background: #f9fafb; border-radius: 5px; text-align: center;">
-                    <div style="width: 100px; height: 60px; background: white; border: 2px solid #e8e8e8; border-radius: 5px; margin: 0 auto; position: relative;">
-                        <div id="watermark-position-dot" style="width: 10px; height: 10px; background: #667eea; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>
-                    </div>
-                    <small style="color: #888; display: block; margin-top: 8px;">水印位置预览</small>
-                </div>
-            </div>
-            
-            <div>
-                <h4 style="margin-bottom: 16px;">🔍 水印大小调整</h4>
-                <div class="form-group">
-                    <label>缩放比例</label>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <input type="range" id="pdf-watermark-scale" min="10" max="200" value="100" style="flex: 1;" oninput="updateWatermarkScalePreview()">
-                        <span id="watermark-scale-value" style="min-width: 55px; text-align: center; font-weight: 500; color: #667eea;">100%</span>
-                    </div>
-                    <small style="color: #888; display: block; margin-top: 8px;">100% = 原图大小，超过100%会放大，小于100%会缩小</small>
-                </div>
-                <div style="margin-top: 16px; padding: 16px; background: #f9fafb; border-radius: 5px; text-align: center;">
-                    <div style="width: 100px; height: 60px; background: white; border: 2px solid #e8e8e8; border-radius: 5px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-                        <div id="watermark-scale-box" style="width: 40px; height: 30px; background: rgba(102,126,234,0.3); border: 2px solid #667eea; border-radius: 4px;"></div>
-                    </div>
-                    <small style="color: #888; display: block; margin-top: 8px;">水印大小预览</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 页眉页脚位置设置 -->
-    <div style="margin-bottom: 40px;">
-        <h3>📐 页眉页脚位置设置</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-            <div class="form-group">
-                <label>页眉顶部偏移（像素）</label>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <input type="range" id="pdf-header-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('header-offset-value').textContent = this.value + 'px'">
-                    <span id="header-offset-value" style="min-width: 55px; text-align: center; font-weight: 500; color: #667eea;">0px</span>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>页脚底部偏移（像素）</label>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <input type="range" id="pdf-footer-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('footer-offset-value').textContent = this.value + 'px'">
-                    <span id="footer-offset-value" style="min-width: 55px; text-align: center; font-weight: 500; color: #667eea;">0px</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 图片素材设置 -->
-    <div>
-        <h3>🎨 图片素材设置</h3>
-        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">上传自定义水印、页眉、页脚图片，将自动记住您的选择</p>
-        
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-            <!-- 水印图片 -->
-            <div class="list-item" id="watermark-upload-area" ondragover="handleDragOver(event, 'watermark')" ondragleave="handleDragLeave(event, 'watermark')" ondrop="handleDrop(event, 'watermark')">
-                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap; width: 100%;">
-                    <div style="flex: 0 0 100px; text-align: center;">
-                        <div style="font-size: 28px;">💧</div>
-                        <label style="margin-top: 5px; font-weight: 600; color: #333; font-size: 14px; display: block;">水印图片</label>
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <input type="file" id="pdf-watermark-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
-                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="document.getElementById('pdf-watermark-input').click()">
-                                <span>📁</span> 选择文件
-                            </button>
-                            <span id="pdf-watermark-status" style="color: #888; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
-                        </div>
-                        <div id="pdf-watermark-progress" style="display: none; margin-top: 12px;">
-                            <div class="progress">
-                                <div class="progress-bar" id="pdf-watermark-progress-bar" style="width: 0%;"></div>
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- 水印图片 -->
+                    <div class="pdf-upload-area" id="watermark-upload-area" ondragover="handleDragOver(event, 'watermark')" ondragleave="handleDragLeave(event, 'watermark')" ondrop="handleDrop(event, 'watermark')">
+                        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                            <div style="flex: 0 0 100px; text-align: center;">
+                                <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                    <span style="font-size: 28px;">💧</span>
+                                </div>
+                                <label style="margin-top: 10px; font-weight: 600; color: #333; font-size: 14px;">水印图片</label>
                             </div>
-                            <span style="font-size: 12px; color: #888;">上传中...</span>
-                        </div>
-                        <div id="pdf-watermark-name" style="margin-top: 10px; color: #333; font-weight: 500;">使用默认水印</div>
-                    </div>
-                    <div id="pdf-watermark-preview" style="flex: 0 0 auto; display: none;">
-                        <img src="" style="max-width: 120px; max-height: 80px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    </div>
-                    <button class="btn btn-danger btn-sm" onclick="clearPdfImage('watermark')">🗑️ 清除</button>
-                </div>
-            </div>
-
-            <!-- 页眉图片 -->
-            <div class="list-item" id="header-upload-area" ondragover="handleDragOver(event, 'header')" ondragleave="handleDragLeave(event, 'header')" ondrop="handleDrop(event, 'header')">
-                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap; width: 100%;">
-                    <div style="flex: 0 0 100px; text-align: center;">
-                        <div style="font-size: 28px;">📄</div>
-                        <label style="margin-top: 5px; font-weight: 600; color: #333; font-size: 14px; display: block;">页眉图片</label>
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <input type="file" id="pdf-header-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
-                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="document.getElementById('pdf-header-input').click()">
-                                <span>📁</span> 选择文件
-                            </button>
-                            <span id="pdf-header-status" style="color: #888; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
-                        </div>
-                        <div id="pdf-header-progress" style="display: none; margin-top: 12px;">
-                            <div class="progress">
-                                <div class="progress-bar" id="pdf-header-progress-bar" style="width: 0%; background: linear-gradient(90deg, #48bb78, #38a169);"></div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <input type="file" id="pdf-watermark-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <button class="pdf-btn pdf-btn-primary" onclick="document.getElementById('pdf-watermark-input').click()">
+                                        <span>📁</span> 选择文件
+                                    </button>
+                                    <span id="pdf-watermark-status" style="color: #888; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
+                                </div>
+                                <div id="pdf-watermark-progress" style="display: none; margin-top: 12px;">
+                                    <div class="pdf-progress-bar">
+                                        <div class="pdf-progress-fill" id="pdf-watermark-progress-bar" style="width: 0%;"></div>
+                                    </div>
+                                    <span style="font-size: 12px; color: #888;">上传中...</span>
+                                </div>
+                                <div id="pdf-watermark-name" style="margin-top: 10px; color: #333; font-weight: 500;">使用默认水印</div>
                             </div>
-                            <span style="font-size: 12px; color: #888;">上传中...</span>
-                        </div>
-                        <div id="pdf-header-name" style="margin-top: 10px; color: #333; font-weight: 500;">未选择</div>
-                    </div>
-                    <div id="pdf-header-preview" style="flex: 0 0 auto; display: none;">
-                        <img src="" style="max-width: 120px; max-height: 80px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                    </div>
-                    <button class="btn btn-danger btn-sm" onclick="clearPdfImage('header')">🗑️ 清除</button>
-                </div>
-            </div>
-
-            <!-- 页脚图片 -->
-            <div class="list-item" id="footer-upload-area" ondragover="handleDragOver(event, 'footer')" ondragleave="handleDragLeave(event, 'footer')" ondrop="handleDrop(event, 'footer')">
-                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap; width: 100%;">
-                    <div style="flex: 0 0 100px; text-align: center;">
-                        <div style="font-size: 28px;">📃</div>
-                        <label style="margin-top: 5px; font-weight: 600; color: #333; font-size: 14px; display: block;">页脚图片</label>
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <input type="file" id="pdf-footer-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
-                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="document.getElementById('pdf-footer-input').click()">
-                                <span>📁</span> 选择文件
-                            </button>
-                            <span id="pdf-footer-status" style="color: #888; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
-                        </div>
-                        <div id="pdf-footer-progress" style="display: none; margin-top: 12px;">
-                            <div class="progress">
-                                <div class="progress-bar" id="pdf-footer-progress-bar" style="width: 0%; background: linear-gradient(90deg, #f56565, #e53e3e);"></div>
+                            <div id="pdf-watermark-preview" style="flex: 0 0 auto; display: none;">
+                                <img src="" class="pdf-image-preview">
                             </div>
-                            <span style="font-size: 12px; color: #888;">上传中...</span>
+                            <button class="pdf-btn pdf-btn-danger" onclick="clearPdfImage('watermark')" style="font-size: 13px; padding: 8px 16px;">🗑️ 清除</button>
                         </div>
-                        <div id="pdf-footer-name" style="margin-top: 10px; color: #333; font-weight: 500;">未选择</div>
                     </div>
-                    <div id="pdf-footer-preview" style="flex: 0 0 auto; display: none;">
-                        <img src="" style="max-width: 120px; max-height: 80px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+
+                    <!-- 页眉图片 -->
+                    <div class="pdf-upload-area" id="header-upload-area" ondragover="handleDragOver(event, 'header')" ondragleave="handleDragLeave(event, 'header')" ondrop="handleDrop(event, 'header')">
+                        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                            <div style="flex: 0 0 100px; text-align: center;">
+                                <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                    <span style="font-size: 28px;">📄</span>
+                                </div>
+                                <label style="margin-top: 10px; font-weight: 600; color: #333; font-size: 14px;">页眉图片</label>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <input type="file" id="pdf-header-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <button class="pdf-btn pdf-btn-primary" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);" onclick="document.getElementById('pdf-header-input').click()">
+                                        <span>📁</span> 选择文件
+                                    </button>
+                                    <span id="pdf-header-status" style="color: #888; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
+                                </div>
+                                <div id="pdf-header-progress" style="display: none; margin-top: 12px;">
+                                    <div class="pdf-progress-bar">
+                                        <div class="pdf-progress-fill" id="pdf-header-progress-bar" style="width: 0%; background: linear-gradient(90deg, #11998e, #38ef7d);"></div>
+                                    </div>
+                                    <span style="font-size: 12px; color: #888;">上传中...</span>
+                                </div>
+                                <div id="pdf-header-name" style="margin-top: 10px; color: #333; font-weight: 500;">未选择</div>
+                            </div>
+                            <div id="pdf-header-preview" style="flex: 0 0 auto; display: none;">
+                                <img src="" class="pdf-image-preview">
+                            </div>
+                            <button class="pdf-btn pdf-btn-danger" onclick="clearPdfImage('header')" style="font-size: 13px; padding: 8px 16px;">🗑️ 清除</button>
+                        </div>
                     </div>
-                    <button class="btn btn-danger btn-sm" onclick="clearPdfImage('footer')">🗑️ 清除</button>
+
+                    <!-- 页脚图片 -->
+                    <div class="pdf-upload-area" id="footer-upload-area" ondragover="handleDragOver(event, 'footer')" ondragleave="handleDragLeave(event, 'footer')" ondrop="handleDrop(event, 'footer')">
+                        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                            <div style="flex: 0 0 100px; text-align: center;">
+                                <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                    <span style="font-size: 28px;">📃</span>
+                                </div>
+                                <label style="margin-top: 10px; font-weight: 600; color: #333; font-size: 14px;">页脚图片</label>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <input type="file" id="pdf-footer-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <button class="pdf-btn pdf-btn-primary" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);" onclick="document.getElementById('pdf-footer-input').click()">
+                                        <span>📁</span> 选择文件
+                                    </button>
+                                    <span id="pdf-footer-status" style="color: #888; font-size: 14px;">支持 JPG、PNG、GIF 格式</span>
+                                </div>
+                                <div id="pdf-footer-progress" style="display: none; margin-top: 12px;">
+                                    <div class="pdf-progress-bar">
+                                        <div class="pdf-progress-fill" id="pdf-footer-progress-bar" style="width: 0%; background: linear-gradient(90deg, #f093fb, #f5576c);"></div>
+                                    </div>
+                                    <span style="font-size: 12px; color: #888;">上传中...</span>
+                                </div>
+                                <div id="pdf-footer-name" style="margin-top: 10px; color: #333; font-weight: 500;">未选择</div>
+                            </div>
+                            <div id="pdf-footer-preview" style="flex: 0 0 auto; display: none;">
+                                <img src="" class="pdf-image-preview">
+                            </div>
+                            <button class="pdf-btn pdf-btn-danger" onclick="clearPdfImage('footer')" style="font-size: 13px; padding: 8px 16px;">🗑️ 清除</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- 步骤3: 开始转换 -->
-<div style="margin-top: 40px;">
-    <h2>🚀 步骤3: 开始转换</h2>
-    <p style="color: #666; margin-bottom: 20px;">文件将上传到指定目录后进行转换</p>
-    
-    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-        <button class="btn btn-success" id="pdf-convert-btn" onclick="batchConvertPdfs()" disabled style="padding: 12px 30px; font-size: 16px;">
-            <span>🚀</span> 开始批量转换
-        </button>
-        <button class="btn btn-secondary" onclick="clearAllPdfData()">
-            <span>🗑️</span> 清空所有
-        </button>
-    </div>
-</div>
-
-<!-- 批量转换进度 -->
-<div id="pdf-batch-progress" style="display: none; margin-top: 30px;">
-    <div>
-        <strong style="font-size: 16px; color: #333;">📊 批量转换进度</strong>
-        <div class="progress" style="height: 16px; margin-top: 10px;">
-            <div id="pdf-progress-bar" class="progress-bar" style="width: 0%;"></div>
+    <!-- 步骤3: 开始转换 -->
+    <div class="pdf-step-card">
+        <div class="pdf-step-header step-3">
+            <div class="pdf-step-icon">🚀</div>
+            <div class="pdf-step-title">
+                <h2>步骤3: 开始转换</h2>
+                <p>文件将上传到指定目录后进行转换</p>
+            </div>
         </div>
-        <div id="pdf-progress-text" style="font-size: 14px; color: #666; margin-top: 10px;">准备中...</div>
+        <div class="pdf-step-body">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <button class="pdf-btn pdf-btn-success" id="pdf-convert-btn" onclick="batchConvertPdfs()" disabled style="padding: 14px 32px; font-size: 16px;">
+                    <span>🚀</span> 开始批量转换
+                </button>
+                <button class="pdf-btn pdf-btn-secondary" onclick="clearAllPdfData()" style="padding: 14px 24px;">
+                    <span>🗑️</span> 清空所有
+                </button>
+            </div>
+        </div>
     </div>
-</div>
 
-<!-- 批量转换结果 -->
-<div id="pdf-batch-results" style="display: none; margin-top: 30px;">
-    <h2>✅ 批量转换结果</h2>
-    <div id="pdf-results-summary" style="margin-bottom: 24px;"></div>
-    <div id="pdf-results-container"></div>
-</div>
+    <!-- 批量转换进度 -->
+    <div id="pdf-batch-progress" style="display: none; margin-top: 24px;">
+        <div class="pdf-step-card" style="margin-bottom: 0;">
+            <div class="pdf-step-body">
+                <div style="margin-bottom: 12px;">
+                    <strong style="font-size: 16px; color: #333;">📊 批量转换进度</strong>
+                </div>
+                <div class="pdf-progress-bar" style="height: 16px;">
+                    <div id="pdf-progress-bar" class="pdf-progress-fill" style="width: 0%;"></div>
+                </div>
+                <div id="pdf-progress-text" style="font-size: 14px; color: #666; margin-top: 10px;">准备中...</div>
+            </div>
+        </div>
+    </div>
 
-<!-- 错误提示 -->
-<div id="pdf-error" style="display: none; margin-top: 30px;">
-    <div class="alert alert-danger" id="pdf-error-message"></div>
+    <!-- 批量转换结果 -->
+    <div id="pdf-batch-results" style="display: none; margin-top: 24px;">
+        <h2 style="margin-bottom: 20px; color: #333;">✅ 批量转换结果</h2>
+        <div id="pdf-results-summary" style="margin-bottom: 24px;"></div>
+        <div id="pdf-results-container"></div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div id="pdf-error" style="display: none; margin-top: 24px;">
+        <div class="pdf-step-card" style="border-left: 4px solid #f5576c;">
+            <div class="pdf-step-body">
+                <div class="alert alert-danger" style="color: #dc2626; font-size: 14px;"></div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -492,24 +845,21 @@ function handleDragOver(event, type) {
     event.preventDefault();
     event.stopPropagation();
     const area = document.getElementById(`${type}-upload-area`);
-    area.style.borderColor = '#667eea';
-    area.style.background = '#f0f4ff';
+    area.classList.add('drag-over');
 }
 
 function handleDragLeave(event, type) {
     event.preventDefault();
     event.stopPropagation();
     const area = document.getElementById(`${type}-upload-area`);
-    area.style.borderColor = '';
-    area.style.background = '';
+    area.classList.remove('drag-over');
 }
 
 function handleDrop(event, type) {
     event.preventDefault();
     event.stopPropagation();
     const area = document.getElementById(`${type}-upload-area`);
-    area.style.borderColor = '';
-    area.style.background = '';
+    area.classList.remove('drag-over');
     
     const files = event.dataTransfer.files;
     if (files.length > 0) {
@@ -623,31 +973,6 @@ function clearPdfImage(type) {
 let pdfBatchFiles = [];  // 存储批量选择的PDF文件信息（只存路径，不存文件对象）
 let pdfBatchResults = []; // 存储批量转换结果
 
-// 显示PDF文件列表
-function displayPdfFileList() {
-    const container = document.getElementById('pdf-files-container');
-    container.innerHTML = '';
-    
-    pdfBatchFiles.forEach((pdfFile, index) => {
-        const sizeMB = (pdfFile.size / 1024 / 1024).toFixed(2);
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.innerHTML = `
-            <div class="list-item-content">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="color: #f56565; font-size: 20px;">📄</span>
-                    <span class="list-item-text">${pdfFile.original_name}</span>
-                    <span style="color: #888; font-size: 13px;">(${sizeMB} MB)</span>
-                </div>
-            </div>
-            <div class="list-item-actions">
-                <button class="btn btn-danger btn-sm" onclick="removePdfFromBatch(${index})">删除</button>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-}
-
 // 处理批量PDF文件选择
 function handlePdfBatchSelect(event) {
     const files = Array.from(event.target.files).filter(f => f.name.endsWith('.pdf'));
@@ -680,6 +1005,9 @@ function handlePdfBatchSelect(event) {
     pdfBatchFiles = files.map(file => {
         const fileFullPath = file.webkitRelativePath || file.name;
         const fileName = file.name;
+        // 推断完整路径：使用文件夹路径 + 文件名
+        // 注意：浏览器无法获取真实绝对路径，这里使用相对路径
+        // 后端需要根据这个相对路径找到实际文件
         return {
             original_name: fileName,
             relative_path: fileFullPath,
@@ -700,6 +1028,27 @@ function handlePdfBatchSelect(event) {
     showPdfMessage(`成功选择 ${files.length} 个PDF文件`, 'success');
 }
 
+// 显示PDF文件列表
+function displayPdfFileList() {
+    const container = document.getElementById('pdf-files-container');
+    container.innerHTML = '';
+    
+    pdfBatchFiles.forEach((pdfFile, index) => {
+        const sizeMB = (pdfFile.size / 1024 / 1024).toFixed(2);
+        const div = document.createElement('div');
+        div.className = 'pdf-file-item';
+        div.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="color: #f5576c; font-size: 20px;">📄</span>
+                <span style="font-weight: 500;">${pdfFile.original_name}</span>
+                <span style="color: #888; font-size: 13px;">(${sizeMB} MB)</span>
+            </div>
+            <button class="pdf-btn pdf-btn-danger" onclick="removePdfFromBatch(${index})" style="padding: 6px 14px; font-size: 12px;">删除</button>
+        `;
+        container.appendChild(div);
+    });
+}
+
 // 从批量列表中移除PDF
 function removePdfFromBatch(index) {
     pdfBatchFiles.splice(index, 1);
@@ -715,6 +1064,7 @@ function removePdfFromBatch(index) {
 // 切换水印选项显示
 function toggleWatermarkOptions() {
     const isEnabled = document.getElementById('pdf-add-watermark').checked;
+    // 高级设置区域由"高级设置"按钮控制，这里不做处理
 }
 
 // 切换高级设置显示/隐藏
@@ -820,99 +1170,6 @@ function getDefaultWorkspace() {
     return `${homeDir}/Downloads/xhs_helper_workspace`;
 }
 
-// 显示消息
-function showPdfMessage(message, type) {
-    const errorDiv = document.getElementById('pdf-error');
-    const errorMessage = document.getElementById('pdf-error-message');
-    
-    if (type === 'success') {
-        errorDiv.innerHTML = '<div class="alert alert-success">' + message + '</div>';
-    } else {
-        errorMessage.textContent = message;
-    }
-    
-    errorDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-    }, 5000);
-}
-
-// 清空所有数据
-function clearAllPdfData() {
-    if (confirm('确定要清空所有数据吗？')) {
-        pdfBatchFiles = [];
-        pdfBatchResults = [];
-        document.getElementById('pdf-file-list').style.display = 'none';
-        document.getElementById('pdf-batch-count').textContent = '未选择文件';
-        document.getElementById('pdf-convert-btn').disabled = true;
-        document.getElementById('pdf-batch-progress').style.display = 'none';
-        document.getElementById('pdf-batch-results').style.display = 'none';
-        document.getElementById('pdf-error').style.display = 'none';
-    }
-}
-
-// 更新进度
-function updatePdfProgress(percent, text) {
-    document.getElementById('pdf-progress-bar').style.width = percent + '%';
-    document.getElementById('pdf-progress-text').textContent = text;
-}
-
-// 显示批量转换结果
-function displayBatchResults(data) {
-    document.getElementById('pdf-batch-results').style.display = 'block';
-    
-    const summaryDiv = document.getElementById('pdf-results-summary');
-    summaryDiv.innerHTML = `
-        <div class="status-card">
-            <div style="display: flex; justify-content: space-between; gap: 20px;">
-                <div>
-                    <div class="status-label">成功转换</div>
-                    <div class="status-value">${data.success_count}</div>
-                </div>
-                <div>
-                    <div class="status-label">失败</div>
-                    <div class="status-value">${data.failed_count}</div>
-                </div>
-                <div>
-                    <div class="status-label">总计</div>
-                    <div class="status-value">${data.total_count}</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    const container = document.getElementById('pdf-results-container');
-    container.innerHTML = '';
-    
-    data.results.forEach(result => {
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.innerHTML = `
-            <div class="list-item-content">
-                <div class="list-item-text">${result.original_name}</div>
-                <small style="color: ${result.success ? '#48bb78' : '#f56565'}; display: block; margin-top: 5px;">
-                    ${result.success ? '✅ 成功' : '❌ 失败: ' + result.error}
-                </small>
-            </div>
-            <div class="list-item-actions">
-                ${result.success ? `<button class="btn btn-primary btn-sm" onclick="openFolder('${result.output_dir}')">打开文件夹</button>` : ''}
-            </div>
-        `;
-        container.appendChild(div);
-    });
-}
-
-// 打开文件夹
-function openFolder(path) {
-    fetch('/api/open-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: path })
-    })
-    .catch(error => console.error('打开文件夹失败:', error));
-}
-
 // 批量转换PDF文件（先上传到指定目录，再转换）
 function batchConvertPdfs() {
     if (pdfBatchFiles.length === 0) {
@@ -971,9 +1228,9 @@ function batchConvertWithPaths(baseDir) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            files: pdfBatchFiles,
+            files: pdfBatchFiles,  // 包含 relative_path, folder_path 等信息
             settings: settings,
-            base_dir: baseDir
+            base_dir: baseDir  // 用户指定的基础目录
         })
     })
     .then(response => response.json())
@@ -992,13 +1249,144 @@ function batchConvertWithPaths(baseDir) {
     .catch(error => {
         document.getElementById('pdf-batch-progress').style.display = 'none';
         document.getElementById('pdf-convert-btn').disabled = false;
-        showPdfMessage('网络错误: ' + error.message, 'error');
+        showPdfMessage('批量转换失败: ' + error.message, 'error');
     });
 }
 
+// 更新PDF转换进度
+function updatePdfProgress(percent, message) {
+    document.getElementById('pdf-progress-bar').style.width = percent + '%';
+    document.getElementById('pdf-progress-text').textContent = message;
+}
+
+// 显示批量转换结果
+function displayBatchResults(data) {
+    document.getElementById('pdf-batch-results').style.display = 'block';
+    
+    // 显示摘要
+    const summaryHtml = `
+        <div class="pdf-step-card" style="background: linear-gradient(135deg, #11998e15 0%, #38ef7d15 100%);">
+            <div class="pdf-step-body">
+                <h4 style="margin: 0 0 16px 0; color: #333;">📊 转换统计</h4>
+                <div style="display: flex; gap: 40px; flex-wrap: wrap;">
+                    <div style="font-size: 15px;"><strong>总文件数:</strong> ${data.total}</div>
+                    <div style="font-size: 15px; color: #11998e;"><strong>成功:</strong> ${data.success_count}</div>
+                    <div style="font-size: 15px; color: #f5576c;"><strong>失败:</strong> ${data.failed_count}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('pdf-results-summary').innerHTML = summaryHtml;
+    
+    // 显示详细结果
+    const container = document.getElementById('pdf-results-container');
+    container.innerHTML = '';
+    
+    data.results.forEach((result, index) => {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'pdf-results-card ' + (result.success ? 'success' : 'error');
+        
+        if (result.success) {
+            const imagesHtml = result.images.slice(0, 4).map(img => 
+                `<img src="${img}" style="width: 100px; height: auto; border: 2px solid #e8e8e8; border-radius: 8px; cursor: pointer; margin-right: 10px; margin-bottom: 10px;" onclick="window.open('${img}', '_blank')">`
+            ).join('');
+            
+            const moreImages = result.images.length > 4 ? `<div style="color: #888; font-size: 13px; margin-top: 8px;">还有 ${result.images.length - 4} 张图片...</div>` : '';
+            
+            resultDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="color: #11998e; font-size: 24px;">✓</span>
+                        <strong style="font-size: 16px; color: #333;">${result.original_name}</strong>
+                    </div>
+                    <span style="color: #888; font-size: 14px;">${result.total_pages} 页</span>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">${imagesHtml}</div>
+                ${moreImages}
+                <div>
+                    ${result.simple_pdf ? `<a href="${result.simple_pdf}" target="_blank" class="pdf-btn pdf-btn-primary" style="padding: 8px 16px; font-size: 13px;">下载精简版PDF</a>` : ''}
+                    <button class="pdf-btn pdf-btn-secondary" onclick="downloadPdfImages(${index})" style="padding: 8px 16px; font-size: 13px; margin-left: 8px;">下载所有图片</button>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="color: #f5576c; font-size: 24px;">✗</span>
+                        <strong style="font-size: 16px; color: #333;">${result.original_name}</strong>
+                    </div>
+                    <span style="color: #f5576c; font-size: 14px;">失败</span>
+                </div>
+                <div style="color: #f5576c; font-size: 14px; margin-top: 10px;">${result.error}</div>
+            `;
+        }
+        
+        container.appendChild(resultDiv);
+    });
+}
+
+// 下载单个PDF的图片
+function downloadPdfImages(index) {
+    const result = pdfBatchResults[index];
+    if (!result || !result.success) return;
+    
+    result.images.forEach((imgUrl, imgIndex) => {
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.href = imgUrl;
+            link.download = `${result.original_name.replace('.pdf', '')}_page_${imgIndex + 1}.png`;
+            link.click();
+        }, imgIndex * 200);
+    });
+}
+
+// 清空所有PDF数据
+function clearAllPdfData() {
+    pdfBatchFiles = [];
+    pdfBatchResults = [];
+    
+    document.getElementById('pdf-batch-input').value = '';
+    document.getElementById('pdf-batch-count').textContent = '未选择文件';
+    document.getElementById('pdf-file-list').style.display = 'none';
+    document.getElementById('pdf-files-container').innerHTML = '';
+    document.getElementById('pdf-batch-results').style.display = 'none';
+    document.getElementById('pdf-batch-progress').style.display = 'none';
+    document.getElementById('pdf-convert-btn').disabled = true;
+    
+    // 重置水印设置
+    document.getElementById('pdf-watermark-page-mode').value = 'even';
+    document.getElementById('pdf-watermark-custom-pages').value = '';
+    document.getElementById('watermark-custom-pages-group').style.display = 'none';
+    document.getElementById('pdf-watermark-pos-x').value = 50;
+    document.getElementById('pdf-watermark-pos-y').value = 50;
+    document.getElementById('watermark-pos-x-value').textContent = '50%';
+    document.getElementById('watermark-pos-y-value').textContent = '50%';
+    updateWatermarkPositionPreview();
+    document.getElementById('pdf-watermark-scale').value = 100;
+    document.getElementById('watermark-scale-value').textContent = '100%';
+    updateWatermarkScalePreview();
+    
+    showPdfMessage('已清空所有数据', 'success');
+}
+
+// 显示PDF消息
+function showPdfMessage(message, type) {
+    const errorDiv = document.getElementById('pdf-error');
+    if (type === 'error') {
+        errorDiv.style.display = 'block';
+        errorDiv.querySelector('.alert-danger').textContent = message;
+    } else {
+        errorDiv.style.display = 'none';
+    }
+}
+
+// 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 初始化PDF图片配置
     initPdfImagesConfig();
+    // 恢复所有用户输入数据
     restoreAllFormData();
+    // 设置自动保存监听
     setupAutoSaveListeners();
 });
 </script>

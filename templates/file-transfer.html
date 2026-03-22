@@ -179,8 +179,8 @@ function transferFilesOnly() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             device_id: selectedDeviceId, 
-            source_dir: computerDir,
-            target_dir: phoneDir 
+            computer_dir: computerDir,
+            phone_dir: phoneDir 
         })
     })
     .then(response => response.json())
@@ -245,13 +245,13 @@ function executeFullTransfer() {
     }
     
     showFtProgress('正在执行完整传输流程...');
-    fetch('/api/file-transfer/full', {
+    fetch('/api/file-transfer/full-transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             device_id: selectedDeviceId, 
-            source_dir: computerDir,
-            target_dir: phoneDir 
+            computer_dir: computerDir,
+            phone_dir: phoneDir 
         })
     })
     .then(response => response.json())
