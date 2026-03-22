@@ -102,9 +102,67 @@ class PDFConverter:
             print(f"创建simple PDF版本时出错：{str(e)}")
             return None
     
+    def parse_page_range(self, page_range_str, total_pages):
+        """
+        解析页码范围字符串
+        
+        支持的格式:
+        - "odd": 奇数页
+        - "even": 偶数页
+        - "1,3,5,7": 离散页码
+        - "1-3": 连续页码范围
+        - "1,3,5-7": 混合格式
+        
+        参数:
+            page_range_str: 页码范围字符串
+            total_pages: 总页数
+        
+        返回:
+            set: 页码集合
+        """
+        if not page_range_str or page_range_str.strip() == '':
+            return set(range(1, total_pages + 1))
+        
+        page_range_str = page_range_str.strip().lower()
+        pages = set()
+        
+        # 奇数页
+        if page_range_str == 'odd':
+            return set(i for i in range(1, total_pages + 1) if i % 2 == 1)
+        
+        # 偶数页
+        if page_range_str == 'even':
+            return set(i for i in range(1, total_pages + 1) if i % 2 == 0)
+        
+        # 解析混合格式
+        parts = page_range_str.split(',')
+        for part in parts:
+            part = part.strip()
+            if '-' in part:
+                # 范围格式: 1-3
+                try:
+                    start, end = part.split('-')
+                    start = int(start.strip())
+                    end = int(end.strip())
+                    pages.update(range(max(1, start), min(total_pages + 1, end + 1)))
+                except ValueError:
+                    continue
+            else:
+                # 单个页码
+                try:
+                    page = int(part)
+                    if 1 <= page <= total_pages:
+                        pages.add(page)
+                except ValueError:
+                    continue
+        
+        return pages if pages else set(range(1, total_pages + 1))
+    
     def convert_pdf_to_images(self, pdf_path, dpi=300, fmt='png', add_watermark=True,
                               generate_simple_pdf=True, start_page=1, end_page=None,
-                              add_header=False, add_footer=False):
+                              add_header=False, add_footer=False,
+                              watermark_page_range='even', watermark_position=None,
+                              header_position=None, footer_position=None):
         """
         将PDF文件的每一页转换为图像
         
@@ -118,6 +176,10 @@ class PDFConverter:
             end_page: 结束页码，默认为None（全部）
             add_header: 是否添加页眉，默认为False
             add_footer: 是否添加页脚，默认为False
+            watermark_page_range: 水印页码范围，可选值: 'odd', 'even', 'all', 或自定义格式如'1,3,5'或'1-5'
+            watermark_position: 水印位置，{'x': 0.5, 'y': 0.5} 表示相对位置（0-1）
+            header_position: 页眉位置，{'y': 0} 表示顶部偏移
+            footer_position: 页脚位置，{'y': 0} 表示底部偏移
         
         返回:
             dict: 包含图像路径列表和simple PDF路径的字典
@@ -171,6 +233,11 @@ class PDFConverter:
         total_pages = len(images)
         page_digits = len(str(total_pages))
         
+        # 解析水印页码范围
+        watermark_pages = set()
+        if add_watermark:
+            watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
+        
         for i in range(len(images)):
             current_page = i + 1
             if current_page < start_page or current_page > end_page:
@@ -181,18 +248,18 @@ class PDFConverter:
             output_filename = f"{pdf_filename}_page_{formatted_page}.{fmt}"
             output_path = os.path.join(output_subfolder, output_filename)
             
-            # 检查是否为偶数页，并且启用了水印
-            if (i + 1) % 2 == 0 and add_watermark:
+            # 检查当前页是否在水印页码范围内
+            if add_watermark and current_page in watermark_pages:
                 try:
                     if os.path.exists(self.watermark_path):
-                        image = self._add_watermark_to_image(image)
+                        image = self._add_watermark_to_image(image, watermark_position)
                 except Exception as e:
                     print(f"添加水印时出错: {str(e)}")
             
             # 添加页眉和页脚
             if add_header or add_footer:
                 try:
-                    image = self._add_header_footer_to_image(image, add_header, add_footer)
+                    image = self._add_header_footer_to_image(image, add_header, add_footer, header_position, footer_position)
                 except Exception as e:
                     print(f"添加页眉页脚时出错: {str(e)}")
             
@@ -209,12 +276,18 @@ class PDFConverter:
             'output_folder': output_subfolder
         }
     
-    def _add_watermark_to_image(self, image):
-        """为图像添加水印"""
+    def _add_watermark_to_image(self, image, position=None):
+        """
+        为图像添加水印
+        
+        参数:
+            image: PIL图像对象
+            position: 水印位置，{'x': 0.5, 'y': 0.5} 表示相对位置（0-1），None表示居中
+        """
         if not os.path.exists(self.watermark_path):
             return image
         
-        image = image.convert('RGB')
+        image = image.convert('RGBA')
         watermark = Image.open(self.watermark_path)
         
         page_width, page_height = image.size
@@ -226,9 +299,21 @@ class PDFConverter:
         
         watermark_resized = watermark.resize((new_width, new_height), Image.Resampling.LANCZOS)
         
-        # 计算水印位置 - 居中
-        position_x = (page_width - new_width) // 2
-        position_y = (page_height - new_height) // 2
+        # 计算水印位置
+        if position is None:
+            # 默认居中
+            position_x = (page_width - new_width) // 2
+            position_y = (page_height - new_height) // 2
+        else:
+            # 使用相对位置
+            x_ratio = position.get('x', 0.5)
+            y_ratio = position.get('y', 0.5)
+            position_x = int((page_width - new_width) * x_ratio)
+            position_y = int((page_height - new_height) * y_ratio)
+        
+        # 确保位置在有效范围内
+        position_x = max(0, min(position_x, page_width - new_width))
+        position_y = max(0, min(position_y, page_height - new_height))
         
         # 粘贴水印
         if watermark_resized.mode == 'RGBA':
@@ -236,13 +321,25 @@ class PDFConverter:
             base.paste(watermark_resized, (position_x, position_y), watermark_resized.split()[3])
             image = base
         else:
-            image.paste(watermark_resized, (position_x, position_y))
+            watermark_resized = watermark_resized.convert('RGBA')
+            base = image.copy()
+            base.paste(watermark_resized, (position_x, position_y), watermark_resized.split()[3])
+            image = base
         
-        return image
+        return image.convert('RGB')
     
-    def _add_header_footer_to_image(self, image, add_header, add_footer):
-        """为图像添加页眉页脚"""
-        image = image.convert('RGB')
+    def _add_header_footer_to_image(self, image, add_header, add_footer, header_position=None, footer_position=None):
+        """
+        为图像添加页眉页脚
+        
+        参数:
+            image: PIL图像对象
+            add_header: 是否添加页眉
+            add_footer: 是否添加页脚
+            header_position: 页眉位置，{'y': 0} 表示顶部偏移（像素）
+            footer_position: 页脚位置，{'y': 0} 表示底部偏移（像素）
+        """
+        image = image.convert('RGBA')
         page_width, page_height = image.size
         
         # 添加页眉
@@ -252,7 +349,22 @@ class PDFConverter:
                 (page_width, int(header_image.size[1] * (page_width / header_image.size[0]))),
                 Image.Resampling.LANCZOS
             )
-            image.paste(header_resized, (0, 0))
+            
+            # 计算页眉位置
+            header_y = 0
+            if header_position and 'y' in header_position:
+                header_y = header_position['y']
+            
+            header_y = max(0, header_y)
+            
+            if header_resized.mode == 'RGBA':
+                base = image.copy()
+                base.paste(header_resized, (0, header_y), header_resized.split()[3])
+                image = base
+            else:
+                base = image.copy()
+                base.paste(header_resized, (0, header_y))
+                image = base
         
         # 添加页脚
         if add_footer and os.path.exists(self.footer_path):
@@ -261,10 +373,24 @@ class PDFConverter:
                 (page_width, int(footer_image.size[1] * (page_width / footer_image.size[0]))),
                 Image.Resampling.LANCZOS
             )
+            
+            # 计算页脚位置
             footer_y = page_height - footer_resized.size[1]
-            image.paste(footer_resized, (0, footer_y))
+            if footer_position and 'y' in footer_position:
+                footer_y = page_height - footer_resized.size[1] - footer_position['y']
+            
+            footer_y = max(0, min(footer_y, page_height - footer_resized.size[1]))
+            
+            if footer_resized.mode == 'RGBA':
+                base = image.copy()
+                base.paste(footer_resized, (0, footer_y), footer_resized.split()[3])
+                image = base
+            else:
+                base = image.copy()
+                base.paste(footer_resized, (0, footer_y))
+                image = base
         
-        return image
+        return image.convert('RGB')
     
     def create_key_page(self, output_folder):
         """

@@ -381,6 +381,12 @@ def api_pdf_convert():
         add_header = data.get('add_header', False)
         add_footer = data.get('add_footer', False)
         
+        # 水印相关参数
+        watermark_page_range = data.get('watermark_page_range', 'even')
+        watermark_position = data.get('watermark_position', None)
+        header_position = data.get('header_position', None)
+        footer_position = data.get('footer_position', None)
+        
         if not filename:
             return jsonify({"success": False, "error": "文件名不能为空"})
         
@@ -398,7 +404,11 @@ def api_pdf_convert():
             start_page=start_page,
             end_page=end_page,
             add_header=add_header,
-            add_footer=add_footer
+            add_footer=add_footer,
+            watermark_page_range=watermark_page_range,
+            watermark_position=watermark_position,
+            header_position=header_position,
+            footer_position=footer_position
         )
         
         # 获取相对路径用于前端显示
@@ -419,6 +429,65 @@ def api_pdf_convert():
             "data": {
                 "images": images_urls,
                 "simple_pdf": simple_pdf_url,
+                "total_pages": len(result['images'])
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/preview", methods=["POST"])
+def api_pdf_preview():
+    """预览PDF转换效果（仅转换第一页）"""
+    try:
+        data = request.json
+        filename = data.get('filename')
+        dpi = data.get('dpi', 200)  # 预览使用较低DPI加快速度
+        fmt = data.get('format', 'png')
+        add_watermark = data.get('add_watermark', True)
+        add_header = data.get('add_header', False)
+        add_footer = data.get('add_footer', False)
+        
+        # 水印相关参数
+        watermark_page_range = data.get('watermark_page_range', 'even')
+        watermark_position = data.get('watermark_position', None)
+        header_position = data.get('header_position', None)
+        footer_position = data.get('footer_position', None)
+        
+        if not filename:
+            return jsonify({"success": False, "error": "文件名不能为空"})
+        
+        filepath = os.path.join(pdf_converter.upload_folder, filename)
+        if not os.path.exists(filepath):
+            return jsonify({"success": False, "error": "文件不存在"})
+        
+        # 执行转换（仅第一页）
+        result = pdf_converter.convert_pdf_to_images(
+            filepath, 
+            dpi=dpi, 
+            fmt=fmt, 
+            add_watermark=add_watermark,
+            generate_simple_pdf=False,  # 预览不生成simple PDF
+            start_page=1,
+            end_page=1,  # 仅第一页
+            add_header=add_header,
+            add_footer=add_footer,
+            watermark_page_range=watermark_page_range,
+            watermark_position=watermark_position,
+            header_position=header_position,
+            footer_position=footer_position
+        )
+        
+        # 获取相对路径用于前端显示
+        images_urls = []
+        for img_path in result['images']:
+            rel_path = os.path.relpath(img_path, 'static')
+            images_urls.append(f"/static/{rel_path}")
+        
+        return jsonify({
+            "success": True,
+            "message": "预览生成完成",
+            "data": {
+                "images": images_urls,
                 "total_pages": len(result['images'])
             }
         })
