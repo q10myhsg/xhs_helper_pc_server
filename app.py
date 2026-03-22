@@ -7,8 +7,11 @@ from werkzeug.utils import secure_filename
 from xhs_nurturing import NurturingManager
 from license_manager import LicenseManager
 from machine_code import get_machine_code
-from pdf_converter import pdf_converter
+from pdf_converter import PDFConverter
 from file_transfer import file_transfer_manager
+
+# 初始化PDF转换器
+pdf_converter = PDFConverter()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
