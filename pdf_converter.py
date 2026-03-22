@@ -5,11 +5,9 @@ PDF转图片转换器
 支持水印、页眉、页脚添加
 """
 
-import fitz  # PyMuPDF
-from PIL import Image, ImageDraw, ImageFont
+from pdf2image import convert_from_path
+from PIL import Image
 import os
-import io
-import uuid
 from pathlib import Path
 
 
@@ -132,12 +130,12 @@ class PDFConverter:
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF文件不存在: {pdf_path}")
         
-        # 打开PDF
-        doc = fitz.open(str(pdf_path))
-        total_pages = len(doc)
+        # 转换PDF为图片
+        images = convert_from_path(str(pdf_path), dpi=dpi)
+        total_pages = len(images)
         
         # 确定页码范围
-        start = max(1, start_page)
+        start = max(0, start_page - 1)
         end = min(total_pages, end_page) if end_page else total_pages
         
         # 解析水印页面范围
@@ -147,20 +145,12 @@ class PDFConverter:
         output_dir = pdf_path.parent / "imgs" / pdf_path.stem
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        images = []
+        output_paths = []
         simple_pdf_images = []
         
-        for page_num in range(start - 1, end):
-            page = doc[page_num]
-            
-            # 设置缩放比例
-            zoom = dpi / 72
-            mat = fitz.Matrix(zoom, zoom)
-            
-            # 渲染页面为图片
-            pix = page.get_pixmap(matrix=mat)
-            img_data = pix.tobytes("png")
-            img = Image.open(io.BytesIO(img_data)).convert("RGBA")
+        for i in range(start, end):
+            img = images[i].convert("RGBA")
+            page_num = i + 1
             
             # 添加页眉
             if add_header and self.header_img:
@@ -171,11 +161,11 @@ class PDFConverter:
                 img = self._add_footer_to_image(img, self.footer_img, footer_position)
             
             # 添加水印（只在指定页面添加）
-            if add_watermark and self.watermark_img and (page_num + 1) in watermark_pages:
+            if add_watermark and self.watermark_img and page_num in watermark_pages:
                 img = self._add_watermark_to_image(img, self.watermark_img, watermark_position)
             
             # 保存图片
-            output_filename = f"{pdf_path.stem}_page_{page_num + 1:02d}.{fmt}"
+            output_filename = f"{pdf_path.stem}_page_{page_num:02d}.{fmt}"
             output_path = output_dir / output_filename
             
             # 转换为RGB保存（去除透明通道）
@@ -185,13 +175,11 @@ class PDFConverter:
             else:
                 img.save(output_path)
             
-            images.append(str(output_path))
+            output_paths.append(str(output_path))
             
             # 为简版PDF保存
             if generate_simple_pdf:
                 simple_pdf_images.append(img.convert("RGB"))
-        
-        doc.close()
         
         # 生成简版PDF
         simple_pdf_path = None
@@ -207,7 +195,7 @@ class PDFConverter:
             simple_pdf_path = str(simple_pdf_path)
         
         return {
-            'images': images,
+            'images': output_paths,
             'simple_pdf': simple_pdf_path,
             'output_dir': str(output_dir)
         }
