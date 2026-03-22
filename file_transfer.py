@@ -78,6 +78,73 @@ class FileTransferManager:
             logger.error(f"删除设备目录失败: {str(e)}")
             return False
     
+    def _send_media_scanner_broadcast(self, path: str) -> bool:
+        """
+        发送媒体扫描广播，让系统识别新传输的文件或文件夹
+        
+        参数:
+            path: 手机上的文件或目录路径
+            
+        返回:
+            bool: 发送成功返回True，失败返回False
+        """
+        try:
+            logger.info(f"正在发送媒体扫描广播: {path}")
+            # 执行ADB广播命令，支持多设备
+            adb_cmd = self._build_adb_cmd([
+                'shell', 'am', 'broadcast', 
+                '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE', 
+                '-d', f"'file://{path}'"
+            ])
+            
+            result = subprocess.run(
+                adb_cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            logger.info(f"媒体扫描广播发送成功: {result.stdout.strip()}")
+            return True
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"ADB广播命令执行失败: {e.stderr}")
+            return False
+        except Exception as e:
+            logger.error(f"发送媒体扫描广播时发生错误: {str(e)}")
+            return False
+    
+    def _scan_directory_media(self, dir_path: str) -> bool:
+        """
+        扫描目录中的所有图片/视频文件，发送媒体扫描广播
+        
+        参数:
+            dir_path: 手机上的目录路径
+            
+        返回:
+            bool: 扫描成功返回True
+        """
+        try:
+            # 先扫描目录本身
+            self._send_media_scanner_broadcast(dir_path)
+            
+            # 列出目录中的所有文件
+            adb_cmd = self._build_adb_cmd(['shell', 'ls', '-a', dir_path])
+            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                files = result.stdout.strip().split('\n')
+                for filename in files:
+                    if filename and filename not in ['.', '..']:
+                        # 对每个文件发送扫描广播
+                        file_path = f"{dir_path}/{filename}"
+                        self._send_media_scanner_broadcast(file_path)
+            
+            return True
+        except Exception as e:
+            logger.error(f"扫描目录媒体时发生错误: {str(e)}")
+            return False
+    
     def clear_phone_directory(self, phone_dir: str) -> Dict:
         """
         清理手机上的传输目录
@@ -138,6 +205,30 @@ class FileTransferManager:
                 # 统计传输的文件数量
                 file_count = self._count_files(computer_dir)
                 logger.info(f"文件传输成功，共传输 {file_count} 个文件/文件夹")
+                
+                # 发送媒体扫描广播，让相册能显示新传输的图片
+                logger.info("开始发送媒体扫描广播...")
+                
+                # 如果是传输单个文件，直接扫描该文件
+                if os.path.isfile(computer_dir):
+                    filename = os.path.basename(computer_dir)
+                    target_file_path = f"{phone_dir}/{filename}"
+                    self._send_media_scanner_broadcast(target_file_path)
+                else:
+                    # 如果是传输目录，扫描整个目录
+                    # 需要确定正确的目标路径
+                    # 如果computer_dir是目录，adb push会把整个目录推送到phone_dir下
+                    # 所以目标目录应该是 phone_dir + '/' + os.path.basename(computer_dir)
+                    dir_name = os.path.basename(computer_dir)
+                    target_dir_path = f"{phone_dir}/{dir_name}"
+                    
+                    # 先检查目标目录是否存在
+                    if self._check_path_exists_on_device(target_dir_path):
+                        self._scan_directory_media(target_dir_path)
+                    else:
+                        # 如果目录不存在，可能文件直接推送到了phone_dir下
+                        self._scan_directory_media(phone_dir)
+                
                 return {
                     "success": True, 
                     "message": f"文件传输成功，共 {file_count} 个文件/文件夹",
