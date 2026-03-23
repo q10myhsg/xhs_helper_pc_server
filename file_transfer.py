@@ -197,46 +197,88 @@ class FileTransferManager:
             # 确保手机目标目录存在
             self._create_dir_on_device(phone_dir)
             
-            # 使用adb push传输文件
-            adb_cmd = self._build_adb_cmd(['push', computer_dir, phone_dir])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            file_count = 0
+            success = True
             
-            if result.returncode == 0:
-                # 统计传输的文件数量
-                file_count = self._count_files(computer_dir)
-                logger.info(f"文件传输成功，共传输 {file_count} 个文件/文件夹")
+            # 如果是单个文件，直接传输
+            if os.path.isfile(computer_dir):
+                adb_cmd = self._build_adb_cmd(['push', computer_dir, phone_dir])
+                result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    file_count = 1
+                    logger.info(f"文件传输成功")
+                else:
+                    logger.error(f"文件传输失败: {result.stderr}")
+                    return {"success": False, "error": result.stderr}
+            else:
+                # 如果是目录，先获取所有文件，按文件名排序后逐个传输
+                dir_name = os.path.basename(computer_dir)
+                target_dir = f"{phone_dir}/{dir_name}"
+                
+                # 创建目标目录
+                self._create_dir_on_device(target_dir)
+                
+                # 获取所有文件并排序
+                all_files = []
+                for root, dirs, files in os.walk(computer_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # 计算相对路径
+                        rel_path = os.path.relpath(file_path, computer_dir)
+                        all_files.append((file_path, rel_path))
+                
+                # 按文件名自然排序
+                all_files.sort(key=lambda x: x[1])
+                
+                # 逐个传输文件
+                logger.info(f"准备传输 {len(all_files)} 个文件，按顺序传输...")
+                
+                for file_path, rel_path in all_files:
+                    # 计算目标路径
+                    target_file_dir = os.path.join(target_dir, os.path.dirname(rel_path))
+                    target_file_dir = target_file_dir.replace('\\', '/')
+                    
+                    # 创建目标文件所在目录
+                    self._create_dir_on_device(target_file_dir)
+                    
+                    # 传输文件
+                    adb_cmd = self._build_adb_cmd(['push', file_path, target_file_dir])
+                    result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                    
+                    if result.returncode == 0:
+                        file_count += 1
+                        logger.info(f"[{file_count}/{len(all_files)}] 传输成功: {rel_path}")
+                    else:
+                        logger.error(f"传输失败: {rel_path}, 错误: {result.stderr}")
+                        success = False
+                        break
+            
+            if success:
+                logger.info(f"文件传输成功，共传输 {file_count} 个文件")
                 
                 # 发送媒体扫描广播，让相册能显示新传输的图片
                 logger.info("开始发送媒体扫描广播...")
                 
-                # 如果是传输单个文件，直接扫描该文件
                 if os.path.isfile(computer_dir):
                     filename = os.path.basename(computer_dir)
                     target_file_path = f"{phone_dir}/{filename}"
                     self._send_media_scanner_broadcast(target_file_path)
                 else:
-                    # 如果是传输目录，扫描整个目录
-                    # 需要确定正确的目标路径
-                    # 如果computer_dir是目录，adb push会把整个目录推送到phone_dir下
-                    # 所以目标目录应该是 phone_dir + '/' + os.path.basename(computer_dir)
                     dir_name = os.path.basename(computer_dir)
                     target_dir_path = f"{phone_dir}/{dir_name}"
                     
-                    # 先检查目标目录是否存在
                     if self._check_path_exists_on_device(target_dir_path):
                         self._scan_directory_media(target_dir_path)
                     else:
-                        # 如果目录不存在，可能文件直接推送到了phone_dir下
                         self._scan_directory_media(phone_dir)
                 
                 return {
                     "success": True, 
-                    "message": f"文件传输成功，共 {file_count} 个文件/文件夹",
+                    "message": f"文件传输成功，共 {file_count} 个文件",
                     "file_count": file_count
                 }
             else:
-                logger.error(f"文件传输失败: {result.stderr}")
-                return {"success": False, "error": result.stderr}
+                return {"success": False, "error": "部分文件传输失败"}
                 
         except Exception as e:
             logger.error(f"传输文件时发生错误: {str(e)}")
