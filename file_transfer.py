@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import logging
 from typing import Optional, Dict, List
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +47,10 @@ class FileTransferManager:
     def _check_path_exists_on_device(self, path: str) -> bool:
         """检查手机上的路径是否存在"""
         try:
-            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', path, '&&', 'echo', 'yes', '||', 'echo', 'no'])
+            # 不使用引号，参考adb_file.py实现
+            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', path, '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
-            return 'yes' in result.stdout
+            return "yes" in result.stdout
         except Exception as e:
             logger.error(f"检查设备路径时发生错误: {str(e)}")
             return False
@@ -56,9 +58,14 @@ class FileTransferManager:
     def _create_dir_on_device(self, path: str) -> bool:
         """在手机上创建目录"""
         try:
+            # 不使用引号，参考adb_file.py实现
             adb_cmd = self._build_adb_cmd(['shell', 'mkdir', '-p', path])
-            subprocess.run(adb_cmd, check=True, capture_output=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            logger.info(f"已创建手机目录: {path}")
             return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"ADB创建目录命令执行失败: {e.stderr}")
+            return False
         except Exception as e:
             logger.error(f"创建设备目录失败: {str(e)}")
             return False
@@ -70,10 +77,21 @@ class FileTransferManager:
                 logger.info(f"目录不存在，无需删除: {path}")
                 return True
             
+            # 执行ADB删除目录命令（不使用引号，参考adb_file.py实现）
+            logger.info(f"正在删除手机目录: {path}")
             adb_cmd = self._build_adb_cmd(['shell', 'rm', '-rf', path])
-            subprocess.run(adb_cmd, check=True, capture_output=True)
-            logger.info(f"已删除设备目录: {path}")
-            return True
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            
+            # 验证目录是否已删除
+            if not self._check_path_exists_on_device(path):
+                logger.info(f"手机目录删除成功: {path}")
+                return True
+            else:
+                logger.error(f"手机目录删除失败，目录仍然存在: {path}")
+                return False
+        except subprocess.CalledProcessError as e:
+            logger.error(f"ADB删除命令执行失败: {e.stderr}")
+            return False
         except Exception as e:
             logger.error(f"删除设备目录失败: {str(e)}")
             return False
@@ -81,6 +99,7 @@ class FileTransferManager:
     def _send_media_scanner_broadcast(self, path: str) -> bool:
         """
         发送媒体扫描广播，让系统识别新传输的文件或文件夹
+        参考 adb_file.py 的实现方式
         
         参数:
             path: 手机上的文件或目录路径
@@ -89,20 +108,15 @@ class FileTransferManager:
             bool: 发送成功返回True，失败返回False
         """
         try:
-            logger.info(f"正在发送媒体扫描广播: {path}")
             # 执行ADB广播命令，支持多设备
+            logger.info(f"正在发送媒体扫描广播: {path}")
             adb_cmd = self._build_adb_cmd([
                 'shell', 'am', 'broadcast', 
                 '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE', 
-                '-d', f"'file://{path}'"
+                '-d', f"'{path}'"
             ])
             
-            result = subprocess.run(
-                adb_cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
             
             logger.info(f"媒体扫描广播发送成功: {result.stdout.strip()}")
             return True
@@ -114,9 +128,38 @@ class FileTransferManager:
             logger.error(f"发送媒体扫描广播时发生错误: {str(e)}")
             return False
     
+    def _trigger_media_store_scan(self, path: str) -> bool:
+        """
+        使用 MediaStore 触发媒体扫描 (适用于 Android 10+)
+        
+        参数:
+            path: 要扫描的路径
+            
+        返回:
+            bool: 成功返回True
+        """
+        try:
+            # 使用 am start 启动媒体扫描
+            adb_cmd = self._build_adb_cmd([
+                'shell', 'am', 'startservice',
+                '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
+                '-d', f'file://{path}'
+            ])
+            
+            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            logger.info(f"MediaStore 扫描触发结果: {result.returncode}")
+            
+            # 等待一下让系统处理
+            time.sleep(0.5)
+            
+            return True
+        except Exception as e:
+            logger.warning(f"MediaStore 扫描触发失败: {str(e)}")
+            return False
+    
     def _scan_directory_media(self, dir_path: str) -> bool:
         """
-        扫描目录中的所有图片/视频文件，发送媒体扫描广播
+        扫描目录中的所有图片/视频/PDF文件，发送媒体扫描广播
         
         参数:
             dir_path: 手机上的目录路径
@@ -125,24 +168,100 @@ class FileTransferManager:
             bool: 扫描成功返回True
         """
         try:
-            # 先扫描目录本身
-            self._send_media_scanner_broadcast(dir_path)
+            logger.info(f"开始扫描目录媒体文件: {dir_path}")
             
-            # 列出目录中的所有文件
-            adb_cmd = self._build_adb_cmd(['shell', 'ls', '-a', dir_path])
+            # 先扫描目录本身
+            self._send_media_scanner_broadcast(f"file://{dir_path}")
+            
+            # 列出目录中的所有文件（包括隐藏文件），不使用引号
+            adb_cmd = self._build_adb_cmd(['shell', 'ls', '-la', dir_path])
             result = subprocess.run(adb_cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
-                files = result.stdout.strip().split('\n')
-                for filename in files:
-                    if filename and filename not in ['.', '..']:
-                        # 对每个文件发送扫描广播
-                        file_path = f"{dir_path}/{filename}"
-                        self._send_media_scanner_broadcast(file_path)
+                lines = result.stdout.strip().split('\n')
+                media_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.pdf', '.mp4', '.mov', '.avi'}
+                
+                for line in lines:
+                    parts = line.split()
+                    if len(parts) >= 8:
+                        # 跳过目录项 . 和 ..
+                        filename = parts[-1]
+                        if filename in ['.', '..']:
+                            continue
+                            
+                        # 检查是否是媒体文件
+                        file_lower = filename.lower()
+                        if any(file_lower.endswith(ext) for ext in media_extensions):
+                            file_path = f"{dir_path}/{filename}"
+                            logger.info(f"扫描媒体文件: {file_path}")
+                            self._send_media_scanner_broadcast(f"file://{file_path}")
+                            # 稍微延迟避免广播过于频繁
+                            time.sleep(0.1)
+            
+            # 额外触发一次全面的媒体扫描
+            self._trigger_full_media_scan()
             
             return True
         except Exception as e:
             logger.error(f"扫描目录媒体时发生错误: {str(e)}")
+            return False
+    
+    def _trigger_full_media_scan(self) -> bool:
+        """
+        触发全面的媒体库扫描
+        
+        返回:
+            bool: 成功返回True
+        """
+        try:
+            # 使用广播触发系统媒体扫描
+            adb_cmd = self._build_adb_cmd([
+                'shell', 'am', 'broadcast',
+                '-a', 'android.intent.action.MEDIA_MOUNTED',
+                '-d', 'file:///storage/emulated/0'
+            ])
+            
+            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            logger.info(f"全面媒体扫描触发结果: {result.returncode}")
+            
+            return True
+        except Exception as e:
+            logger.warning(f"全面媒体扫描触发失败: {str(e)}")
+            return False
+    
+    def _modify_file_timestamp(self, file_path: str, sequence: int = 0) -> bool:
+        """
+        修改手机上文件的时间戳，让图片按顺序显示
+        通过设置递增的时间戳，确保相册按文件名顺序排列
+        
+        参数:
+            file_path: 手机上的文件路径
+            sequence: 文件序号，用于生成递增的时间戳
+            
+        返回:
+            bool: 修改成功返回True
+        """
+        try:
+            import datetime
+            # 基于当前时间，加上序号偏移，确保按顺序排列
+            # 每个文件间隔1秒
+            base_time = datetime.datetime.now()
+            file_time = base_time + datetime.timedelta(seconds=sequence)
+            time_str = file_time.strftime("%Y%m%d%H%M.%S")
+            
+            logger.info(f"正在修改文件时间戳: {file_path} -> {time_str}")
+            adb_cmd = self._build_adb_cmd([
+                'shell', 'touch', '-a', '-m', '-t', time_str, file_path
+            ])
+            
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            logger.info(f"文件时间戳修改成功: {file_path}")
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"修改文件时间戳失败: {e.stderr}")
+            return False
+        except Exception as e:
+            logger.warning(f"修改文件时间戳时发生错误: {str(e)}")
             return False
     
     def clear_phone_directory(self, phone_dir: str) -> Dict:
@@ -199,6 +318,7 @@ class FileTransferManager:
             
             file_count = 0
             success = True
+            transferred_files = []  # 记录传输的文件路径
             
             # 如果是单个文件，直接传输
             if os.path.isfile(computer_dir):
@@ -206,7 +326,9 @@ class FileTransferManager:
                 result = subprocess.run(adb_cmd, capture_output=True, text=True)
                 if result.returncode == 0:
                     file_count = 1
-                    logger.info(f"文件传输成功")
+                    filename = os.path.basename(computer_dir)
+                    transferred_files.append(f"{phone_dir}/{filename}")
+                    logger.info(f"文件传输成功: {filename}")
                 else:
                     logger.error(f"文件传输失败: {result.stderr}")
                     return {"success": False, "error": result.stderr}
@@ -239,7 +361,11 @@ class FileTransferManager:
                     target_file_dir = target_file_dir.replace('\\', '/')
                     
                     # 创建目标文件所在目录
-                    self._create_dir_on_device(target_file_dir)
+                    dir_created = self._create_dir_on_device(target_file_dir)
+                    if not dir_created:
+                        logger.error(f"创建目录失败，跳过文件: {rel_path}")
+                        success = False
+                        break
                     
                     # 传输文件
                     adb_cmd = self._build_adb_cmd(['push', file_path, target_file_dir])
@@ -247,6 +373,11 @@ class FileTransferManager:
                     
                     if result.returncode == 0:
                         file_count += 1
+                        # 记录传输的文件路径
+                        target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
+                        transferred_files.append(target_file_path)
+                        # 修改文件时间戳，确保按顺序显示
+                        self._modify_file_timestamp(target_file_path, file_count)
                         logger.info(f"[{file_count}/{len(all_files)}] 传输成功: {rel_path}")
                     else:
                         logger.error(f"传输失败: {rel_path}, 错误: {result.stderr}")
@@ -262,7 +393,7 @@ class FileTransferManager:
                 if os.path.isfile(computer_dir):
                     filename = os.path.basename(computer_dir)
                     target_file_path = f"{phone_dir}/{filename}"
-                    self._send_media_scanner_broadcast(target_file_path)
+                    self._send_media_scanner_broadcast(f"file://{target_file_path}")
                 else:
                     dir_name = os.path.basename(computer_dir)
                     target_dir_path = f"{phone_dir}/{dir_name}"
@@ -272,10 +403,15 @@ class FileTransferManager:
                     else:
                         self._scan_directory_media(phone_dir)
                 
+                # 等待媒体扫描完成
+                logger.info("等待媒体扫描完成...")
+                time.sleep(2)
+                
                 return {
                     "success": True, 
                     "message": f"文件传输成功，共 {file_count} 个文件",
-                    "file_count": file_count
+                    "file_count": file_count,
+                    "transferred_files": transferred_files
                 }
             else:
                 return {"success": False, "error": "部分文件传输失败"}

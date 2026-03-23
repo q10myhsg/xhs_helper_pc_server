@@ -64,7 +64,12 @@ def file_transfer_page():
 @app.route("/activation")
 def activation_page():
     """激活页面"""
-    return render_template("activation.html")
+    return render_template("activation.html", active_page="activation")
+
+@app.route("/cover-generator")
+def cover_generator_page():
+    """小红书封面生成器页面"""
+    return render_template("cover_generator.html", active_page="cover-generator")
 
 # ==================== API 接口 ====================
 
@@ -1360,6 +1365,45 @@ def serve_local_file():
         import logging
         logging.error(f"Error serving local file: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== 封面生成器 API ====================
+
+@app.route("/api/cover-generator/save", methods=["POST"])
+def api_save_cover_image():
+    """保存生成的封面图片"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({"success": False, "error": "没有图片文件"})
+        
+        file = request.files['image']
+        output_dir = request.form.get('output_dir', '')
+        
+        if file.filename == '':
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        # 如果未指定输出目录，使用默认目录
+        if not output_dir:
+            output_dir = os.path.expanduser("~/Desktop/小红书封面")
+        
+        # 确保输出目录存在
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # 生成文件名
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(output_dir, filename)
+        
+        # 保存文件
+        file.save(filepath)
+        
+        return jsonify({
+            "success": True,
+            "message": "封面保存成功",
+            "file_path": filepath,
+            "filename": filename
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 
 if __name__ == '__main__':
     # 确保配置文件存在

@@ -1,0 +1,745 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.cover-generator-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.cover-glass-panel {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.cover-color-picker-wrapper {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+}
+
+.cover-color-picker-wrapper:hover {
+    transform: scale(1.1);
+}
+
+.cover-color-picker-wrapper input[type="color"] {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.cover-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cover-slider-container input[type="range"] {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #00D9A5, #4A1C6F);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.cover-slider-container input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #00D9A5;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.cover-template-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+}
+
+.cover-template-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.cover-template-card.active {
+    border-color: #00D9A5;
+    box-shadow: 0 0 0 3px rgba(0, 217, 165, 0.2);
+}
+
+.cover-template-preview {
+    width: 100%;
+    height: 40px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.cover-text-line-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+}
+
+.cover-text-line-item:hover {
+    background: #e9ecef;
+}
+
+.cover-text-line-item.highlighted {
+    background: linear-gradient(135deg, rgba(0, 217, 165, 0.15) 0%, rgba(0, 217, 165, 0.05) 100%);
+    border: 2px solid #00D9A5;
+}
+
+.cover-highlight-toggle {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 2px solid #ddd;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.cover-highlight-toggle:hover {
+    border-color: #00D9A5;
+}
+
+.cover-highlight-toggle.active {
+    background: #00D9A5;
+    border-color: #00D9A5;
+}
+
+.cover-highlight-toggle.active::after {
+    content: '✓';
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.cover-canvas-container {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    padding: 16px;
+    display: inline-block;
+}
+
+#coverPreviewCanvas {
+    border-radius: 8px;
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.cover-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4A1C6F;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cover-section-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: linear-gradient(180deg, #00D9A5 0%, #4A1C6F 100%);
+    border-radius: 2px;
+}
+
+.cover-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    font-size: 15px;
+    line-height: 1.6;
+    resize: vertical;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.cover-textarea:focus {
+    outline: none;
+    border-color: #00D9A5;
+    box-shadow: 0 0 0 4px rgba(0, 217, 165, 0.1);
+}
+
+.cover-output-dir {
+    background: #f0f9ff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #b3e0ff;
+    margin-bottom: 20px;
+}
+
+.cover-btn-primary {
+    background: linear-gradient(135deg, #00D9A5 0%, #00b386 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(0, 217, 165, 0.4);
+}
+
+.cover-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 217, 165, 0.5);
+}
+
+.cover-btn-secondary {
+    background: #f8f9fa;
+    color: #666;
+    border: 2px solid #e9ecef;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cover-btn-secondary:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.cover-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 1024px) {
+    .cover-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="cover-generator-container">
+    <h1>✨ 小红书封面生成器</h1>
+    <p style="color: #666; margin-bottom: 24px;">快速生成精美的小红书封面图片，支持自定义样式和模板</p>
+
+    <!-- 输出目录配置 -->
+    <div class="cover-output-dir">
+        <label style="font-weight: 600; color: #0066cc;">📁 输出目录 <span style="color: #f56565;">*</span></label>
+        <p style="color: #666; font-size: 13px; margin: 8px 0;">指定封面图片保存的文件夹路径</p>
+        <input type="text" id="cover-output-dir" placeholder="例如: /Users/username/Desktop/封面图片" style="width: 100%; margin-bottom: 8px;">
+        <small style="color: #888;">💡 提示：可以直接使用PDF工作区目录，方便统一管理</small>
+    </div>
+
+    <div class="cover-grid">
+        <!-- 左侧：编辑器 -->
+        <div class="cover-glass-panel">
+            <!-- 文字输入 -->
+            <div style="margin-bottom: 20px;">
+                <div class="cover-section-title">📝 封面文字</div>
+                <textarea id="coverTextInput" class="cover-textarea" placeholder="输入封面文字，每行一句...
+例如：
+太恶心了
+六年级小道消息
+心疼26届
+小升初的孩子">太恶心了
+六年级小道消息
+心疼26届
+小升初的孩子</textarea>
+            </div>
+
+            <!-- 高亮选择 -->
+            <div style="margin-bottom: 20px;">
+                <div class="cover-section-title">🎯 点击高亮（选择要突出的文字）</div>
+                <div id="coverTextLinesContainer" style="max-height: 200px; overflow-y: auto;">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 预设模板 -->
+            <div style="margin-bottom: 20px;">
+                <div class="cover-section-title">🎨 预设模板</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <div class="cover-template-card active" data-template="education" onclick="applyCoverTemplate('education')">
+                        <div class="cover-template-preview" style="background: linear-gradient(135deg, #F5F0E6 0%, #E8E0D0 100%);"></div>
+                        <div style="font-size: 12px; font-weight: 500;">📚 教育</div>
+                    </div>
+                    <div class="cover-template-card" data-template="food" onclick="applyCoverTemplate('food')">
+                        <div class="cover-template-preview" style="background: linear-gradient(135deg, #FF9A56 0%, #FF6B35 100%);"></div>
+                        <div style="font-size: 12px; font-weight: 500;">🍜 美食</div>
+                    </div>
+                    <div class="cover-template-card" data-template="travel" onclick="applyCoverTemplate('travel')">
+                        <div class="cover-template-preview" style="background: linear-gradient(135deg, #87CEEB 0%, #5BA3C0 100%);"></div>
+                        <div style="font-size: 12px; font-weight: 500;">✈️ 旅游</div>
+                    </div>
+                    <div class="cover-template-card" data-template="fashion" onclick="applyCoverTemplate('fashion')">
+                        <div class="cover-template-preview" style="background: linear-gradient(135deg, #E8B4CB 0%, #D4A5A5 100%);"></div>
+                        <div style="font-size: 12px; font-weight: 500;">💄 时尚</div>
+                    </div>
+                    <div class="cover-template-card" data-template="tech" onclick="applyCoverTemplate('tech')">
+                        <div class="cover-template-preview" style="background: linear-gradient(135deg, #E8F5E9 0%, #A5D6A7 100%);"></div>
+                        <div style="font-size: 12px; font-weight: 500;">💻 科技</div>
+                    </div>
+                    <div class="cover-template-card" data-template="lifestyle" onclick="applyCoverTemplate('lifestyle')">
+                        <div class="cover-template-preview" style="background: linear-gradient(135deg, #FFF3E0 0%, #FFCC80 100%);"></div>
+                        <div style="font-size: 12px; font-weight: 500;">🏠 生活</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 样式调节 -->
+            <div style="margin-bottom: 20px;">
+                <div class="cover-section-title">🎛️ 样式调节</div>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- 背景颜色 -->
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 14px; color: #666;">背景颜色</span>
+                        <div class="cover-color-picker-wrapper" id="coverBgColorWrapper">
+                            <input type="color" id="coverBgColor" value="#F5F0E6">
+                        </div>
+                    </div>
+
+                    <!-- 文字颜色 -->
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 14px; color: #666;">文字颜色</span>
+                        <div class="cover-color-picker-wrapper" id="coverTextColorWrapper">
+                            <input type="color" id="coverTextColor" value="#4A1C6F">
+                        </div>
+                    </div>
+
+                    <!-- 高亮颜色 -->
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 14px; color: #666;">高亮颜色</span>
+                        <div class="cover-color-picker-wrapper" id="coverHighlightColorWrapper">
+                            <input type="color" id="coverHighlightColor" value="#00D9A5">
+                        </div>
+                    </div>
+
+                    <!-- 字体大小 -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 14px; color: #666;">字体大小</span>
+                            <span style="font-size: 14px; font-weight: 600;" id="coverFontSizeValue">56px</span>
+                        </div>
+                        <div class="cover-slider-container">
+                            <input type="range" id="coverFontSize" min="32" max="80" value="56">
+                        </div>
+                    </div>
+
+                    <!-- 行间距 -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 14px; color: #666;">行间距</span>
+                            <span style="font-size: 14px; font-weight: 600;" id="coverLineHeightValue">1.6</span>
+                        </div>
+                        <div class="cover-slider-container">
+                            <input type="range" id="coverLineHeight" min="1.2" max="2.2" step="0.1" value="1.6">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div style="display: flex; gap: 12px; padding-top: 16px; border-top: 1px solid #e9ecef;">
+                <button class="cover-btn-secondary" onclick="resetCoverToDefault()" style="flex: 1;">
+                    🔄 重置
+                </button>
+                <button class="cover-btn-primary" onclick="saveCoverImage()" style="flex: 1;">
+                    💾 保存封面
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧：预览 -->
+        <div class="cover-glass-panel">
+            <div class="cover-section-title">👁️ 实时预览（4:3 比例）</div>
+            <div style="text-align: center;">
+                <div class="cover-canvas-container">
+                    <canvas id="coverPreviewCanvas" width="600" height="800"></canvas>
+                </div>
+                <p style="color: #888; font-size: 13px; margin-top: 12px;">
+                    导出尺寸：1200 × 1600 像素（高清）
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Canvas 设置
+const coverCanvas = document.getElementById('coverPreviewCanvas');
+const coverCtx = coverCanvas.getContext('2d');
+
+// 状态
+let coverState = {
+    textLines: [],
+    highlightedIndices: new Set([0, 2]),
+    bgColor: '#F5F0E6',
+    textColor: '#4A1C6F',
+    highlightColor: '#00D9A5',
+    fontSize: 56,
+    lineHeight: 1.6
+};
+
+// 模板
+const coverTemplates = {
+    education: {
+        bgColor: '#F5F0E6',
+        textColor: '#4A1C6F',
+        highlightColor: '#00D9A5'
+    },
+    food: {
+        bgColor: '#FFF5E6',
+        textColor: '#8B4513',
+        highlightColor: '#FFB800'
+    },
+    travel: {
+        bgColor: '#E6F3FF',
+        textColor: '#1E3A5F',
+        highlightColor: '#00B8D4'
+    },
+    fashion: {
+        bgColor: '#FCE4EC',
+        textColor: '#880E4F',
+        highlightColor: '#FFD700'
+    },
+    tech: {
+        bgColor: '#E8F5E9',
+        textColor: '#1B5E20',
+        highlightColor: '#76FF03'
+    },
+    lifestyle: {
+        bgColor: '#FFF3E0',
+        textColor: '#E65100',
+        highlightColor: '#FF7043'
+    }
+};
+
+// 防抖函数
+function debounce(fn, delay) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+// 初始化
+function initCoverGenerator() {
+    setupCoverEventListeners();
+    parseCoverTextInput();
+    updateCoverUI();
+    renderCover();
+}
+
+// 设置事件监听
+function setupCoverEventListeners() {
+    // 文字输入
+    document.getElementById('coverTextInput').addEventListener('input', debounce(() => {
+        parseCoverTextInput();
+        renderCover();
+    }, 150));
+
+    // 颜色选择
+    document.getElementById('coverBgColor').addEventListener('input', (e) => {
+        coverState.bgColor = e.target.value;
+        document.getElementById('coverBgColorWrapper').style.background = e.target.value;
+        renderCover();
+    });
+
+    document.getElementById('coverTextColor').addEventListener('input', (e) => {
+        coverState.textColor = e.target.value;
+        document.getElementById('coverTextColorWrapper').style.background = e.target.value;
+        renderCover();
+    });
+
+    document.getElementById('coverHighlightColor').addEventListener('input', (e) => {
+        coverState.highlightColor = e.target.value;
+        document.getElementById('coverHighlightColorWrapper').style.background = e.target.value;
+        renderCover();
+    });
+
+    // 滑块
+    document.getElementById('coverFontSize').addEventListener('input', (e) => {
+        coverState.fontSize = parseInt(e.target.value);
+        document.getElementById('coverFontSizeValue').textContent = e.target.value + 'px';
+        renderCover();
+    });
+
+    document.getElementById('coverLineHeight').addEventListener('input', (e) => {
+        coverState.lineHeight = parseFloat(e.target.value);
+        document.getElementById('coverLineHeightValue').textContent = e.target.value;
+        renderCover();
+    });
+
+    // 初始化颜色选择器背景
+    document.getElementById('coverBgColorWrapper').style.background = coverState.bgColor;
+    document.getElementById('coverTextColorWrapper').style.background = coverState.textColor;
+    document.getElementById('coverHighlightColorWrapper').style.background = coverState.highlightColor;
+}
+
+// 解析文字输入
+function parseCoverTextInput() {
+    const input = document.getElementById('coverTextInput').value;
+    const lines = input.split('\n').filter(line => line.trim() !== '');
+    
+    const oldHighlights = new Set(coverState.highlightedIndices);
+    coverState.highlightedIndices.clear();
+    
+    coverState.textLines = lines.map((line, index) => {
+        if (oldHighlights.has(index)) {
+            coverState.highlightedIndices.add(index);
+        }
+        return line.trim();
+    });
+
+    if (coverState.highlightedIndices.size === 0 && lines.length > 0) {
+        coverState.highlightedIndices.add(0);
+        if (lines.length > 2) coverState.highlightedIndices.add(2);
+    }
+
+    updateCoverTextLinesUI();
+}
+
+// 更新文字行UI
+function updateCoverTextLinesUI() {
+    const container = document.getElementById('coverTextLinesContainer');
+    container.innerHTML = '';
+
+    coverState.textLines.forEach((line, index) => {
+        const div = document.createElement('div');
+        div.className = `cover-text-line-item ${coverState.highlightedIndices.has(index) ? 'highlighted' : ''}`;
+        div.innerHTML = `
+            <div class="cover-highlight-toggle ${coverState.highlightedIndices.has(index) ? 'active' : ''}" 
+                 onclick="toggleCoverHighlight(${index})"></div>
+            <span style="flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(line)}</span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// 切换高亮
+function toggleCoverHighlight(index) {
+    if (coverState.highlightedIndices.has(index)) {
+        coverState.highlightedIndices.delete(index);
+    } else {
+        coverState.highlightedIndices.add(index);
+    }
+    updateCoverTextLinesUI();
+    renderCover();
+}
+
+// 应用模板
+function applyCoverTemplate(templateName) {
+    const template = coverTemplates[templateName];
+    if (!template) return;
+
+    coverState.bgColor = template.bgColor;
+    coverState.textColor = template.textColor;
+    coverState.highlightColor = template.highlightColor;
+
+    document.getElementById('coverBgColor').value = template.bgColor;
+    document.getElementById('coverTextColor').value = template.textColor;
+    document.getElementById('coverHighlightColor').value = template.highlightColor;
+    document.getElementById('coverBgColorWrapper').style.background = template.bgColor;
+    document.getElementById('coverTextColorWrapper').style.background = template.textColor;
+    document.getElementById('coverHighlightColorWrapper').style.background = template.highlightColor;
+
+    document.querySelectorAll('.cover-template-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    document.querySelector(`[data-template="${templateName}"]`).classList.add('active');
+
+    renderCover();
+}
+
+// 更新UI
+function updateCoverUI() {
+    document.getElementById('coverBgColor').value = coverState.bgColor;
+    document.getElementById('coverTextColor').value = coverState.textColor;
+    document.getElementById('coverHighlightColor').value = coverState.highlightColor;
+    document.getElementById('coverFontSize').value = coverState.fontSize;
+    document.getElementById('coverFontSizeValue').textContent = coverState.fontSize + 'px';
+    document.getElementById('coverLineHeight').value = coverState.lineHeight;
+    document.getElementById('coverLineHeightValue').textContent = coverState.lineHeight;
+}
+
+// 渲染封面
+function renderCover() {
+    const width = coverCanvas.width;
+    const height = coverCanvas.height;
+
+    coverCtx.clearRect(0, 0, width, height);
+    coverCtx.fillStyle = coverState.bgColor;
+    coverCtx.fillRect(0, 0, width, height);
+
+    const padding = 60;
+    const lineHeightPx = coverState.fontSize * coverState.lineHeight;
+    const totalHeight = coverState.textLines.length * lineHeightPx;
+    let startY = (height - totalHeight) / 2 + coverState.fontSize * 0.8;
+
+    coverCtx.font = `900 ${coverState.fontSize}px "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    coverCtx.textBaseline = 'alphabetic';
+
+    coverState.textLines.forEach((line, index) => {
+        const y = startY + index * lineHeightPx;
+        const isHighlighted = coverState.highlightedIndices.has(index);
+        const metrics = coverCtx.measureText(line);
+        const textWidth = metrics.width;
+
+        if (isHighlighted) {
+            coverCtx.save();
+            const highlightPadding = 20;
+            const highlightHeight = coverState.fontSize * 1.3;
+            
+            coverCtx.translate(padding - 10, y - coverState.fontSize * 0.85);
+            coverCtx.transform(1, 0, -0.15, 1, 0, 0);
+            
+            coverCtx.fillStyle = coverState.highlightColor;
+            coverCtx.fillRect(0, 0, textWidth + highlightPadding * 2, highlightHeight);
+            
+            coverCtx.restore();
+        }
+
+        coverCtx.fillStyle = coverState.textColor;
+        coverCtx.fillText(line, padding, y);
+    });
+}
+
+// 保存封面图片
+function saveCoverImage() {
+    const outputDir = document.getElementById('cover-output-dir').value.trim();
+    if (!outputDir) {
+        alert('请先设置输出目录！');
+        return;
+    }
+
+    // 创建高清画布
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 1200;
+    exportCanvas.height = 1600;
+    const exportCtx = exportCanvas.getContext('2d');
+
+    const scale = 2;
+    exportCtx.fillStyle = coverState.bgColor;
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    const padding = 120;
+    const fontSize = coverState.fontSize * scale;
+    const lineHeightPx = fontSize * coverState.lineHeight;
+    const totalHeight = coverState.textLines.length * lineHeightPx;
+    let startY = (exportCanvas.height - totalHeight) / 2 + fontSize * 0.8;
+
+    exportCtx.font = `900 ${fontSize}px "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    exportCtx.textBaseline = 'alphabetic';
+
+    coverState.textLines.forEach((line, index) => {
+        const y = startY + index * lineHeightPx;
+        const isHighlighted = coverState.highlightedIndices.has(index);
+        const metrics = exportCtx.measureText(line);
+        const textWidth = metrics.width;
+
+        if (isHighlighted) {
+            exportCtx.save();
+            const highlightPadding = 40;
+            const highlightHeight = fontSize * 1.3;
+            
+            exportCtx.translate(padding - 20, y - fontSize * 0.85);
+            exportCtx.transform(1, 0, -0.15, 1, 0, 0);
+            
+            exportCtx.fillStyle = coverState.highlightColor;
+            exportCtx.fillRect(0, 0, textWidth + highlightPadding * 2, highlightHeight);
+            
+            exportCtx.restore();
+        }
+
+        exportCtx.fillStyle = coverState.textColor;
+        exportCtx.fillText(line, padding, y);
+    });
+
+    // 转换为Blob并上传
+    exportCanvas.toBlob((blob) => {
+        const formData = new FormData();
+        formData.append('image', blob, `小红书封面_${Date.now()}.png`);
+        formData.append('output_dir', outputDir);
+
+        fetch('/api/cover-generator/save', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`封面保存成功！\n保存路径: ${data.file_path}`);
+            } else {
+                alert('保存失败: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('保存出错: ' + error.message);
+        });
+    }, 'image/png');
+}
+
+// 重置
+function resetCoverToDefault() {
+    coverState = {
+        textLines: [],
+        highlightedIndices: new Set([0, 2]),
+        bgColor: '#F5F0E6',
+        textColor: '#4A1C6F',
+        highlightColor: '#00D9A5',
+        fontSize: 56,
+        lineHeight: 1.6
+    };
+
+    document.getElementById('coverTextInput').value = '太恶心了\n六年级小道消息\n心疼26届\n小升初的孩子';
+    applyCoverTemplate('education');
+    parseCoverTextInput();
+}
+
+// HTML转义
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 启动
+document.addEventListener('DOMContentLoaded', initCoverGenerator);
+</script>
+{% endblock %}

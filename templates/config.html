@@ -147,16 +147,22 @@ function refreshConfigDeviceList() {
         });
 }
 
+// 全局变量存储当前配置
+let currentConfig = {};
+
 function loadConfig() {
     const selectedDevice = document.querySelector('input[name="config-device"]:checked');
     if (!selectedDevice) return;
-    
+
     const deviceId = selectedDevice.value;
     fetch(`/api/config/${deviceId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 const config = data.data;
+                // 保存当前配置到全局变量
+                currentConfig = config;
+
                 if (config.duration_minutes) document.getElementById('duration-minutes').value = config.duration_minutes;
                 if (config.post_visit_ratio) document.getElementById('post-visit-ratio').value = config.post_visit_ratio;
                 if (config.posts_per_keyword) document.getElementById('posts-per-keyword').value = config.posts_per_keyword;
@@ -168,12 +174,12 @@ function loadConfig() {
                 if (config.like_prob) document.getElementById('like-prob').value = config.like_prob;
                 if (config.collect_prob) document.getElementById('collect-prob').value = config.collect_prob;
                 if (config.comment_prob) document.getElementById('comment-prob').value = config.comment_prob;
-                
+
                 if (config.post_visit_ratio) document.getElementById('ratio-display').textContent = config.post_visit_ratio + '%';
                 if (config.like_prob) document.getElementById('like-display').textContent = config.like_prob + '%';
                 if (config.collect_prob) document.getElementById('collect-display').textContent = config.collect_prob + '%';
                 if (config.comment_prob) document.getElementById('comment-display').textContent = config.comment_prob + '%';
-                
+
                 loadCommentTemplates(config.comment_templates || []);
             }
         })
@@ -232,10 +238,12 @@ function saveAllConfig() {
         return;
     }
     const deviceId = selectedDevice.value;
-    
+
     const templates = Array.from(document.querySelectorAll('#comment-templates-list span')).map(el => el.textContent.trim());
-    
+
+    // 保留原有的关键词和其他配置
     const config = {
+        ...currentConfig,  // 保留原有配置（包括keywords）
         duration_minutes: parseInt(document.getElementById('duration-minutes').value),
         post_visit_ratio: parseInt(document.getElementById('post-visit-ratio').value),
         posts_per_keyword: parseInt(document.getElementById('posts-per-keyword').value),
@@ -249,6 +257,11 @@ function saveAllConfig() {
         comment_prob: parseInt(document.getElementById('comment-prob').value),
         comment_templates: templates
     };
+
+    // 确保keywords存在（如果是新设备或没有keywords）
+    if (!config.keywords) {
+        config.keywords = [];
+    }
     
     fetch(`/api/config/${deviceId}`, {
         method: 'PUT',

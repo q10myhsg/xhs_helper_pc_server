@@ -65,16 +65,16 @@ function refreshKeywordDeviceList() {
 function refreshKeywords() {
     const selectedDevice = document.querySelector('input[name="keyword-device"]:checked');
     if (!selectedDevice) return;
-    
+
     const deviceId = selectedDevice.value;
     fetch(`/api/config/keywords/${deviceId}`)
         .then(response => response.json())
         .then(data => {
             const keywordList = document.getElementById('keyword-list');
             keywordList.innerHTML = '';
-            
-            if (data.success && data.data.keywords && data.data.keywords.length > 0) {
-                data.data.keywords.forEach((keyword, index) => {
+
+            if (data.success && data.data && data.data.length > 0) {
+                data.data.forEach((keyword, index) => {
                     const keywordItem = document.createElement('div');
                     keywordItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;';
                     keywordItem.innerHTML = `
