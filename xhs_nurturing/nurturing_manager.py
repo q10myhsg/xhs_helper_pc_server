@@ -47,22 +47,24 @@ class NurturingManager:
             
             # 获取设备配置
             config = self.config_manager.get_device_config(device_id)
-            
+            self.logger.info(f"设备 {device_id} 的配置: {config}")
+            self.logger.info(f"配置中的keywords: {config.get('keywords', 'NOT FOUND')}")
+
             # 检查每日时长限制
             duration_minutes = config.get("duration_minutes", 20)
             limit_ok, limit_msg = self.license_manager.check_daily_limit(device_id, duration_minutes)
             if not limit_ok:
                 self.logger.error(f"时长限制检查失败: {limit_msg}")
                 return False
-            
+
             # 连接设备
             if not self.device_manager.connect_device(device_id):
                 self.logger.error(f"无法连接设备 {device_id}")
                 return False
-            
+
             # 验证配置
             if not self.config_manager.validate_config(config):
-                self.logger.error(f"设备 {device_id} 的配置无效")
+                self.logger.error(f"设备 {device_id} 的配置无效，配置内容: {config}")
                 return False
             
             # 验证关键词

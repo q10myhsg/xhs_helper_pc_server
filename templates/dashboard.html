@@ -237,8 +237,12 @@ function startNurturing() {
         return;
     }
     selectedDevices.forEach(deviceId => {
-        fetch(`/api/yanghao/start/${deviceId}`, {
-            method: 'POST'
+        fetch('/api/yanghao/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ device_id: deviceId })
         })
         .then(response => response.json())
         .then(data => {
@@ -256,8 +260,12 @@ function stopNurturing() {
         return;
     }
     selectedDevices.forEach(deviceId => {
-        fetch(`/api/yanghao/stop/${deviceId}`, {
-            method: 'POST'
+        fetch('/api/yanghao/stop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ device_id: deviceId })
         })
         .then(response => response.json())
         .then(data => {
@@ -275,7 +283,7 @@ function closeXiaohongshu() {
         return;
     }
     selectedDevices.forEach(deviceId => {
-        fetch(`/api/xiaohongshu/close/${deviceId}`, {
+        fetch(`/api/yanghao/close-xhs/${deviceId}`, {
             method: 'POST'
         })
         .then(response => response.json())

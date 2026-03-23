@@ -37,9 +37,9 @@
                 <div class="device-selector" id="dashboard-device-list" style="margin-bottom: 20px;"></div>
                 
                 <div style="margin-bottom: 20px;">
-                    <button class="btn btn-success" onclick="startNurturing()" style="margin-right: 10px;">🚀 启动养号</button>
-                    <button class="btn btn-danger" onclick="stopNurturing()" style="margin-right: 10px;">🛑 停止养号</button>
-                    <button class="btn btn-secondary" onclick="closeXiaohongshu()">关闭小红书</button>
+                    <button type="button" class="btn btn-success" onclick="startNurturing()" style="margin-right: 10px;">🚀 启动养号</button>
+                    <button type="button" class="btn btn-danger" onclick="stopNurturing()" style="margin-right: 10px;">🛑 停止养号</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeXiaohongshu()">关闭小红书</button>
                 </div>
 
 
@@ -958,16 +958,22 @@
 
         // 启动养号（支持多个设备）
         function startNurturing() {
+            console.log('startNurturing 被调用');
+            console.log('选中的设备:', selectedDevices);
+            
             if (selectedDevices.length === 0) {
                 alert('请选择至少一个设备');
                 return;
             }
-            
+
             let successCount = 0;
             let totalCount = selectedDevices.length;
-            
+
+            console.log('开始为', totalCount, '个设备启动养号');
+
             // 为每个选中的设备启动养号
             selectedDevices.forEach(deviceId => {
+                console.log('正在为设备', deviceId, '启动养号');
                 fetch('/api/yanghao/start', {
                     method: 'POST',
                     headers: {

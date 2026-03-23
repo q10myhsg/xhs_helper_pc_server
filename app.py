@@ -171,10 +171,17 @@ def api_get_config(device_id):
 
 @app.route("/api/config/<device_id>", methods=["PUT"])
 def api_save_config(device_id):
-    """保存设备配置"""
+    """保存设备配置（部分更新）"""
     try:
         config = request.json
-        success = nurturing_manager.update_device_config(device_id, config)
+
+        # 先获取现有配置
+        existing_config = nurturing_manager.get_device_config(device_id)
+
+        # 合并配置：现有配置 + 新配置（新配置覆盖现有配置）
+        merged_config = {**existing_config, **config}
+
+        success = nurturing_manager.update_device_config(device_id, merged_config)
         if success:
             return jsonify({"success": True, "message": "配置已保存"})
         else:

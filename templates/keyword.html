@@ -122,10 +122,31 @@ function importKeywords() {
 }
 
 function removeKeyword(index) {
-    const keywordItems = document.querySelectorAll('#keyword-list > div');
-    if (keywordItems[index]) {
-        keywordItems[index].remove();
+    const keywordList = document.getElementById('keyword-list');
+    const keywordElements = keywordList.querySelectorAll('.list-item-text');
+
+    // 获取当前所有关键词
+    const keywords = Array.from(keywordElements).map(el => el.textContent.trim());
+
+    // 删除指定索引的关键词
+    keywords.splice(index, 1);
+
+    // 重新渲染列表
+    keywordList.innerHTML = '';
+    if (keywords.length === 0) {
+        keywordList.innerHTML = '<div class="alert alert-info">暂无关键词</div>';
+        return;
     }
+
+    keywords.forEach((keyword, newIndex) => {
+        const keywordItem = document.createElement('div');
+        keywordItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;';
+        keywordItem.innerHTML = `
+            <span class="list-item-text">${keyword}</span>
+            <button class="btn btn-danger" onclick="removeKeyword(${newIndex})" style="font-size: 11px; padding: 2px 8px;">删除</button>
+        `;
+        keywordList.appendChild(keywordItem);
+    });
 }
 
 function saveKeywords() {

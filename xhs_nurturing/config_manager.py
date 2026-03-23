@@ -233,8 +233,8 @@ class ConfigManager:
                 if field not in config:
                     self.logger.warning(f"配置缺少必要字段: {field}")
                     return False
-            
-            # 检查关键词列表
+
+            # 检查关键词列表（允许空列表）
             if not isinstance(config["keywords"], list):
                 self.logger.warning("关键词必须是列表")
                 return False

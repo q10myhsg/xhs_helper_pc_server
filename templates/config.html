@@ -241,9 +241,8 @@ function saveAllConfig() {
 
     const templates = Array.from(document.querySelectorAll('#comment-templates-list span')).map(el => el.textContent.trim());
 
-    // 保留原有的关键词和其他配置
+    // 只发送页面上有的字段，后端会合并配置
     const config = {
-        ...currentConfig,  // 保留原有配置（包括keywords）
         duration_minutes: parseInt(document.getElementById('duration-minutes').value),
         post_visit_ratio: parseInt(document.getElementById('post-visit-ratio').value),
         posts_per_keyword: parseInt(document.getElementById('posts-per-keyword').value),
@@ -258,11 +257,6 @@ function saveAllConfig() {
         comment_templates: templates
     };
 
-    // 确保keywords存在（如果是新设备或没有keywords）
-    if (!config.keywords) {
-        config.keywords = [];
-    }
-    
     fetch(`/api/config/${deviceId}`, {
         method: 'PUT',
         headers: {
