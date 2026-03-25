@@ -1,0 +1,863 @@
+{% extends "base.html" %}
+
+{% block title %}商品主图生成器{% endblock %}
+
+{% block content %}
+    <h1>🛍️ 商品主图生成器</h1>
+    <p class="lead">快速生成专业的电商商品主图，支持自定义文字、颜色和样式</p>
+
+    <div class="wrapper">
+        <!-- ===== 主图预览 ===== -->
+        <div class="main-image-border" id="mainImageBorder">
+            <div class="main-image" id="mainImage">
+                <div class="top-title" id="topTitleBg">
+                    <h1 id="topTitleText">人教版七下英语</h1>
+                </div>
+
+                <div class="sub-title" id="subTitleText">全套资料合集</div>
+
+                <div class="tags-grid">
+                    <div class="tag-item"><div class="tag-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg></div><span class="tag-text-item">单词音频</span></div>
+                    <div class="tag-item"><div class="tag-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg></div><span class="tag-text-item">总结归纳</span></div>
+                    <div class="tag-item"><div class="tag-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg></div><span class="tag-text-item">必背考点</span></div>
+                    <div class="tag-item"><div class="tag-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg></div><span class="tag-text-item">知识梳理</span></div>
+                    <div class="tag-item"><div class="tag-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg></div><span class="tag-text-item">常考习题</span></div>
+                    <div class="tag-item"><div class="tag-icon"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg></div><span class="tag-text-item">期中期末</span></div>
+                </div>
+
+                <div class="format-info" id="formatText">【word+pdf 可以修改打印】</div>
+
+                <div class="orange-banner" id="orangeBanner">
+                    <span id="bannerText">电子资料 无实物 不发快递 百度网盘提取</span>
+                </div>
+
+                <div class="bottom-row" id="bottomRow">
+                    <div class="bottom-item" id="bottom1">电子文档</div>
+                    <div class="bottom-item" id="bottom2">自动发货</div>
+                    <div class="bottom-item" id="bottom3">免费更新</div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ===== 控制面板 ===== -->
+        <div class="controls">
+            <!-- 文字内容 -->
+            <div class="section-title">📝 文字内容</div>
+
+            <div class="control-group">
+                <label>主标题</label>
+                <input type="text" value="人教版七下英语" oninput="document.getElementById('topTitleText').textContent=this.value">
+            </div>
+            <div class="control-group">
+                <label>副标题</label>
+                <input type="text" value="全套资料合集" oninput="document.getElementById('subTitleText').textContent=this.value">
+            </div>
+            <div class="control-group">
+                <label>6个标签</label>
+                <div class="tag-inputs">
+                    <input type="text" value="单词音频" oninput="updateTag(0,this.value)">
+                    <input type="text" value="总结归纳" oninput="updateTag(1,this.value)">
+                    <input type="text" value="必背考点" oninput="updateTag(2,this.value)">
+                    <input type="text" value="知识梳理" oninput="updateTag(3,this.value)">
+                    <input type="text" value="常考习题" oninput="updateTag(4,this.value)">
+                    <input type="text" value="期中期末" oninput="updateTag(5,this.value)">
+                </div>
+            </div>
+            <div class="control-group">
+                <label>格式说明</label>
+                <input type="text" value="【word+pdf 可以修改打印】" oninput="document.getElementById('formatText').textContent=this.value">
+            </div>
+            <div class="control-group">
+                <label>橙色横幅文字</label>
+                <input type="text" value="电子资料 无实物 不发快递 百度网盘提取" oninput="document.getElementById('bannerText').textContent=this.value">
+            </div>
+
+            <!-- 底部卖点 -->
+            <div class="section-title">🏷️ 底部卖点</div>
+
+            <div class="control-group">
+                <label>卖点文字</label>
+                <div class="bottom-inputs-row">
+                    <input type="text" value="电子文档" oninput="document.getElementById('bottom1').textContent=this.value">
+                    <input type="text" value="自动发货" oninput="document.getElementById('bottom2').textContent=this.value">
+                    <input type="text" value="免费更新" oninput="document.getElementById('bottom3').textContent=this.value">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>底框预设样式</label>
+                <div class="preset-row">
+                    <button class="preset-btn active" onclick="applyBottomPreset('blue',this)">蓝底白字</button>
+                    <button class="preset-btn" onclick="applyBottomPreset('orange',this)">橙底白字</button>
+                    <button class="preset-btn" onclick="applyBottomPreset('white',this)">白底蓝字</button>
+                    <button class="preset-btn" onclick="applyBottomPreset('outline',this)">蓝边框</button>
+                    <button class="preset-btn" onclick="applyBottomPreset('gradient',this)">渐变蓝</button>
+                    <button class="preset-btn" onclick="applyBottomPreset('dark',this)">深色</button>
+                </div>
+            </div>
+
+            <div class="color-row">
+                <div class="control-group">
+                    <label>底框背景色</label>
+                    <input type="color" id="bottomBgColor" value="#3B7DED" oninput="changeBottomBg(this.value)">
+                </div>
+                <div class="control-group">
+                    <label>底框文字色</label>
+                    <input type="color" id="bottomTextColor" value="#ffffff" oninput="changeBottomText(this.value)">
+                </div>
+            </div>
+            <div class="color-row">
+                <div class="control-group">
+                    <label>底框边框色</label>
+                    <input type="color" id="bottomBorderColor" value="#3B7DED" oninput="changeBottomBorder(this.value)">
+                </div>
+                <div class="control-group">
+                    <label>底框圆角 (px)</label>
+                    <input type="number" id="bottomRadiusInput" value="12" min="0" max="40" oninput="changeBottomRadius(this.value)">
+                </div>
+            </div>
+
+            <!-- 间距控制 -->
+            <div class="section-title">📏 间距模式</div>
+            <div class="control-group">
+                <label>排版方式</label>
+                <div class="spacing-row">
+                    <button class="spacing-btn active" onclick="setSpacing('evenly',this)">均匀分布</button>
+                    <button class="spacing-btn" onclick="setSpacing('between',this)">两端对齐</button>
+                    <button class="spacing-btn" onclick="setSpacing('compact',this)">紧凑居中</button>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>上下内边距 (px)</label>
+                <input type="number" id="paddingInput" value="10" min="0" max="60" oninput="document.getElementById('mainImage').style.padding=this.value+'px 0'">
+            </div>
+
+            <!-- 颜色配置 -->
+            <div class="section-title">🎨 颜色配置</div>
+
+            <div class="color-row">
+                <div class="control-group">
+                    <label>主色（蓝）</label>
+                    <input type="color" value="#3B7DED" oninput="changePrimary(this.value)">
+                </div>
+                <div class="control-group">
+                    <label>强调色（橙）</label>
+                    <input type="color" value="#F37B1D" oninput="changeAccent(this.value)">
+                </div>
+            </div>
+            <div class="color-row">
+                <div class="control-group">
+                    <label>背景色</label>
+                    <input type="color" value="#EBF0FA" oninput="changeBg(this.value)">
+                </div>
+                <div class="control-group">
+                    <label>标签文字色</label>
+                    <input type="color" value="#2B6CD4" oninput="changeTagColor(this.value)">
+                </div>
+            </div>
+
+            <!-- 边框设置 -->
+            <div class="section-title">🔲 边框设置</div>
+
+            <div class="border-preview">
+                <div class="border-preview-box" id="borderPreviewBox">预览</div>
+            </div>
+
+            <div class="control-group">
+                <label>快速选色</label>
+                <div class="border-color-swatch" id="borderSwatches">
+                    <button class="active" style="background:#3B7DED" onclick="quickBorderColor('#3B7DED',this)"></button>
+                    <button style="background:#F37B1D" onclick="quickBorderColor('#F37B1D',this)"></button>
+                    <button style="background:#E74C3C" onclick="quickBorderColor('#E74C3C',this)"></button>
+                    <button style="background:#2ECC71" onclick="quickBorderColor('#2ECC71',this)"></button>
+                    <button style="background:#9B59B6" onclick="quickBorderColor('#9B59B6',this)"></button>
+                    <button style="background:#1ABC9C" onclick="quickBorderColor('#1ABC9C',this)"></button>
+                    <button style="background:#F1C40F" onclick="quickBorderColor('#F1C40F',this)"></button>
+                    <button style="background:#E91E63" onclick="quickBorderColor('#E91E63',this)"></button>
+                    <button style="background:#34495E" onclick="quickBorderColor('#34495E',this)"></button>
+                    <button style="background:#000000" onclick="quickBorderColor('#000000',this)"></button>
+                </div>
+            </div>
+
+            <div class="border-unified-row">
+                <div class="control-group">
+                    <label>边框颜色</label>
+                    <input type="color" id="borderColorInput" value="#3B7DED" oninput="changeBorderColor(this.value)">
+                </div>
+                <div class="control-group">
+                    <label>边框宽度 (px)</label>
+                    <input type="number" id="borderWidthInput" value="8" min="0" max="30" oninput="changeBorderWidth(this.value)">
+                </div>
+                <div class="control-group">
+                    <label>边框圆角 (px)</label>
+                    <input type="number" value="16" min="0" max="60" oninput="changeBorderRadius(this.value)">
+                </div>
+            </div>
+
+            <!-- ===== 提示文字 ===== -->
+            <div class="tip-box">
+                <div class="tip-icon">💡</div>
+                <div class="tip-content">
+                    <strong>使用提示：</strong>在左侧面板修改文字、颜色、边框等参数，右侧主图会<strong>实时预览</strong>。调整满意后点击下方按钮即可导出 800×800 高清 PNG 主图。
+                </div>
+            </div>
+
+            <!-- 输出目录配置 -->
+            <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px solid #b3e0ff; margin-bottom: 15px;">
+                <label style="font-weight: 600; color: #0066cc;">📁 输出目录 <span style="color: #f56565;">*</span></label>
+                <p style="color: #666; font-size: 13px; margin: 8px 0;">指定主图保存的文件夹路径</p>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="product-output-dir" placeholder="例如: /Users/username/Desktop/商品主图" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                    <button onclick="selectProductOutputDir()" style="white-space: nowrap; padding: 8px 16px; background: #3B7DED; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        📂 选择目录
+                    </button>
+                    <input type="file" id="product-dir-selector" style="display: none;" webkitdirectory directory>
+                </div>
+            </div>
+
+            <!-- ===== 下载按钮 ===== -->
+            <button class="btn-download" onclick="downloadImage()">📥 下载主图 (PNG)</button>
+
+        </div>
+    </div>
+
+    <!-- CSS 样式 -->
+    <style>
+        :root {
+            --primary: #3B7DED;
+            --accent: #F37B1D;
+            --bg: #EBF0FA;
+            --tag-text: #2B6CD4;
+            --dark-text: #1A1A2E;
+            --border-color: #3B7DED;
+            --bottom-bg: #3B7DED;
+            --bottom-text: #ffffff;
+        }
+
+        .wrapper {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 30px;
+            flex-direction: row-reverse;
+        }
+
+        /* ========== 主图外框 ========== */
+        .main-image-border {
+            width: 800px;
+            height: 800px;
+            border: 8px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: var(--bg);
+        }
+
+        .main-image {
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-evenly;
+            padding: 10px 0;
+        }
+
+        /* 顶部标题 */
+        .top-title {
+            background: var(--primary);
+            width: 92%;
+            border-radius: 18px;
+            padding: 28px 30px 22px;
+            text-align: center;
+        }
+
+        .top-title h1 {
+            font-size: 82px;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: 8px;
+            padding-left: 8px;
+            line-height: 1.2;
+        }
+
+        /* 副标题 */
+        .sub-title {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--accent);
+            letter-spacing: 6px;
+            padding-left: 6px;
+        }
+
+        /* 标签网格 */
+        .tags-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 50px;
+            padding: 0 70px;
+            width: 100%;
+        }
+
+        .tag-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tag-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tag-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: #fff;
+        }
+
+        .tag-item span {
+            font-size: 38px;
+            font-weight: 700;
+            color: var(--tag-text);
+        }
+
+        /* 格式说明 */
+        .format-info {
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--dark-text);
+            letter-spacing: 3px;
+            padding-left: 3px;
+        }
+
+        /* 橙色横幅 */
+        .orange-banner {
+            background: var(--accent);
+            width: 90%;
+            border-radius: 50px;
+            padding: 14px 30px;
+            text-align: center;
+        }
+
+        .orange-banner span {
+            font-size: 30px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 5px;
+            padding-left: 5px;
+        }
+
+        /* 底部带背景框 */
+        .bottom-row {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            width: 92%;
+        }
+
+        .bottom-item {
+            flex: 1;
+            text-align: center;
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: var(--bottom-text);
+            background: var(--bottom-bg);
+            padding: 16px 10px 16px 13px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .bottom-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            right: -13px;
+            top: 20%;
+            height: 60%;
+            width: 2px;
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* ========== 控制面板 ========== */
+        .controls {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            width: 420px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+
+        .controls h2 {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .control-group { margin-bottom: 14px; }
+
+        .control-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .control-group input[type="text"],
+        .control-group input[type="number"],
+        .control-group input[type="color"],
+        .control-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .control-group input[type="color"] {
+            height: 40px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .color-row { display: flex; gap: 12px; }
+        .color-row .control-group { flex: 1; }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 20px 0 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #ddd;
+        }
+
+        .tag-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .tag-inputs input {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .border-preview {
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .border-preview-box {
+            width: 140px;
+            height: 48px;
+            border: 5px solid var(--border-color);
+            border-radius: 6px;
+            background: #f9f9f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+            transition: all 0.3s;
+        }
+
+        .preset-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .preset-btn {
+            padding: 6px 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .preset-btn.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+
+        .bottom-inputs-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        .bottom-inputs-row input {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .spacing-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .spacing-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .spacing-btn:hover { border-color: var(--primary); }
+        .spacing-btn.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+
+        .border-unified-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .border-unified-row .control-group { flex: 1; margin-bottom: 0; }
+
+        .border-color-swatch {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .border-color-swatch button {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 3px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .border-color-swatch button:hover {
+            transform: scale(1.15);
+            border-color: #999;
+        }
+        .border-color-swatch button.active {
+            border-color: #333;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px #333;
+        }
+
+        /* ========== 提示 + 下载 + 版权 ========== */
+        .tip-box {
+            margin-top: 24px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #FFF8F0, #FFF3E6);
+            border: 1px solid #FFE0B2;
+            border-radius: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .tip-box .tip-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            line-height: 1.3;
+        }
+
+        .tip-box .tip-content {
+            font-size: 12px;
+            color: #9A6B3A;
+            line-height: 1.7;
+        }
+
+        .tip-box .tip-content strong {
+            color: #D4760A;
+        }
+
+        .btn-download {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary), #5A9BFF);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 14px;
+            transition: all 0.3s;
+            letter-spacing: 2px;
+            box-shadow: 0 4px 15px rgba(59,125,237,0.3);
+        }
+        .btn-download:hover {
+            background: linear-gradient(135deg, #2B6CD4, #4A8BEF);
+            box-shadow: 0 6px 20px rgba(59,125,237,0.45);
+            transform: translateY(-1px);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1300px) {
+            .wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .main-image-border {
+                width: 600px;
+                height: 600px;
+            }
+            
+            .top-title h1 {
+                font-size: 60px;
+            }
+            
+            .sub-title {
+                font-size: 36px;
+            }
+            
+            .tag-item span {
+                font-size: 28px;
+            }
+            
+            .format-info {
+                font-size: 32px;
+            }
+            
+            .orange-banner span {
+                font-size: 24px;
+            }
+            
+            .bottom-item {
+                font-size: 28px;
+            }
+        }
+    </style>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        const borderEl = document.getElementById('mainImageBorder');
+        const previewBox = document.getElementById('borderPreviewBox');
+        const mainImage = document.getElementById('mainImage');
+        const bottomItems = document.querySelectorAll('.bottom-item');
+
+        function updateTag(i, v) { document.querySelectorAll('.tag-text-item')[i].textContent = v; }
+
+        // 主色
+        function changePrimary(c) {
+            document.documentElement.style.setProperty('--primary', c);
+            document.getElementById('topTitleBg').style.background = c;
+            document.querySelectorAll('.tag-icon').forEach(el => el.style.background = c);
+        }
+        function changeAccent(c) {
+            document.documentElement.style.setProperty('--accent', c);
+            document.getElementById('subTitleText').style.color = c;
+            document.getElementById('orangeBanner').style.background = c;
+        }
+        function changeBg(c) {
+            mainImage.style.background = c;
+            borderEl.style.background = c;
+        }
+        function changeTagColor(c) { document.querySelectorAll('.tag-text-item').forEach(el => el.style.color = c); }
+
+        // 底部卖点
+        function changeBottomBg(c) { bottomItems.forEach(el => { el.style.background = c; el.style.backgroundImage = 'none'; }); }
+        function changeBottomText(c) { bottomItems.forEach(el => el.style.color = c); }
+        function changeBottomBorder(c) { bottomItems.forEach(el => el.style.borderColor = c); }
+        function changeBottomRadius(v) { bottomItems.forEach(el => el.style.borderRadius = v + 'px'); }
+
+        function applyBottomPreset(type, btn) {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const bgI = document.getElementById('bottomBgColor');
+            const txI = document.getElementById('bottomTextColor');
+            const bdI = document.getElementById('bottomBorderColor');
+            const styles = {
+                blue:     { bg:'#3B7DED', tx:'#ffffff', bd:'#3B7DED', grad:false },
+                orange:   { bg:'#F37B1D', tx:'#ffffff', bd:'#F37B1D', grad:false },
+                white:    { bg:'#ffffff', tx:'#3B7DED', bd:'#ffffff', grad:false },
+                outline:  { bg:'transparent', tx:'#3B7DED', bd:'#3B7DED', grad:false, bw:'3px' },
+                gradient: { bg:'#3B7DED', tx:'#ffffff', bd:'transparent', grad:'linear-gradient(135deg,#3B7DED,#6BA3FF)' },
+                dark:     { bg:'#1A1A2E', tx:'#FFD700', bd:'#1A1A2E', grad:false }
+            };
+            const s = styles[type];
+            bgI.value = s.bg === 'transparent' ? '#EBF0FA' : s.bg;
+            txI.value = s.tx; bdI.value = s.bd === 'transparent' ? '#3B7DED' : s.bd;
+            bottomItems.forEach(el => {
+                el.style.background = s.bg;
+                el.style.backgroundImage = s.grad || 'none';
+                el.style.color = s.tx;
+                el.style.borderColor = s.bd;
+                el.style.borderWidth = s.bw || '2px';
+                el.style.borderRadius = '12px';
+            });
+        }
+
+        // 间距模式
+        function setSpacing(mode, btn) {
+            document.querySelectorAll('.spacing-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            mainImage.style.gap = '0';
+            switch(mode) {
+                case 'evenly':
+                    mainImage.style.justifyContent = 'space-evenly';
+                    mainImage.style.padding = '10px 0';
+                    document.getElementById('paddingInput').value = 10;
+                    break;
+                case 'between':
+                    mainImage.style.justifyContent = 'space-between';
+                    mainImage.style.padding = '30px 0';
+                    document.getElementById('paddingInput').value = 30;
+                    break;
+                case 'compact':
+                    mainImage.style.justifyContent = 'center';
+                    mainImage.style.padding = '10px 0';
+                    mainImage.style.gap = '16px';
+                    document.getElementById('paddingInput').value = 10;
+                    break;
+            }
+        }
+
+        // 统一边框颜色
+        function changeBorderColor(c) {
+            borderEl.style.borderColor = c;
+            previewBox.style.borderColor = c;
+            document.documentElement.style.setProperty('--border-color', c);
+            document.querySelectorAll('#borderSwatches button').forEach(btn => {
+                btn.classList.toggle('active', rgbToHex(btn.style.backgroundColor).toUpperCase() === c.toUpperCase());
+            });
+        }
+
+        function quickBorderColor(c, btn) {
+            document.getElementById('borderColorInput').value = c;
+            changeBorderColor(c);
+            document.querySelectorAll('#borderSwatches button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function changeBorderWidth(v) {
+            borderEl.style.borderWidth = v + 'px';
+            previewBox.style.borderWidth = Math.max(2, Math.round(v * 0.6)) + 'px';
+        }
+
+        function changeBorderRadius(v) {
+            borderEl.style.borderRadius = v + 'px';
+            previewBox.style.borderRadius = Math.round(v * 0.4) + 'px';
+        }
+
+        function rgbToHex(rgb) {
+            if (!rgb || rgb.startsWith('#')) return rgb;
+            const m = rgb.match(/\d+/g);
+            if (!m) return rgb;
+            return '#' + m.slice(0,3).map(x => (+x).toString(16).padStart(2,'0')).join('').toUpperCase();
+        }
+
+        // 选择输出目录
+        function selectProductOutputDir() {
+            const dirSelector = document.getElementById('product-dir-selector');
+            dirSelector.onchange = function(e) {
+                if (e.target.files && e.target.files.length > 0) {
+                    const fullPath = e.target.files[0].path;
+                    const directoryPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                    document.getElementById('product-output-dir').value = directoryPath;
+                }
+            };
+            dirSelector.click();
+        }
+
+        // 显示消息
+        function showProductMessage(message, type) {
+            let msgDiv = document.getElementById('product-message');
+            if (!msgDiv) {
+                msgDiv = document.createElement('div');
+                msgDiv.id = 'product-message';
+                msgDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; z-index: 9999; font-size: 14px; transition: all 0.3s; max-width: 400px;';
+                document.body.appendChild(msgDiv);
+            }
+            
+            if (type === 'success') {
+                msgDiv.style.background = '#48bb78';
+                msgDiv.style.color = 'white';
+            } else {
+                msgDiv.style.background = '#f56565';
+                msgDiv.style.color = 'white';
+            }
+            
+            msgDiv.textContent = message;
+            msgDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // 下载
+        function downloadImage() {
+            const outputDir = document.getElementById('product-output-dir').value.trim();
+            
+            html2canvas(borderEl, { scale: 2, useCORS: true, backgroundColor: null }).then(canvas => {
+                canvas.toBlob((blob) => {
+                    if (outputDir) {
+                        // 如果有指定输出目录，使用API保存
+                        const formData = new FormData();
+                        formData.append('image', blob, `商品主图_${Date.now()}.png`);
+                        formData.append('output_dir', outputDir);
+
+                        fetch('/api/cover-generator/save', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                showProductMessage('主图保存成功！', 'success');
+                            } else {
+                                showProductMessage('保存失败: ' + data.error, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            showProductMessage('保存出错: ' + error.message, 'error');
+                        });
+                    } else {
+                        // 如果没有指定目录，直接下载
+                        const link = document.createElement('a');
+                        link.download = '电商主图_800x800.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    }
+                }, 'image/png');
+            });
+        }
+
+        // 页面加载时检查是否有从PDF页面传递过来的输出目录
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedOutputDir = localStorage.getItem('productMainImageOutputDir');
+            if (savedOutputDir) {
+                document.getElementById('product-output-dir').value = savedOutputDir;
+                localStorage.removeItem('productMainImageOutputDir');
+                showProductMessage('已自动填充输出目录', 'success');
+            }
+        });
+    </script>
+{% endblock %}

@@ -12,20 +12,20 @@
 }
 
 .pdf-step-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     padding: 15px 20px;
     color: white;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 5px;
 }
 
 .pdf-step-header.step-2 {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: #11998e;
 }
 
 .pdf-step-header.step-3 {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: #f093fb;
 }
 
 .pdf-step-icon {
@@ -126,7 +126,7 @@
 
 .pdf-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    background: #667eea;
     border-radius: 4px;
     transition: width 0.3s;
 }
@@ -215,12 +215,12 @@
         <div class="form-group">
             <input type="file" id="pdf-batch-input" accept=".pdf" multiple style="display: none;" onchange="handlePdfBatchSelect(event)">
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="document.getElementById('pdf-batch-input').click()">
+                <button class="btn btn-primary" onclick="openPdfFileSelector()">
                     📁 选择PDF文件（可多选）
                 </button>
                 <span id="pdf-batch-count" style="color: #666;">未选择文件</span>
             </div>
-            <small style="color: #888; display: block; margin-top: 10px;">⚠️ 提示：只能在同一个文件夹下面多选用PDF</small>
+            <small style="color: #888; display: block; margin-top: 10px;">⚠️ 提示：请在工作区目录中选择PDF文件</small>
         </div>
 
         <!-- PDF文件列表 -->
@@ -411,7 +411,7 @@
                 <div class="pdf-upload-area" id="watermark-upload-area" ondragover="handleDragOver(event, 'watermark')" ondragleave="handleDragLeave(event, 'watermark')" ondrop="handleDrop(event, 'watermark')">
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <div style="flex: 0 0 80px; text-align: center;">
-                            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <div style="width: 60px; height: 60px; background: #667eea; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
                                 <span style="font-size: 24px;">💧</span>
                             </div>
                             <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">水印图片</label>
@@ -443,7 +443,7 @@
                 <div class="pdf-upload-area" id="header-upload-area" ondragover="handleDragOver(event, 'header')" ondragleave="handleDragLeave(event, 'header')" ondrop="handleDrop(event, 'header')">
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <div style="flex: 0 0 80px; text-align: center;">
-                            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <div style="width: 60px; height: 60px; background: #11998e; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
                                 <span style="font-size: 24px;">📰</span>
                             </div>
                             <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">页眉图片</label>
@@ -458,7 +458,7 @@
                             </div>
                             <div id="pdf-header-progress" style="display: none; margin-top: 10px;">
                                 <div class="pdf-progress-bar">
-                                    <div class="pdf-progress-fill" id="pdf-header-progress-bar" style="width: 0%; background: linear-gradient(90deg, #11998e, #38ef7d);"></div>
+                                    <div class="pdf-progress-fill" id="pdf-header-progress-bar" style="width: 0%; background: #11998e;"></div>
                                 </div>
                                 <span style="font-size: 12px; color: #888;">上传中...</span>
                             </div>
@@ -475,7 +475,7 @@
                 <div class="pdf-upload-area" id="footer-upload-area" ondragover="handleDragOver(event, 'footer')" ondragleave="handleDragLeave(event, 'footer')" ondrop="handleDrop(event, 'footer')">
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <div style="flex: 0 0 80px; text-align: center;">
-                            <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                            <div style="width: 60px; height: 60px; background: #f093fb; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
                                 <span style="font-size: 24px;">📃</span>
                             </div>
                             <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">页脚图片</label>
@@ -483,14 +483,14 @@
                         <div style="flex: 1; min-width: 200px;">
                             <input type="file" id="pdf-footer-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <button class="btn btn-primary" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border: none;" onclick="document.getElementById('pdf-footer-input').click()">
+                                <button class="btn btn-primary" style="background: #f093fb; border: none;" onclick="document.getElementById('pdf-footer-input').click()">
                                     📁 选择文件
                                 </button>
                                 <span id="pdf-footer-status" style="color: #666; font-size: 13px;">支持 JPG、PNG、GIF 格式</span>
                             </div>
                             <div id="pdf-footer-progress" style="display: none; margin-top: 10px;">
                                 <div class="pdf-progress-bar">
-                                    <div class="pdf-progress-fill" id="pdf-footer-progress-bar" style="width: 0%; background: linear-gradient(90deg, #f093fb, #f5576c);"></div>
+                                    <div class="pdf-progress-fill" id="pdf-footer-progress-bar" style="width: 0%; background: #f093fb;"></div>
                                 </div>
                                 <span style="font-size: 12px; color: #888;">上传中...</span>
                             </div>
@@ -836,6 +836,36 @@ function clearPdfImage(type) {
 let pdfBatchFiles = [];  // 存储批量选择的PDF文件信息（只存路径，不存文件对象）
 let pdfBatchResults = []; // 存储批量转换结果
 
+// 打开PDF文件选择器
+function openPdfFileSelector() {
+    const baseDir = document.getElementById('pdf-base-dir').value.trim();
+    
+    if (!baseDir) {
+        showPdfMessage('请先设置工作区目录！', 'error');
+        document.getElementById('pdf-base-dir').focus();
+        return;
+    }
+    
+    // 检查工作区目录是否存在
+    fetch('/api/check-directory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ directory: baseDir })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 目录存在，打开文件选择器
+            document.getElementById('pdf-batch-input').click();
+        } else {
+            showPdfMessage('工作区目录不存在，请检查路径！', 'error');
+        }
+    })
+    .catch(error => {
+        showPdfMessage('检查目录失败: ' + error.message, 'error');
+    });
+}
+
 // 处理批量PDF文件选择
 function handlePdfBatchSelect(event) {
     const files = Array.from(event.target.files).filter(f => f.name.endsWith('.pdf'));
@@ -1036,14 +1066,14 @@ function getDefaultWorkspace() {
 // 批量转换PDF文件（先上传到指定目录，再转换）
 function batchConvertPdfs() {
     if (pdfBatchFiles.length === 0) {
-        showPdfMessage('请先选择PDF文件', 'error');
+        showPdfMessage('请先选择PDF文件！\n\n点击"选择PDF文件"按钮，在工作区目录中选择要转换的PDF文件。', 'error');
         return;
     }
 
     // 获取工作区路径（必须填写）
     let baseDir = document.getElementById('pdf-base-dir').value.trim();
     if (!baseDir) {
-        showPdfMessage('请先填写工作区目录路径', 'error');
+        showPdfMessage('请先填写工作区目录路径！\n\n指定包含PDF文件的文件夹路径。', 'error');
         return;
     }
 
@@ -1166,9 +1196,16 @@ function displayBatchResults(data) {
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">${imagesHtml}</div>
                 ${moreImages}
-                <div>
-                    ${result.simple_pdf ? `<a href="${result.simple_pdf}" target="_blank" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">下载精简版PDF</a>` : ''}
-                    <button class="btn btn-secondary" onclick="downloadPdfImages(${index})" style="padding: 6px 12px; font-size: 12px; margin-left: 6px;">下载所有图片</button>
+                <div style="background: #f0f9ff; padding: 10px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid #0066cc;">
+                    <div style="font-size: 13px; color: #666;">
+                        <strong>📁 存储位置:</strong> <span style="color: #333; font-family: monospace;">${result.output_dir || '未指定'}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-danger" onclick="clearOutputDirectory('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🗑️ 清空目录</button>
+                    <button class="btn btn-success" onclick="generateCoverImage('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🎨 生成封面</button>
+                    <button class="btn btn-warning" onclick="generateProductImages('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🛍️ 生成主图</button>
+                    <button class="btn btn-info" onclick="transferToPhone('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">📱 传手机</button>
                 </div>
             `;
         } else {
@@ -1188,19 +1225,71 @@ function displayBatchResults(data) {
     });
 }
 
-// 下载单个PDF的图片
-function downloadPdfImages(index) {
-    const result = pdfBatchResults[index];
-    if (!result || !result.success) return;
+// 清空生成目录
+function clearOutputDirectory(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法清空');
+        return;
+    }
     
-    result.images.forEach((imgUrl, imgIndex) => {
-        setTimeout(() => {
-            const link = document.createElement('a');
-            link.href = imgUrl;
-            link.download = `${result.original_name.replace('.pdf', '')}_page_${imgIndex + 1}.png`;
-            link.click();
-        }, imgIndex * 200);
+    if (!confirm(`确定要清空目录吗？\n${outputDir}\n\n⚠️ 此操作将删除该目录下的所有文件，不可恢复！`)) {
+        return;
+    }
+    
+    fetch('/api/pdf/clear-output-dir', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ output_dir: outputDir })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ 目录已清空！');
+        } else {
+            alert('❌ 清空失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('❌ 清空出错: ' + error.message);
     });
+}
+
+// 生成封面图
+function generateCoverImage(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法生成封面');
+        return;
+    }
+    
+    // 保存输出目录到localStorage，然后跳转到封面生成器
+    localStorage.setItem('coverGeneratorOutputDir', outputDir);
+    window.open('/cover-generator', '_blank');
+}
+
+// 生成商品主图
+function generateProductImages(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法生成商品主图');
+        return;
+    }
+    
+    // 保存输出目录到localStorage，然后跳转到商品主图生成器
+    localStorage.setItem('productMainImageOutputDir', outputDir);
+    window.open('/product-main-image', '_blank');
+}
+
+// 传输到手机
+function transferToPhone(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法传输');
+        return;
+    }
+    
+    // 保存输出目录到localStorage，然后跳转到文件传输页面
+    localStorage.setItem('fileTransferSourceDir', outputDir);
+    window.open('/file-transfer', '_blank');
 }
 
 // 清空所有PDF数据

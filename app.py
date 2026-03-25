@@ -71,6 +71,11 @@ def cover_generator_page():
     """小红书封面生成器页面"""
     return render_template("cover_generator.html", active_page="cover-generator")
 
+@app.route("/product-main-image")
+def product_main_image_page():
+    """商品主图生成器页面"""
+    return render_template("product_main_image.html", active_page="product-main-image")
+
 # ==================== API 接口 ====================
 
 @app.route("/api/devices", methods=["GET"])
@@ -247,7 +252,7 @@ def api_status(device_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-@app.route("/api/yanghao/close-xhs/<device_id>")
+@app.route("/api/yanghao/close-xhs/<device_id>", methods=["POST"])
 def api_close_xhs(device_id):
     """关闭小红书"""
     try:
@@ -690,6 +695,7 @@ def api_pdf_batch_convert():
         data = request.json
         files = data.get('files', [])
         settings = data.get('settings', {})
+        base_dir = data.get('base_dir', '')
 
         if not files:
             return jsonify({"success": False, "error": "没有选择文件"})
@@ -720,7 +726,11 @@ def api_pdf_batch_convert():
                     watermark_scale=settings.get('watermark_scale', 100)
                 )
 
-                # 执行转换
+                # 执行转换 - 输出到工作区目录
+                target_dir = file_info.get('target_dir', base_dir)
+                if not target_dir:
+                    target_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
+                output_dir = os.path.join(target_dir, 'output_images', os.path.splitext(file_info.get('original_name', ''))[0])
                 result = converter.convert_pdf_to_images(
                     filepath,
                     dpi=settings.get('dpi', 300),
@@ -730,7 +740,8 @@ def api_pdf_batch_convert():
                     start_page=settings.get('start_page', 1),
                     end_page=settings.get('end_page'),
                     add_header=settings.get('add_header', False),
-                    add_footer=settings.get('add_footer', False)
+                    add_footer=settings.get('add_footer', False),
+                    output_dir=output_dir
                 )
 
                 # 获取相对路径
@@ -838,7 +849,6 @@ def api_pdf_batch_convert_local():
         files = data.get('files', [])
         settings = data.get('settings', {})
         base_dir = data.get('base_dir', '')
-
         if not files:
             return jsonify({"success": False, "error": "没有选择文件"})
 
@@ -925,6 +935,29 @@ def api_pdf_batch_convert_local():
                                 print(f"[PDF转换]   ✓ 方式4成功（大小写不敏感）: {filepath}")
                                 break
 
+                # 方式5: 尝试从base_dir的父目录查找（用户可能输入了图片目录而不是PDF目录）
+                if filepath is None:
+                    parent_dir = os.path.dirname(base_dir)
+                    if parent_dir != base_dir:  # 确保不是根目录
+                        print(f"[PDF转换]   尝试从父目录查找: {parent_dir}")
+                        parent_files = []
+                        if os.path.exists(parent_dir):
+                            for f in os.listdir(parent_dir):
+                                if f.lower().endswith('.pdf'):
+                                    parent_files.append(f)
+                            print(f"[PDF转换]   父目录中的PDF文件: {parent_files}")
+                            
+                            # 查找匹配的文件
+                            for f in parent_files:
+                                if f.lower() == original_name.lower():
+                                    test_path = os.path.join(parent_dir, f)
+                                    tried_paths.append(test_path)
+                                    if os.path.exists(test_path):
+                                        filepath = test_path
+                                        print(f"[PDF转换]   ✓ 方式5成功（从父目录）: {filepath}")
+                                        base_dir = parent_dir  # 更新base_dir用于输出
+                                        break
+
                 if filepath is None or not os.path.exists(filepath):
                     print(f"[PDF转换]   ✗ 未找到文件，尝试过的路径: {tried_paths}")
                     results.append({
@@ -934,7 +967,8 @@ def api_pdf_batch_convert_local():
                     })
                     continue
 
-                # 执行转换 - 输出到PDF所在目录的imgs子文件夹
+                # 执行转换 - 输出到工作区目录
+                output_dir = os.path.join(base_dir, 'output_images', os.path.splitext(original_name)[0])
                 result = converter.convert_pdf_to_images(
                     filepath,
                     dpi=settings.get('dpi', 300),
@@ -944,7 +978,8 @@ def api_pdf_batch_convert_local():
                     start_page=settings.get('start_page', 1),
                     end_page=settings.get('end_page'),
                     add_header=settings.get('add_header', False),
-                    add_footer=settings.get('add_footer', False)
+                    add_footer=settings.get('add_footer', False),
+                    output_dir=output_dir
                 )
 
                 # 将本地路径转换为URL
@@ -1108,6 +1143,73 @@ def api_delete_pdf_image():
         return jsonify({
             "success": True,
             "message": f"{image_type} 图片已删除"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/pdf/clear-output-dir", methods=["POST"])
+def api_clear_output_directory():
+    """清空PDF输出目录"""
+    try:
+        data = request.json
+        output_dir = data.get('output_dir')
+        
+        if not output_dir:
+            return jsonify({"success": False, "error": "输出目录路径不能为空"})
+        
+        # 安全检查：确保目录在允许的范围内
+        # 只允许删除 output_images 目录下的内容
+        if 'output_images' not in output_dir:
+            return jsonify({"success": False, "error": "只能清空 output_images 目录下的文件夹"})
+        
+        # 检查目录是否存在
+        if not os.path.exists(output_dir):
+            return jsonify({"success": False, "error": f"目录不存在: {output_dir}"})
+        
+        # 确保是目录而不是文件
+        if not os.path.isdir(output_dir):
+            return jsonify({"success": False, "error": "指定的路径不是目录"})
+        
+        # 清空目录中的所有文件和子目录
+        deleted_count = 0
+        for item in os.listdir(output_dir):
+            item_path = os.path.join(output_dir, item)
+            try:
+                if os.path.isfile(item_path):
+                    os.remove(item_path)
+                    deleted_count += 1
+                elif os.path.isdir(item_path):
+                    import shutil
+                    shutil.rmtree(item_path)
+                    deleted_count += 1
+            except Exception as e:
+                print(f"删除失败 {item_path}: {e}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"目录已清空，共删除 {deleted_count} 个项目",
+            "deleted_count": deleted_count
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/check-directory", methods=["POST"])
+def api_check_directory():
+    """检查目录是否存在"""
+    try:
+        data = request.json
+        directory = data.get('directory')
+        
+        if not directory:
+            return jsonify({"success": False, "error": "目录路径不能为空"})
+        
+        # 检查目录是否存在
+        exists = os.path.exists(directory) and os.path.isdir(directory)
+        
+        return jsonify({
+            "success": True,
+            "exists": exists,
+            "message": "目录存在" if exists else "目录不存在"
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})

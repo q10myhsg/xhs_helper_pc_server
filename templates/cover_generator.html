@@ -261,7 +261,13 @@
     <div class="cover-output-dir">
         <label style="font-weight: 600; color: #0066cc;">📁 输出目录 <span style="color: #f56565;">*</span></label>
         <p style="color: #666; font-size: 13px; margin: 8px 0;">指定封面图片保存的文件夹路径</p>
-        <input type="text" id="cover-output-dir" placeholder="例如: /Users/username/Desktop/封面图片" style="width: 100%; margin-bottom: 8px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <input type="text" id="cover-output-dir" placeholder="例如: /Users/username/Desktop/封面图片" style="flex: 1;">
+            <button class="cover-btn-secondary" onclick="selectCoverOutputDir()" style="white-space: nowrap;">
+                📂 选择目录
+            </button>
+            <input type="file" id="cover-dir-selector" style="display: none;" webkitdirectory directory>
+        </div>
         <small style="color: #888;">💡 提示：可以直接使用PDF工作区目录，方便统一管理</small>
     </div>
 
@@ -739,7 +745,60 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// 显示封面生成器消息
+function showCoverMessage(message, type) {
+    // 创建消息提示元素
+    let msgDiv = document.getElementById('cover-message');
+    if (!msgDiv) {
+        msgDiv = document.createElement('div');
+        msgDiv.id = 'cover-message';
+        msgDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; z-index: 9999; font-size: 14px; transition: all 0.3s; max-width: 400px;';
+        document.body.appendChild(msgDiv);
+    }
+    
+    if (type === 'success') {
+        msgDiv.style.background = '#48bb78';
+        msgDiv.style.color = 'white';
+    } else {
+        msgDiv.style.background = '#f56565';
+        msgDiv.style.color = 'white';
+    }
+    
+    msgDiv.textContent = message;
+    msgDiv.style.display = 'block';
+    
+    // 3秒后自动隐藏
+    setTimeout(() => {
+        msgDiv.style.display = 'none';
+    }, 3000);
+}
+
+// 选择输出目录
+function selectCoverOutputDir() {
+    const dirSelector = document.getElementById('cover-dir-selector');
+    dirSelector.onchange = function(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            const directory = e.target.files[0].webkitRelativePath.split('/')[0];
+            const fullPath = e.target.files[0].path;
+            const directoryPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
+            document.getElementById('cover-output-dir').value = directoryPath;
+        }
+    };
+    dirSelector.click();
+}
+
 // 启动
-document.addEventListener('DOMContentLoaded', initCoverGenerator);
+document.addEventListener('DOMContentLoaded', function() {
+    initCoverGenerator();
+    
+    // 检查是否有从PDF页面传递过来的输出目录
+    const savedOutputDir = localStorage.getItem('coverGeneratorOutputDir');
+    if (savedOutputDir) {
+        document.getElementById('cover-output-dir').value = savedOutputDir;
+        // 清除localStorage中的值，避免重复填充
+        localStorage.removeItem('coverGeneratorOutputDir');
+        showCoverMessage('已自动填充输出目录: ' + savedOutputDir, 'success');
+    }
+});
 </script>
 {% endblock %}

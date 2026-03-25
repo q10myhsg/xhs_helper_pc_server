@@ -332,6 +332,16 @@ function showFtMessage(message, type) {
 document.addEventListener('DOMContentLoaded', function() {
     initFileTransferConfig();
     refreshFtDeviceList();
+    
+    // 检查是否有从PDF页面传递过来的源目录
+    const savedSourceDir = localStorage.getItem('fileTransferSourceDir');
+    if (savedSourceDir) {
+        document.getElementById('ft-computer-dir').value = savedSourceDir;
+        localStorage.removeItem('fileTransferSourceDir');
+        showFtMessage('已自动填充电脑源目录: ' + savedSourceDir, 'success');
+        // 自动保存配置
+        saveFileTransferConfig();
+    }
 });
 </script>
 {% endblock %}
