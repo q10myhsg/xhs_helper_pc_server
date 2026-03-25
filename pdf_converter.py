@@ -77,6 +77,7 @@ class PDFConverter:
         支持的格式:
         - "odd": 奇数页
         - "even": 偶数页
+        - "all": 全部页面
         - "1,3,5,7": 离散页码
         - "1-3": 连续页码范围
         - "1,3,5-7": 混合格式
@@ -93,6 +94,10 @@ class PDFConverter:
         
         page_range_str = page_range_str.strip().lower()
         pages = set()
+        
+        # 全部页面
+        if page_range_str == 'all':
+            return set(range(1, total_pages + 1))
         
         # 奇数页
         if page_range_str == 'odd':
@@ -336,10 +341,10 @@ class PDFConverter:
         
         # 计算位置
         if position:
-            x_percent = position.get('x', 50)
-            y_percent = position.get('y', 50)
-            x = int((img_width - new_width) * x_percent / 100)
-            y = int((img_height - new_height) * y_percent / 100)
+            x_percent = position.get('x', 0.5)
+            y_percent = position.get('y', 0.5)
+            x = int((img_width - new_width) * x_percent)
+            y = int((img_height - new_height) * y_percent)
         else:
             # 默认居中
             x = (img_width - new_width) // 2

@@ -979,6 +979,10 @@ def api_pdf_batch_convert_local():
                     end_page=settings.get('end_page'),
                     add_header=settings.get('add_header', False),
                     add_footer=settings.get('add_footer', False),
+                    watermark_page_range=settings.get('watermark_page_range', 'even'),
+                    watermark_position=settings.get('watermark_position'),
+                    header_position=settings.get('header_position'),
+                    footer_position=settings.get('footer_position'),
                     output_dir=output_dir
                 )
 

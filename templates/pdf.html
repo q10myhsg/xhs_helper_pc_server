@@ -191,8 +191,16 @@
 }
 </style>
 
-<h1>📄 PDF转图片工具</h1>
+<h1>📄 pdf内容处理</h1>
 <p style="color: #666; margin-bottom: 20px;">支持批量处理多个PDF文件，增强水印功能，支持页面范围选择和位置调整</p>
+
+<!-- 工作区配置 -->
+<div class="form-group" style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px solid #b3e0ff; margin-bottom: 20px;">
+    <label style="font-weight: 600; color: #0066cc;">📁 工作区 <span style="color: #f56565;">*</span></label>
+    <p style="color: #666; font-size: 13px; margin: 0 0 10px 0;">指定PDF文件所在的目录（必填）</p>
+    <input type="text" id="pdf-base-dir" placeholder="例如: /Users/username/Desktop/PDFs">
+    <small style="color: #888; display: block; margin-top: 8px;">💡 提示：填写包含PDF文件的文件夹路径，如 /Users/wenyangzang/Desktop/1</small>
+</div>
 
 <!-- 步骤1: 选择PDF文件 -->
 <div class="pdf-step-card">
@@ -204,14 +212,6 @@
         </div>
     </div>
     <div class="pdf-step-body">
-        <!-- 工作区配置 -->
-        <div class="form-group" style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px solid #b3e0ff;">
-            <label style="font-weight: 600; color: #0066cc;">📁 工作区 <span style="color: #f56565;">*</span></label>
-            <p style="color: #666; font-size: 13px; margin: 0 0 10px 0;">指定PDF文件所在的目录（必填）</p>
-            <input type="text" id="pdf-base-dir" placeholder="例如: /Users/username/Desktop/PDFs">
-            <small style="color: #888; display: block; margin-top: 8px;">💡 提示：填写包含PDF文件的文件夹路径，如 /Users/wenyangzang/Desktop/1</small>
-        </div>
-
         <div class="form-group">
             <input type="file" id="pdf-batch-input" accept=".pdf" multiple style="display: none;" onchange="handlePdfBatchSelect(event)">
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -228,6 +228,48 @@
             <h4 style="margin-bottom: 10px; color: #333;">📋 已选择的文件</h4>
             <div class="pdf-file-list" id="pdf-files-container"></div>
         </div>
+
+        <!-- JSON笔记内容输入 -->
+        <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+            <h4 style="margin-bottom: 15px; color: #333;">📝 笔记内容输入</h4>
+            <div class="form-group">
+                <label>JSON格式笔记内容</label>
+                <textarea id="note-json-input" rows="8" placeholder='{"封面文案": "✅四级听力-通用版，死磕这1份，听力直冲180+", "标题": "💯吃透这1份，四级听力稳提分", "正文": "📚四级听力满分备考干货｜零基础直接抄作业！\n...", "标签": "#四级听力 #四级备考 ..."}'></textarea>
+                <small style="color: #888; display: block; margin-top: 6px;">支持两种格式：
+1. 中文键名：{"封面文案": "...", "标题": "...", "正文": "...", "标签": "..."}
+2. 英文键名：{"cover": "...", "title": "...", "content": "...", "tags": "..."}</small>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-primary" onclick="parseNoteJson()">
+                    🔍 识别笔记内容
+                </button>
+            </div>
+
+            <!-- 笔记内容编辑区域 -->
+            <div id="note-content-edit" style="margin-top: 20px; display: none; border-top: 1px solid #eee; padding-top: 20px;">
+                <h4 style="margin-bottom: 15px; color: #333;">📝 笔记内容编辑</h4>
+                
+                <div class="form-group">
+                    <label>封面文案</label>
+                    <textarea id="edit-note-cover" rows="2" oninput="updateNoteContent('cover', this.value)"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>标题</label>
+                    <input type="text" id="edit-note-title" oninput="updateNoteContent('title', this.value)">
+                </div>
+                
+                <div class="form-group">
+                    <label>正文</label>
+                    <textarea id="edit-note-content" rows="5" oninput="updateNoteContent('content', this.value)"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>标签（空格分隔）</label>
+                    <input type="text" id="edit-note-tags" oninput="updateNoteContent('tags', this.value)">
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -236,8 +278,8 @@
     <div class="pdf-step-header step-2">
         <div class="pdf-step-icon">⚙️</div>
         <div class="pdf-step-title">
-            <h2>步骤2: 配置转换选项</h2>
-            <p>设置输出格式、DPI、水印等参数</p>
+            <h2>步骤2: 配置水印和页眉页脚等</h2>
+        
         </div>
     </div>
     <div class="pdf-step-body">
@@ -835,6 +877,63 @@ function clearPdfImage(type) {
 // PDF批量处理相关变量
 let pdfBatchFiles = [];  // 存储批量选择的PDF文件信息（只存路径，不存文件对象）
 let pdfBatchResults = []; // 存储批量转换结果
+let noteContent = {  // 存储笔记内容
+    cover: '',
+    title: '',
+    content: '',
+    tags: []
+};
+
+// 解析JSON格式的笔记内容
+function parseNoteJson() {
+    const jsonInput = document.getElementById('note-json-input').value.trim();
+    
+    if (!jsonInput) {
+        showPdfMessage('请输入JSON格式的笔记内容', 'error');
+        return;
+    }
+    
+    try {
+        const parsed = JSON.parse(jsonInput);
+        
+        // 提取并验证笔记内容
+        noteContent.cover = parsed.cover || parsed.cover_text || parsed['封面文案'] || '';
+        noteContent.title = parsed.title || parsed['标题'] || '';
+        noteContent.content = parsed.content || parsed.text || parsed.body || parsed['正文'] || '';
+        noteContent.tags = parsed.tags || parsed.tag || parsed['标签'] || [];
+        
+        // 确保tags是数组
+        if (!Array.isArray(noteContent.tags)) {
+            if (typeof noteContent.tags === 'string') {
+                noteContent.tags = noteContent.tags.split(' ').filter(t => t.trim());
+            } else {
+                noteContent.tags = [noteContent.tags];
+            }
+        }
+        
+        // 填充编辑区域
+        document.getElementById('edit-note-cover').value = noteContent.cover;
+        document.getElementById('edit-note-title').value = noteContent.title;
+        document.getElementById('edit-note-content').value = noteContent.content;
+        document.getElementById('edit-note-tags').value = Array.isArray(noteContent.tags) ? noteContent.tags.join(' ') : noteContent.tags;
+        
+        // 显示编辑区域
+        document.getElementById('note-content-edit').style.display = 'block';
+        
+        showPdfMessage('✅ 笔记内容识别成功！', 'success');
+    } catch (e) {
+        showPdfMessage('❌ JSON格式错误: ' + e.message, 'error');
+    }
+}
+
+// 更新笔记内容
+function updateNoteContent(field, value) {
+    if (field === 'tags') {
+        noteContent.tags = value.split(' ').filter(t => t.trim());
+    } else {
+        noteContent[field] = value;
+    }
+}
 
 // 打开PDF文件选择器
 function openPdfFileSelector() {
@@ -947,6 +1046,12 @@ function removePdfFromBatch(index) {
     pdfBatchFiles.splice(index, 1);
     displayPdfFileList();
     document.getElementById('pdf-batch-count').textContent = `已选择 ${pdfBatchFiles.length} 个文件`;
+
+    // 重置文件选择控件，确保可以重新选择相同的文件
+    const fileInput = document.getElementById('pdf-batch-input');
+    if (fileInput) {
+        fileInput.value = '';
+    }
 
     if (pdfBatchFiles.length === 0) {
         document.getElementById('pdf-file-list').style.display = 'none';
@@ -1199,6 +1304,7 @@ function displayBatchResults(data) {
                 <div style="background: #f0f9ff; padding: 10px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid #0066cc;">
                     <div style="font-size: 13px; color: #666;">
                         <strong>📁 存储位置:</strong> <span style="color: #333; font-family: monospace;">${result.output_dir || '未指定'}</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${result.output_dir || ''}')" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">📋 复制路径</button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -1206,6 +1312,10 @@ function displayBatchResults(data) {
                     <button class="btn btn-success" onclick="generateCoverImage('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🎨 生成封面</button>
                     <button class="btn btn-warning" onclick="generateProductImages('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🛍️ 生成主图</button>
                     <button class="btn btn-info" onclick="transferToPhone('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">📱 传手机</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('cover')" style="padding: 6px 12px; font-size: 12px;">📋 复制封面文案</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('title')" style="padding: 6px 12px; font-size: 12px;">📋 复制标题</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('content')" style="padding: 6px 12px; font-size: 12px;">📋 复制正文</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('tags')" style="padding: 6px 12px; font-size: 12px;">📋 复制标签</button>
                 </div>
             `;
         } else {
@@ -1238,9 +1348,7 @@ function clearOutputDirectory(outputDir) {
     
     fetch('/api/pdf/clear-output-dir', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ output_dir: outputDir })
     })
     .then(response => response.json())
@@ -1256,6 +1364,60 @@ function clearOutputDirectory(outputDir) {
     });
 }
 
+// 复制到剪贴板
+function copyToClipboard(text) {
+    if (!text) {
+        showPdfMessage('复制内容为空', 'error');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            showPdfMessage('✅ 路径已复制到剪贴板', 'success');
+        })
+        .catch(err => {
+            showPdfMessage('❌ 复制失败: ' + err.message, 'error');
+        });
+}
+
+// 复制笔记内容
+function copyNoteContent(type) {
+    let text = '';
+    let typeName = '';
+    
+    switch(type) {
+        case 'cover':
+            text = noteContent.cover;
+            typeName = '封面文案';
+            break;
+        case 'title':
+            text = noteContent.title;
+            typeName = '标题';
+            break;
+        case 'content':
+            text = noteContent.content;
+            typeName = '正文';
+            break;
+        case 'tags':
+            text = noteContent.tags.join(' ');
+            typeName = '标签';
+            break;
+    }
+    
+    if (!text) {
+        showPdfMessage(`❌ ${typeName}内容为空，请先识别笔记内容`, 'error');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            showPdfMessage(`✅ ${typeName}已复制到剪贴板`, 'success');
+        })
+        .catch(err => {
+            showPdfMessage('❌ 复制失败: ' + err.message, 'error');
+        });
+}
+
 // 生成封面图
 function generateCoverImage(outputDir) {
     if (!outputDir) {
@@ -1263,9 +1425,28 @@ function generateCoverImage(outputDir) {
         return;
     }
     
-    // 保存输出目录到localStorage，然后跳转到封面生成器
-    localStorage.setItem('coverGeneratorOutputDir', outputDir);
-    window.open('/cover-generator', '_blank');
+    console.log('当前笔记内容:', noteContent);
+    
+    // 构建URL参数
+    const params = new URLSearchParams();
+    params.set('outputDir', outputDir);
+    if (noteContent.cover) {
+        params.set('cover', encodeURIComponent(noteContent.cover));
+    }
+    if (noteContent.title) {
+        params.set('title', encodeURIComponent(noteContent.title));
+    }
+    if (noteContent.content) {
+        params.set('content', encodeURIComponent(noteContent.content));
+    }
+    if (noteContent.tags && noteContent.tags.length > 0) {
+        params.set('tags', encodeURIComponent(noteContent.tags.join(' ')));
+    }
+    
+    const url = '/cover-generator?' + params.toString();
+    console.log('跳转URL:', url);
+    
+    window.open(url, '_blank');
 }
 
 // 生成商品主图

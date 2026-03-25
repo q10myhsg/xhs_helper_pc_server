@@ -700,7 +700,7 @@ function saveCoverImage() {
     // 转换为Blob并上传
     exportCanvas.toBlob((blob) => {
         const formData = new FormData();
-        formData.append('image', blob, `小红书封面_${Date.now()}.png`);
+        formData.append('image', blob, 'cover.png');
         formData.append('output_dir', outputDir);
 
         fetch('/api/cover-generator/save', {
@@ -711,6 +711,7 @@ function saveCoverImage() {
         .then(data => {
             if (data.success) {
                 alert(`封面保存成功！\n保存路径: ${data.file_path}`);
+                window.close();
             } else {
                 alert('保存失败: ' + data.error);
             }
@@ -791,13 +792,27 @@ function selectCoverOutputDir() {
 document.addEventListener('DOMContentLoaded', function() {
     initCoverGenerator();
     
-    // 检查是否有从PDF页面传递过来的输出目录
-    const savedOutputDir = localStorage.getItem('coverGeneratorOutputDir');
-    if (savedOutputDir) {
-        document.getElementById('cover-output-dir').value = savedOutputDir;
-        // 清除localStorage中的值，避免重复填充
-        localStorage.removeItem('coverGeneratorOutputDir');
-        showCoverMessage('已自动填充输出目录: ' + savedOutputDir, 'success');
+    // 从URL参数中获取数据
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('URL参数:', Object.fromEntries(urlParams));
+    
+    // 获取输出目录
+    const outputDir = urlParams.get('outputDir');
+    if (outputDir) {
+        document.getElementById('cover-output-dir').value = outputDir;
+        showCoverMessage('已自动填充输出目录', 'success');
+    }
+    
+    // 获取封面文案
+    const coverText = urlParams.get('cover');
+    console.log('封面文案:', coverText);
+    
+    if (coverText) {
+        const decodedCoverText = decodeURIComponent(coverText);
+        console.log('解码后的封面文案:', decodedCoverText);
+        document.getElementById('coverTextInput').value = decodedCoverText;
+        parseCoverTextInput();
+        showCoverMessage('已自动填充封面文案', 'success');
     }
 });
 </script>
