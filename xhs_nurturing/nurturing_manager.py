@@ -47,6 +47,11 @@ class NurturingManager:
             
             # 获取设备配置
             config = self.config_manager.get_device_config(device_id)
+            
+            # 从数据库获取关键词
+            keywords = self.config_manager.get_keywords(device_id)
+            config["keywords"] = keywords
+            
             self.logger.info(f"设备 {device_id} 的配置: {config}")
             self.logger.info(f"配置中的keywords: {config.get('keywords', 'NOT FOUND')}")
 

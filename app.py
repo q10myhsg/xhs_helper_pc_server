@@ -217,17 +217,24 @@ def api_keywords(device_id):
 @app.route("/api/yanghao/start", methods=["POST"])
 def api_start_yanghao():
     """启动养号"""
+    import logging
+    logger = logging.getLogger(__name__)
     try: 
-        device_id = request. json.get("device_id") or current_device["device_id"]
+        device_id = request.json.get("device_id") or current_device["device_id"]
         if not device_id:
+            logger.error("启动养号失败: 未选择设备")
             return jsonify({"success": False, "error": "未选择设备"})
         
+        logger.info(f"尝试启动设备 {device_id} 的养号")
         success = nurturing_manager.start_nurturing(device_id)
         if success:
+            logger.info(f"设备 {device_id} 养号启动成功")
             return jsonify({"success": True, "message": "养号已启动"})
         else:
-            return jsonify({"success": False, "error": "启动养号失败"})
+            logger.error(f"设备 {device_id} 养号启动失败")
+            return jsonify({"success": False, "error": "启动养号失败，请查看后台日志"})
     except Exception as e:
+        logger.error(f"启动养号异常: {e}", exc_info=True)
         return jsonify({"success": False, "error": str(e)})
 
 @app.route("/api/yanghao/stop", methods=["POST"])
