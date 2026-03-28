@@ -47,8 +47,8 @@ class FileTransferManager:
     def _check_path_exists_on_device(self, path: str) -> bool:
         """检查手机上的路径是否存在"""
         try:
-            # 不使用引号，参考adb_file.py实现
-            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', path, '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
+            # 使用引号包裹路径，避免特殊字符导致的shell语法错误
+            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', f'"{path}"', '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
             return "yes" in result.stdout
         except Exception as e:
@@ -58,8 +58,8 @@ class FileTransferManager:
     def _create_dir_on_device(self, path: str) -> bool:
         """在手机上创建目录"""
         try:
-            # 不使用引号，参考adb_file.py实现
-            adb_cmd = self._build_adb_cmd(['shell', 'mkdir', '-p', path])
+            # 使用引号包裹路径，避免特殊字符导致的shell语法错误
+            adb_cmd = self._build_adb_cmd(['shell', 'mkdir', '-p', f'"{path}"'])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
             logger.info(f"已创建手机目录: {path}")
             return True
@@ -77,9 +77,9 @@ class FileTransferManager:
                 logger.info(f"目录不存在，无需删除: {path}")
                 return True
             
-            # 执行ADB删除目录命令（不使用引号，参考adb_file.py实现）
+            # 执行ADB删除目录命令（使用引号包裹路径）
             logger.info(f"正在删除手机目录: {path}")
-            adb_cmd = self._build_adb_cmd(['shell', 'rm', '-rf', path])
+            adb_cmd = self._build_adb_cmd(['shell', 'rm', '-rf', f'"{path}"'])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
             
             # 验证目录是否已删除
@@ -113,7 +113,7 @@ class FileTransferManager:
             adb_cmd = self._build_adb_cmd([
                 'shell', 'am', 'broadcast', 
                 '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE', 
-                '-d', f"'{path}'"
+                '-d', f'file://{path}'
             ])
             
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
@@ -251,7 +251,7 @@ class FileTransferManager:
             
             logger.info(f"正在修改文件时间戳: {file_path} -> {time_str}")
             adb_cmd = self._build_adb_cmd([
-                'shell', 'touch', '-a', '-m', '-t', time_str, file_path
+                'shell', 'touch', '-a', '-m', '-t', time_str, f'"{file_path}"'
             ])
             
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
