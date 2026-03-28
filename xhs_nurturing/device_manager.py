@@ -1,6 +1,7 @@
 import uiautomator2 as u2
 import subprocess
 import logging
+import time
 from typing import Dict, List, Optional
 from datetime import datetime
 from .config_manager import ConfigManager
@@ -49,32 +50,68 @@ class DeviceManager:
                         try:
                             self.logger.info(f"尝试连接设备: {device_id}")
                             d = u2.connect(device_id)
-                            info = d.info
-                            self.logger.info(f"设备信息: {info}")
-                            # 检查是否有设备别名
-                            alias = self.get_device_alias(device_id)
-                            if alias:
-                                device_name = alias
+                            
+                            info = None
+                            # 尝试获取设备信息
+                            try:
+                                info = d.info
+                            except u2.exceptions.UiAutomationNotConnectedError:
+                                self.logger.info(f"设备 {device_id} 的 uiautomator2 未启动，尝试使用 adb 命令初始化...")
+                                # 尝试使用 adb 命令初始化 uiautomator2
+                                try:
+                                    # 使用 uiautomator2 的 init 方法
+                                    subprocess.run(['python3', '-m', 'uiautomator2', 'init', '--device', device_id], 
+                                                 capture_output=True, text=True)
+                                    # 等待一下
+                                    time.sleep(3)
+                                    info = d.info
+                                except Exception as init_error:
+                                    self.logger.warning(f"初始化 uiautomator2 失败（这是正常的，设备依然可用）: {init_error}")
+                                    # 即使初始化失败，也继续处理，因为我们会用 adb 状态判断
+                            
+                            if info:
+                                self.logger.info(f"设备信息: {info}")
+                                # 检查是否有设备别名
+                                alias = self.get_device_alias(device_id)
+                                if alias:
+                                    device_name = alias
+                                else:
+                                    device_name = f"{info.get('model', 'Unknown')}({device_id})"
+                                device_list.append({
+                                    "id": device_id,
+                                    "name": device_name,
+                                    "status": "online"
+                                })
                             else:
-                                device_name = f"{info.get('model', 'Unknown')}({device_id})"
-                            device_list.append({
-                                "id": device_id,
-                                "name": device_name,
-                                "status": "online"
-                            })
+                                # 即使没有 info，只要 adb 显示 device，我们也标记为在线
+                                raise Exception("uiautomator2 连接失败")
                         except Exception as e:
                             self.logger.error(f"连接设备失败: {e}")
-                            # 检查是否有设备别名
-                            alias = self.get_device_alias(device_id)
-                            if alias:
-                                device_name = alias
+                            # 即使 uiautomator2 连接失败，只要 adb 显示 device 状态，我们也标记为在线
+                            if status == 'device':
+                                self.logger.info(f"设备 {device_id} 通过 adb 检测为在线，标记为 online")
+                                alias = self.get_device_alias(device_id)
+                                if alias:
+                                    device_name = alias
+                                else:
+                                    device_name = device_id
+                                device_list.append({
+                                    "id": device_id,
+                                    "name": device_name,
+                                    "status": "online"
+                                })
                             else:
-                                device_name = device_id
-                            device_list.append({
-                                "id": device_id,
-                                "name": device_name,
-                                "status": "offline"
-                            })
+                                # 检查是否有设备别名
+                                alias = self.get_device_alias(device_id)
+                                if alias:
+                                    device_name = alias
+                                else:
+                                    device_name = device_id
+                                device_list.append({
+                                    "id": device_id,
+                                    "name": device_name,
+                                    "status": "offline"
+                                })
             
             self.logger.info(f"最终设备列表: {device_list}")
             return device_list
@@ -93,6 +130,23 @@ class DeviceManager:
                 del self._devices_pool[device_id]
             
             d = u2.connect(device_id)
+            
+            # 检查 uiautomator2 是否连接，如果没有则尝试初始化
+            try:
+                d.info
+            except u2.exceptions.UiAutomationNotConnectedError:
+                self.logger.info(f"设备 {device_id} 的 uiautomator2 未启动，尝试使用 adb 命令初始化...")
+                # 尝试使用 adb 命令初始化 uiautomator2
+                try:
+                    # 使用 uiautomator2 的 init 方法
+                    subprocess.run(['python3', '-m', 'uiautomator2', 'init', '--device', device_id], 
+                                 capture_output=True, text=True)
+                    # 等待一下
+                    time.sleep(3)
+                    d.info
+                except Exception as init_error:
+                    self.logger.warning(f"初始化 uiautomator2 失败（这是正常的，设备依然可用）: {init_error}")
+            
             self._devices_pool[device_id] = d
             self._status[device_id] = {
                 "is_running": False,
