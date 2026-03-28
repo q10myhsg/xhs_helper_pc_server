@@ -51,6 +51,9 @@ class FileTransferManager:
             adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', f'"{path}"', '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
             return "yes" in result.stdout
+        except KeyboardInterrupt:
+            # 捕获用户中断信号，不记录错误
+            raise
         except Exception as e:
             logger.error(f"检查设备路径时发生错误: {str(e)}")
             return False
@@ -63,6 +66,9 @@ class FileTransferManager:
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
             logger.info(f"已创建手机目录: {path}")
             return True
+        except KeyboardInterrupt:
+            # 捕获用户中断信号，不记录错误
+            raise
         except subprocess.CalledProcessError as e:
             logger.error(f"ADB创建目录命令执行失败: {e.stderr}")
             return False
@@ -89,6 +95,9 @@ class FileTransferManager:
             else:
                 logger.error(f"手机目录删除失败，目录仍然存在: {path}")
                 return False
+        except KeyboardInterrupt:
+            # 捕获用户中断信号，不记录错误
+            raise
         except subprocess.CalledProcessError as e:
             logger.error(f"ADB删除命令执行失败: {e.stderr}")
             return False
@@ -121,6 +130,9 @@ class FileTransferManager:
             logger.info(f"媒体扫描广播发送成功: {result.stdout.strip()}")
             return True
             
+        except KeyboardInterrupt:
+            # 捕获用户中断信号，不记录错误
+            raise
         except subprocess.CalledProcessError as e:
             logger.error(f"ADB广播命令执行失败: {e.stderr}")
             return False
@@ -153,6 +165,9 @@ class FileTransferManager:
             time.sleep(0.5)
             
             return True
+        except KeyboardInterrupt:
+            # 捕获用户中断信号，不记录错误
+            raise
         except Exception as e:
             logger.warning(f"MediaStore 扫描触发失败: {str(e)}")
             return False
@@ -225,6 +240,9 @@ class FileTransferManager:
             logger.info(f"全面媒体扫描触发结果: {result.returncode}")
             
             return True
+        except KeyboardInterrupt:
+            # 捕获用户中断信号，不记录错误
+            raise
         except Exception as e:
             logger.warning(f"全面媒体扫描触发失败: {str(e)}")
             return False
@@ -257,6 +275,9 @@ class FileTransferManager:
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
             logger.info(f"文件时间戳修改成功: {file_path}")
             return True
+        except KeyboardInterrupt:
+            # 捕获用户中断信号，不记录错误
+            raise
         except subprocess.CalledProcessError as e:
             logger.warning(f"修改文件时间戳失败: {e.stderr}")
             return False
