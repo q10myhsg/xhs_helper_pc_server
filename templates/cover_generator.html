@@ -263,13 +263,13 @@
         <p style="color: #666; font-size: 13px; margin: 8px 0;">指定封面图片保存的文件夹路径</p>
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
             <input type="text" id="cover-output-dir" placeholder="例如: /Users/username/Desktop/封面图片" style="flex: 1;">
-            <button class="cover-btn-secondary" onclick="selectCoverOutputDir()" style="white-space: nowrap;">
-                📂 选择目录
-            </button>
-            <input type="file" id="cover-dir-selector" style="display: none;" webkitdirectory directory>
         </div>
         <small style="color: #888;">💡 提示：可以直接使用PDF工作区目录，方便统一管理</small>
+        <small style="color: #888; margin-top: 8px; display: block;">⚠️ 注意：由于浏览器安全限制，无法直接选择目录，请手动输入完整路径</small>
+        <small style="color: #888; margin-top: 8px; display: block;">📌 路径格式示例：/Users/username/Desktop/封面图片 或 C:\Users\username\Desktop\封面图片</small>
     </div>
+
+
 
     <div class="cover-grid">
         <!-- 左侧：编辑器 -->
@@ -654,6 +654,14 @@ function saveCoverImage() {
         return;
     }
 
+    // 验证路径格式
+    if (!validatePath(outputDir)) {
+        alert('路径格式不正确！请输入有效的目录路径，例如：\n\n/Users/username/Desktop/封面图片\n或\nC:\\Users\\username\\Desktop\\封面图片');
+        return;
+    }
+
+    // 页码范围功能已移除
+
     // 创建高清画布
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1200;
@@ -774,19 +782,19 @@ function showCoverMessage(message, type) {
     }, 3000);
 }
 
-// 选择输出目录
-function selectCoverOutputDir() {
-    const dirSelector = document.getElementById('cover-dir-selector');
-    dirSelector.onchange = function(e) {
-        if (e.target.files && e.target.files.length > 0) {
-            const directory = e.target.files[0].webkitRelativePath.split('/')[0];
-            const fullPath = e.target.files[0].path;
-            const directoryPath = fullPath.substring(0, fullPath.lastIndexOf('/'));
-            document.getElementById('cover-output-dir').value = directoryPath;
-        }
-    };
-    dirSelector.click();
+// 验证路径格式
+function validatePath(path) {
+    // 验证Unix/Linux路径格式
+    const unixPathRegex = /^\/(?:[^\/]+\/)*[^\/]+$/;
+    // 验证Windows路径格式
+    const windowsPathRegex = /^[A-Za-z]:\\(?:[^\\]+\\)*[^\\]+$/;
+    // 验证简化的路径格式
+    const simplePathRegex = /^(?:\/|\w:)(?:[^\/\\]+[\/\\])*[^\/\\]+$/;
+    
+    return unixPathRegex.test(path) || windowsPathRegex.test(path) || simplePathRegex.test(path);
 }
+
+// 页码范围功能已移除
 
 // 启动
 document.addEventListener('DOMContentLoaded', function() {
@@ -794,7 +802,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 从URL参数中获取数据
     const urlParams = new URLSearchParams(window.location.search);
-    console.log('URL参数:', Object.fromEntries(urlParams));
     
     // 获取输出目录
     const outputDir = urlParams.get('outputDir');
@@ -805,11 +812,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 获取封面文案
     const coverText = urlParams.get('cover');
-    console.log('封面文案:', coverText);
     
     if (coverText) {
         const decodedCoverText = decodeURIComponent(coverText);
-        console.log('解码后的封面文案:', decodedCoverText);
         document.getElementById('coverTextInput').value = decodedCoverText;
         parseCoverTextInput();
         showCoverMessage('已自动填充封面文案', 'success');

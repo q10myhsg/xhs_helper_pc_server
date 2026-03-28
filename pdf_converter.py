@@ -8,6 +8,7 @@ PDF转图片转换器
 from pdf2image import convert_from_path
 from PIL import Image
 import os
+import random
 from pathlib import Path
 
 # 兼容不同版本的Pillow
@@ -23,7 +24,7 @@ except AttributeError:
 
 
 class PDFConverter:
-    def __init__(self, watermark_path=None, header_path=None, footer_path=None, upload_folder='static/uploads', watermark_scale=100):
+    def __init__(self, watermark_path=None, header_path=None, footer_path=None, upload_folder='static/uploads', watermark_scale=100, icons_folder='static/pdf_images/icons'):
         """
         初始化PDF转换器
         
@@ -33,6 +34,7 @@ class PDFConverter:
             footer_path: 页脚图片路径
             upload_folder: 上传文件保存目录
             watermark_scale: 水印缩放比例（百分比），默认100表示原图大小
+            icons_folder: 图标文件夹路径，默认使用 static/pdf_images/icons
         """
         # 获取当前文件所在目录
         self.base_dir = Path(__file__).parent
@@ -48,10 +50,16 @@ class PDFConverter:
         self.footer_path = footer_path
         self.watermark_scale = watermark_scale  # 水印缩放比例
         
+        # 图标文件夹
+        self.icons_folder = str(self.base_dir / icons_folder)
+        
         # 加载图片
         self.watermark_img = self._load_image(self.watermark_path)
         self.header_img = self._load_image(self.header_path) if self.header_path else None
         self.footer_img = self._load_image(self.footer_path) if self.footer_path else None
+        
+        # 加载图标列表
+        self.icon_images = self._load_icons()
     
     def _load_image(self, path):
         """加载图片"""
@@ -69,6 +77,99 @@ class PDFConverter:
         if os.path.exists(full_path):
             return Image.open(full_path).convert("RGBA")
         return None
+    
+    def _load_icons(self):
+        """加载图标文件夹中的所有图标"""
+        icon_images = []
+        
+        if not os.path.exists(self.icons_folder):
+            print(f"图标文件夹不存在: {self.icons_folder}")
+            return icon_images
+        
+        # 遍历文件夹，加载所有图片文件
+        for filename in os.listdir(self.icons_folder):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                icon_path = os.path.join(self.icons_folder, filename)
+                try:
+                    icon_img = Image.open(icon_path).convert("RGBA")
+                    icon_images.append(icon_img)
+                except Exception as e:
+                    print(f"加载图标失败 {filename}: {e}")
+        
+        print(f"已加载 {len(icon_images)} 个图标")
+        return icon_images
+    
+    def _add_random_icon_to_image(self, img, icon_size=None, position=None):
+        """
+        为图片添加随机图标
+        
+        参数:
+            img: 目标图片
+            icon_size: 图标大小（像素），默认使用图标原始大小
+            position: 位置 {'x': 0-100, 'y': 0-100}，默认随机位置
+            
+        返回:
+            Image: 处理后的图片
+        """
+        if not self.icon_images:
+            return img
+        
+        img_width, img_height = img.size
+        
+        # 随机选择一个图标
+        icon = random.choice(self.icon_images)
+        
+        # 如果没有指定图标大小，使用图标原始大小
+        if icon_size is None:
+            new_icon_width = icon.size[0]
+            new_icon_height = icon.size[1]
+        else:
+            # 调整图标大小
+            icon_aspect = icon.size[0] / icon.size[1]
+            new_icon_width = icon_size
+            new_icon_height = int(icon_size / icon_aspect)
+        
+        icon_resized = icon.resize((new_icon_width, new_icon_height), RESAMPLING_LANCZOS)
+        
+        # 计算位置
+        if position:
+            x_percent = position.get('x', 0.5)
+            y_percent = position.get('y', 0.5)
+            x = int((img_width - new_icon_width) * x_percent)
+            y = int((img_height - new_icon_height) * y_percent)
+        else:
+            # 随机位置，避免太靠近边缘
+            margin = 50
+            x = random.randint(margin, img_width - new_icon_width - margin)
+            y = random.randint(margin, img_height - new_icon_height - margin)
+        
+        # 创建透明层
+        transparent = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        transparent.paste(icon_resized, (x, y), icon_resized)
+        
+        # 合并
+        result = Image.alpha_composite(img, transparent)
+        return result
+    
+    def get_pdf_page_count(self, pdf_path):
+        """
+        获取PDF文件的总页数
+        
+        参数:
+            pdf_path: PDF文件路径
+            
+        返回:
+            int: 总页数
+        """
+        try:
+            # 尝试使用PyPDF2获取页数
+            from PyPDF2 import PdfReader
+            reader = PdfReader(pdf_path)
+            total_pages = len(reader.pages)
+            return total_pages
+        except Exception as e:
+            print(f"获取PDF页数失败: {e}")
+            return 0
     
     def parse_page_range(self, page_range_str, total_pages):
         """
@@ -139,7 +240,10 @@ class PDFConverter:
                               watermark_position=None,
                               header_position=None,
                               footer_position=None,
-                              output_dir=None):
+                              output_dir=None,
+                              border_width=0, border_color='#000000',
+                              background_color='#ffffff',
+                              add_random_icon=False, icon_size=None, icon_position=None):
         """
         将PDF转换为图片
 
@@ -158,6 +262,12 @@ class PDFConverter:
             header_position: 页眉位置 {'top': 像素值}
             footer_position: 页脚位置 {'bottom': 像素值}
             output_dir: 输出目录（可选，默认使用PDF所在目录/imgs/文件名/）
+            border_width: 边框宽度（像素），0表示不显示边框
+            border_color: 边框颜色（十六进制颜色码）
+            background_color: 背景颜色（十六进制颜色码）
+            add_random_icon: 是否添加随机图标
+            icon_size: 图标大小（像素）
+            icon_position: 图标位置 {'x': 0-100, 'y': 0-100}，默认随机位置
 
         返回:
             dict: 包含生成的图片路径列表和简版PDF路径
@@ -172,7 +282,8 @@ class PDFConverter:
 
         # 确定页码范围
         start = max(0, start_page - 1)
-        end = min(total_pages, end_page) if end_page else total_pages
+        end = min(total_pages, end_page) if end_page is not None else total_pages
+        print(f"[PDF转换] 实际转换范围: {start+1} - {end} (共 {end - start} 页)")
 
         # 解析水印页面范围
         watermark_pages = self.parse_page_range(watermark_page_range, total_pages)
@@ -234,6 +345,20 @@ class PDFConverter:
             # 添加水印（只在指定页面添加）
             if add_watermark and self.watermark_img and page_num in watermark_pages:
                 img = self._add_watermark_to_image(img, self.watermark_img, watermark_position)
+            
+            # 只有在边框宽度大于0时才添加边框和背景色
+            if border_width > 0:
+                img = self._add_border_and_background(
+                    img, 
+                    border_width=border_width, 
+                    border_color=border_color, 
+                    background_color=background_color,
+                    scale=0.9
+                )
+            
+            # 添加随机图标
+            if add_random_icon:
+                img = self._add_random_icon_to_image(img, icon_size=icon_size, position=icon_position)
 
             # 保存图片 - 使用动态位数格式化页码
             formatted_page = str(page_num).zfill(page_digits)
@@ -415,6 +540,77 @@ class PDFConverter:
         # 合并
         result = Image.alpha_composite(img, transparent)
         return result
+    
+    def _add_border_and_background(self, img, border_width=0, border_color='#000000', background_color='#ffffff', scale=0.9):
+        """
+        为图片添加缩放、边框和背景色
+        
+        参数:
+            img: 原始图片
+            border_width: 边框宽度（像素）
+            border_color: 边框颜色（十六进制颜色码）
+            background_color: 背景颜色（十六进制颜色码）
+            scale: 缩放比例（0-1之间）
+            
+        返回:
+            Image: 处理后的图片
+        """
+        if border_width == 0 and scale == 1.0:
+            return img
+        
+        # 解析颜色
+        def hex_to_rgb(hex_color):
+            hex_color = hex_color.lstrip('#')
+            return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        
+        border_rgb = hex_to_rgb(border_color)
+        bg_rgb = hex_to_rgb(background_color)
+        
+        # 获取原始尺寸
+        original_width, original_height = img.size
+        
+        # 按比例缩放图片
+        new_width = int(original_width * scale)
+        new_height = int(original_height * scale)
+        img_scaled = img.resize((new_width, new_height), RESAMPLING_LANCZOS)
+        
+        # 计算新图片的尺寸（包含背景 + 边框）
+        # 背景大小等于原始图片大小
+        final_width = original_width
+        final_height = original_height
+        
+        # 创建背景图片
+        final_img = Image.new('RGBA', (final_width, final_height), (*bg_rgb, 255))
+        
+        # 计算图片在背景中的位置（居中）
+        x = (final_width - new_width - 2 * border_width) // 2
+        y = (final_height - new_height - 2 * border_width) // 2
+        
+        # 如果有边框，先在背景上绘制边框
+        if border_width > 0:
+            from PIL import ImageDraw
+            draw = ImageDraw.Draw(final_img)
+            # 边框从图片位置向外扩展
+            border_rect = [
+                x,
+                y,
+                x + new_width + 2 * border_width - 1,
+                y + new_height + 2 * border_width - 1
+            ]
+            for i in range(border_width):
+                draw.rectangle([
+                    border_rect[0] + i,
+                    border_rect[1] + i,
+                    border_rect[2] - i,
+                    border_rect[3] - i
+                ], outline=border_rgb)
+        
+        # 将缩放后的图片粘贴到中心位置（在边框内部）
+        paste_x = x + border_width
+        paste_y = y + border_width
+        final_img.paste(img_scaled, (paste_x, paste_y), img_scaled)
+        
+        return final_img
 
 
 # 便捷函数

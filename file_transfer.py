@@ -525,6 +525,101 @@ class FileTransferManager:
         results["message"] = "文件传输流程执行成功"
         return results
 
+    def transfer_files_from_phone(self, phone_dir: str, computer_dir: str) -> Dict:
+        """
+        将手机上的文件/文件夹传输到电脑
+        
+        参数:
+            phone_dir: 手机上的源目录路径
+            computer_dir: 电脑上的目标目录路径
+            
+        返回:
+            Dict: 包含操作结果的字典
+        """
+        try:
+            logger.info(f"开始从手机传输文件: {phone_dir} -> {computer_dir}")
+            
+            # 检查手机源目录是否存在
+            if not self._check_path_exists_on_device(phone_dir):
+                return {"success": False, "error": f"手机源目录不存在: {phone_dir}"}
+            
+            # 确保电脑目标目录存在
+            os.makedirs(computer_dir, exist_ok=True)
+            
+            file_count = 0
+            success = True
+            transferred_files = []
+            
+            # 检查是否是单个文件
+            adb_cmd = self._build_adb_cmd(['shell', 'test', '-f', phone_dir, '&&', 'echo', 'file', '||', 'echo', 'dir'])
+            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            is_file = 'file' in result.stdout
+            
+            if is_file:
+                # 单个文件，直接拉取
+                filename = os.path.basename(phone_dir)
+                target_path = os.path.join(computer_dir, filename)
+                
+                adb_cmd = self._build_adb_cmd(['pull', phone_dir, target_path])
+                result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                
+                if result.returncode == 0:
+                    file_count = 1
+                    transferred_files.append(target_path)
+                    logger.info(f"文件拉取成功: {filename}")
+                else:
+                    logger.error(f"文件拉取失败: {result.stderr}")
+                    return {"success": False, "error": result.stderr}
+            else:
+                # 目录，需要递归拉取
+                # 先获取目录结构
+                adb_cmd = self._build_adb_cmd(['shell', 'find', phone_dir, '-type', 'f'])
+                result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    return {"success": False, "error": f"获取手机文件列表失败: {result.stderr}"}
+                
+                phone_files = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
+                
+                logger.info(f"准备从手机拉取 {len(phone_files)} 个文件...")
+                
+                for phone_file_path in phone_files:
+                    # 计算相对路径
+                    rel_path = phone_file_path[len(phone_dir):].lstrip('/')
+                    target_file_path = os.path.join(computer_dir, rel_path)
+                    
+                    # 创建目标目录
+                    target_file_dir = os.path.dirname(target_file_path)
+                    os.makedirs(target_file_dir, exist_ok=True)
+                    
+                    # 拉取文件
+                    adb_cmd = self._build_adb_cmd(['pull', phone_file_path, target_file_path])
+                    result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                    
+                    if result.returncode == 0:
+                        file_count += 1
+                        transferred_files.append(target_file_path)
+                        logger.info(f"[{file_count}/{len(phone_files)}] 拉取成功: {rel_path}")
+                    else:
+                        logger.error(f"拉取失败: {rel_path}, 错误: {result.stderr}")
+                        success = False
+                        break
+            
+            if success:
+                logger.info(f"文件从手机传输成功，共 {file_count} 个文件")
+                return {
+                    "success": True,
+                    "message": f"文件从手机传输成功，共 {file_count} 个文件",
+                    "file_count": file_count,
+                    "transferred_files": transferred_files
+                }
+            else:
+                return {"success": False, "error": "部分文件拉取失败"}
+                
+        except Exception as e:
+            logger.error(f"从手机传输文件时发生错误: {str(e)}")
+            return {"success": False, "error": str(e)}
+
 
 # 全局文件传输管理器实例
 file_transfer_manager = FileTransferManager()

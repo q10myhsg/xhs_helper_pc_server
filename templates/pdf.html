@@ -331,13 +331,17 @@
                         <span>添加页脚</span>
                     </label>
                     <label class="pdf-checkbox-label">
+                        <input type="checkbox" id="pdf-add-random-icon">
+                        <span>添加随机图标</span>
+                    </label>
+                    <label class="pdf-checkbox-label">
                         <input type="checkbox" id="pdf-generate-simple" checked>
                         <span>生成精简版PDF（前3页）</span>
                     </label>
                 </div>
 
                 <div class="alert alert-info" style="margin-top: 15px;">
-                    💡 <strong>提示：</strong>水印、页眉、页脚图片可在下方素材设置中配置
+                    💡 <strong>提示：</strong>水印、页眉、页脚图片可在下方素材设置中配置；随机图标从系统图标库中随机选择
                 </div>
             </div>
         </div>
@@ -546,6 +550,42 @@
                 </div>
             </div>
         </div>
+
+        <!-- 图片边框和背景设置 -->
+        <div style="margin-top: 30px;">
+            <h3 style="color: #667eea; margin-bottom: 15px; font-size: 16px;">🖼️ 图片边框和背景设置</h3>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">为转换后的图片添加边框和背景色（可选）</p>
+            
+            <div class="form-group">
+                <label class="pdf-checkbox-label">
+                    <input type="checkbox" id="pdf-add-border-background" onchange="toggleBorderBackgroundOptions()">
+                    <span>启用图片边框和背景设置</span>
+                </label>
+            </div>
+            
+            <div id="border-background-options" style="margin-top: 15px; display: none;">
+                <div class="pdf-grid">
+                    <div>
+                        <div class="form-group">
+                            <label>图片边框宽度 (像素)</label>
+                            <input type="number" id="pdf-border-width" min="0" max="100" value="0" placeholder="0">
+                            <small style="color: #888; display: block; margin-top: 6px;">设置为0表示不显示边框</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>边框颜色</label>
+                            <input type="color" id="pdf-border-color" value="#000000" style="width: 60px; height: 40px; padding: 2px; cursor: pointer;">
+                        </div>
+
+                        <div class="form-group">
+                            <label>背景颜色</label>
+                            <input type="color" id="pdf-background-color" value="#ffffff" style="width: 60px; height: 40px; padding: 2px; cursor: pointer;">
+                            <small style="color: #888; display: block; margin-top: 6px;">图片会缩小到90%，背景色填充剩余区域</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -610,7 +650,9 @@ const persistentFormIds = [
     'pdf-watermark-page-mode', 'pdf-watermark-custom-pages',
     'pdf-watermark-pos-x', 'pdf-watermark-pos-y', 'pdf-watermark-scale',
     'pdf-header-offset', 'pdf-footer-offset',
-    'pdf-base-dir'
+    'pdf-base-dir',
+    'pdf-add-border-background', 'pdf-border-width', 'pdf-border-color', 'pdf-background-color',
+    'pdf-add-random-icon'
 ];
 
 // 保存所有表单数据到localStorage
@@ -674,6 +716,20 @@ function setupAutoSaveListeners() {
             element.addEventListener('input', saveAllFormData);
         }
     });
+}
+
+// 切换边框和背景设置选项
+function toggleBorderBackgroundOptions() {
+    const checkbox = document.getElementById('pdf-add-border-background');
+    const options = document.getElementById('border-background-options');
+    
+    if (checkbox.checked) {
+        options.style.display = 'block';
+    } else {
+        options.style.display = 'none';
+    }
+    
+    saveAllFormData();
 }
 
 // ==================== PDF转换功能 ====================
@@ -1212,12 +1268,21 @@ function batchConvertWithPaths(baseDir) {
         generate_simple_pdf: document.getElementById('pdf-generate-simple').checked,
         add_header: document.getElementById('pdf-add-header').checked,
         add_footer: document.getElementById('pdf-add-footer').checked,
+        add_random_icon: document.getElementById('pdf-add-random-icon').checked,
         watermark_page_range: watermarkPageRange,
         watermark_position: watermarkPosition,
         watermark_scale: parseInt(document.getElementById('pdf-watermark-scale').value) || 100,
         header_position: positions.header,
         footer_position: positions.footer
     };
+    
+    // 只有在用户启用边框和背景设置时才添加这些参数
+    const addBorderBackground = document.getElementById('pdf-add-border-background').checked;
+    if (addBorderBackground) {
+        settings.border_width = parseInt(document.getElementById('pdf-border-width').value) || 0;
+        settings.border_color = document.getElementById('pdf-border-color').value;
+        settings.background_color = document.getElementById('pdf-background-color').value;
+    }
 
     updatePdfProgress(30, '正在转换文件...');
 
@@ -1286,7 +1351,7 @@ function displayBatchResults(data) {
         
         if (result.success) {
             const imagesHtml = result.images.slice(0, 4).map(img => 
-                `<img src="${img}" style="width: 80px; height: auto; border: 1px solid #e8e8e8; border-radius: 5px; cursor: pointer; margin-right: 8px; margin-bottom: 8px;" onclick="window.open('${img}', '_blank')">`
+                `<img src="${img}" style="width: 80px; height: auto; border: 1px solid #e8e8e8; border-radius: 5px; cursor: pointer; margin-right: 8px; margin-bottom: 8px;" onclick="window.open('${img}', '_blank')" alt="第${result.images.indexOf(img)+1}页">`
             ).join('');
             
             const moreImages = result.images.length > 4 ? `<div style="color: #888; font-size: 12px; margin-top: 6px;">还有 ${result.images.length - 4} 张图片...</div>` : '';
@@ -1425,8 +1490,6 @@ function generateCoverImage(outputDir) {
         return;
     }
     
-    console.log('当前笔记内容:', noteContent);
-    
     // 构建URL参数
     const params = new URLSearchParams();
     params.set('outputDir', outputDir);
@@ -1444,8 +1507,6 @@ function generateCoverImage(outputDir) {
     }
     
     const url = '/cover-generator?' + params.toString();
-    console.log('跳转URL:', url);
-    
     window.open(url, '_blank');
 }
 

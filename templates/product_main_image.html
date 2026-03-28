@@ -206,18 +206,18 @@
             <!-- 输出目录配置 -->
             <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border: 1px solid #b3e0ff; margin-bottom: 15px;">
                 <label style="font-weight: 600; color: #0066cc;">📁 输出目录 <span style="color: #f56565;">*</span></label>
-                <p style="color: #666; font-size: 13px; margin: 8px 0;">指定主图保存的文件夹路径</p>
+                <p style="color: #666; font-size: 13px; margin: 8px 0;">指定主图保存的文件夹路径（手动输入完整路径）</p>
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="product-output-dir" placeholder="例如: /Users/username/Desktop/商品主图" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                    <button onclick="selectProductOutputDir()" style="white-space: nowrap; padding: 8px 16px; background: #3B7DED; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        📂 选择目录
-                    </button>
-                    <input type="file" id="product-dir-selector" style="display: none;" webkitdirectory directory>
                 </div>
+                <small style="color: #888; display: block; margin-top: 6px;">💡 提示：由于浏览器安全限制，请直接输入完整的文件夹路径</small>
             </div>
 
             <!-- ===== 下载按钮 ===== -->
-            <button class="btn-download" onclick="downloadImage()">📥 下载主图 (PNG)</button>
+            <button class="btn-download" onclick="downloadImage()" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>📥</span>
+                <span>下载主图 (PNG)</span>
+            </button>
 
         </div>
     </div>

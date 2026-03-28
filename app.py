@@ -412,6 +412,11 @@ def api_pdf_convert():
         header_position = data.get('header_position', None)
         footer_position = data.get('footer_position', None)
         
+        # 图片边框和背景色参数
+        border_width = data.get('border_width', 0)
+        border_color = data.get('border_color', '#000000')
+        background_color = data.get('background_color', '#ffffff')
+        
         if not filename:
             return jsonify({"success": False, "error": "文件名不能为空"})
         
@@ -433,7 +438,10 @@ def api_pdf_convert():
             watermark_page_range=watermark_page_range,
             watermark_position=watermark_position,
             header_position=header_position,
-            footer_position=footer_position
+            footer_position=footer_position,
+            border_width=border_width,
+            border_color=border_color,
+            background_color=background_color
         )
         
         # 获取相对路径用于前端显示
@@ -478,6 +486,11 @@ def api_pdf_preview():
         header_position = data.get('header_position', None)
         footer_position = data.get('footer_position', None)
         
+        # 图片边框和背景色参数
+        border_width = data.get('border_width', 0)
+        border_color = data.get('border_color', '#000000')
+        background_color = data.get('background_color', '#ffffff')
+        
         if not filename:
             return jsonify({"success": False, "error": "文件名不能为空"})
         
@@ -499,7 +512,10 @@ def api_pdf_preview():
             watermark_page_range=watermark_page_range,
             watermark_position=watermark_position,
             header_position=header_position,
-            footer_position=footer_position
+            footer_position=footer_position,
+            border_width=border_width,
+            border_color=border_color,
+            background_color=background_color
         )
         
         # 获取相对路径用于前端显示
@@ -538,6 +554,11 @@ def api_pdf_preview_multi():
         header_position = data.get('header_position', None)
         footer_position = data.get('footer_position', None)
         
+        # 图片边框和背景色参数
+        border_width = data.get('border_width', 0)
+        border_color = data.get('border_color', '#000000')
+        background_color = data.get('background_color', '#ffffff')
+        
         if not filename:
             return jsonify({"success": False, "error": "文件名不能为空"})
         
@@ -568,7 +589,10 @@ def api_pdf_preview_multi():
             watermark_page_range=watermark_page_range,
             watermark_position=watermark_position,
             header_position=header_position,
-            footer_position=footer_position
+            footer_position=footer_position,
+            border_width=border_width,
+            border_color=border_color,
+            background_color=background_color
         )
         
         # 获取相对路径用于前端显示
@@ -969,26 +993,37 @@ def api_pdf_batch_convert_local():
 
                 # 执行转换 - 输出到工作区目录
                 output_dir = os.path.join(base_dir, 'output_images', os.path.splitext(original_name)[0])
+                
+                # 处理页码范围
+                start_page = settings.get('start_page', 1)
+                end_page = settings.get('end_page')
+                print(f"[PDF转换] 页码范围: {start_page} - {end_page}")
+                
                 result = converter.convert_pdf_to_images(
                     filepath,
                     dpi=settings.get('dpi', 300),
                     fmt=settings.get('format', 'png'),
                     add_watermark=settings.get('add_watermark', True),
                     generate_simple_pdf=settings.get('generate_simple_pdf', True),
-                    start_page=settings.get('start_page', 1),
-                    end_page=settings.get('end_page'),
+                    start_page=start_page,
+                    end_page=end_page,
                     add_header=settings.get('add_header', False),
                     add_footer=settings.get('add_footer', False),
                     watermark_page_range=settings.get('watermark_page_range', 'even'),
                     watermark_position=settings.get('watermark_position'),
                     header_position=settings.get('header_position'),
                     footer_position=settings.get('footer_position'),
-                    output_dir=output_dir
+                    output_dir=output_dir,
+                    border_width=settings.get('border_width', 0),
+                    border_color=settings.get('border_color', '#000000'),
+                    background_color=settings.get('background_color', '#ffffff'),
+                    add_random_icon=settings.get('add_random_icon', False)
                 )
 
                 # 将本地路径转换为URL
-                images_urls = [local_path_to_url(img_path) for img_path in result['images']]
-                simple_pdf_url = local_path_to_url(result['simple_pdf'])
+                import time
+                images_urls = [f"{local_path_to_url(img_path)}?t={int(time.time())}" for img_path in result['images']]
+                simple_pdf_url = f"{local_path_to_url(result['simple_pdf'])}?t={int(time.time())}"
                 
                 results.append({
                     "original_name": original_name,
@@ -1384,6 +1419,36 @@ def api_full_transfer():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@app.route("/api/file-transfer/transfer-from-phone", methods=["POST"])
+def api_transfer_from_phone():
+    """将手机文件传输到电脑"""
+    try:
+        data = request.json
+        phone_dir = data.get('phone_dir')
+        computer_dir = data.get('computer_dir')
+        device_id = data.get('device_id')
+        
+        if not phone_dir:
+            return jsonify({"success": False, "error": "手机源目录路径不能为空"})
+        
+        if not computer_dir:
+            return jsonify({"success": False, "error": "电脑目标目录路径不能为空"})
+        
+        if not device_id:
+            return jsonify({"success": False, "error": "请先选择目标设备"})
+        
+        # 创建设备特定的传输管理器
+        from file_transfer import FileTransferManager
+        ft_manager = FileTransferManager(device_id=device_id)
+        
+        # 执行从手机到电脑的传输
+        result = ft_manager.transfer_files_from_phone(phone_dir, computer_dir)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 # ==================== 错误处理 ====================
 
 @app.errorhandler(404)
@@ -1439,12 +1504,15 @@ def serve_local_file():
         # 解码路径
         decoded_path = unquote(encoded_path)
         
-        # 可能需要二次解码
+        # 解码路径
         while '%' in decoded_path:
             new_path = unquote(decoded_path)
             if new_path == decoded_path:
                 break
             decoded_path = new_path
+        
+        # 去除时间戳参数
+        decoded_path = decoded_path.split('?')[0]
         
         logging.info(f"Local file request: decoded={decoded_path}")
         

@@ -19,13 +19,13 @@
     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">配置会自动保存，下次打开时自动恢复</p>
 
     <div class="form-group">
-        <label for="ft-computer-dir">电脑源目录</label>
-        <input type="text" id="ft-computer-dir" placeholder="例如: /Users/username/Documents/待传输文件" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px;">
+        <label for="ft-computer-dir">电脑目录</label>
+        <input type="text" id="ft-computer-dir" placeholder="例如: /Users/username/Documents/传输文件" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px;">
         <p style="color: #999; font-size: 12px;">请输入电脑上的完整文件夹路径</p>
     </div>
 
     <div class="form-group">
-        <label for="ft-phone-dir">手机目标目录</label>
+        <label for="ft-phone-dir">手机目录</label>
         <input type="text" id="ft-phone-dir" placeholder="例如: /sdcard/Download/传输专用目录" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
     </div>
 
@@ -33,14 +33,23 @@
 </div>
 
 <div class="config-section">
-    <h2>🚀 传输操作</h2>
-    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">完整流程：清理手机目录 → 传输文件 → 清空电脑目录</p>
+    <h2>🚀 电脑 → 手机传输</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">将电脑文件传输到手机</p>
 
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
         <button class="btn btn-danger" onclick="clearPhoneDir()">🗑️ 清理手机目录</button>
-        <button class="btn btn-primary" onclick="transferFilesOnly()">📤 仅传输文件</button>
+        <button class="btn btn-primary" onclick="transferFilesOnly()">📤 传输到手机</button>
         <button class="btn btn-warning" onclick="clearComputerDir()">🧹 清空电脑目录</button>
-        <button class="btn btn-success" onclick="executeFullTransfer()">⚡ 执行完整传输</button>
+        <button class="btn btn-success" onclick="executeFullTransfer()">⚡ 完整传输流程</button>
+    </div>
+</div>
+
+<div class="config-section">
+    <h2>📲 手机 → 电脑传输</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">将手机文件传输到电脑</p>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="transferFilesFromPhone()">📥 从手机拉取文件</button>
     </div>
 </div>
 
@@ -267,6 +276,44 @@ function executeFullTransfer() {
     .catch(error => {
         hideFtProgress();
         showFtMessage('执行失败: ' + error.message, 'error');
+    });
+}
+
+function transferFilesFromPhone() {
+    if (!selectedDeviceId) {
+        showFtMessage('请先选择设备', 'error');
+        return;
+    }
+    const computerDir = document.getElementById('ft-computer-dir').value;
+    const phoneDir = document.getElementById('ft-phone-dir').value;
+    if (!computerDir || !phoneDir) {
+        showFtMessage('请先填写完整路径配置', 'error');
+        return;
+    }
+    
+    showFtProgress('正在从手机拉取文件...');
+    fetch('/api/file-transfer/transfer-from-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            device_id: selectedDeviceId, 
+            computer_dir: computerDir,
+            phone_dir: phoneDir 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideFtProgress();
+        if (data.success) {
+            showFtResults(data, '从手机拉取文件');
+            showFtMessage('文件从手机拉取成功', 'success');
+        } else {
+            showFtMessage('拉取失败: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideFtProgress();
+        showFtMessage('拉取失败: ' + error.message, 'error');
     });
 }
 
