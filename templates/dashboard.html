@@ -1,7 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+</style>
 <h1>📊 仪表板</h1>
+
+<div id="notification-container" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
 
 <h2>设备选择</h2>
 <button class="btn btn-primary" onclick="refreshDeviceList()" style="margin-bottom: 15px;">🔄 刷新设备列表</button>
@@ -49,16 +74,50 @@ let nurtureInterval = null;
 let statusRefreshInterval = null;
 let refreshIntervalSeconds = 60;
 
+function showNotification(message, type = 'info') {
+    const container = document.getElementById('notification-container');
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        padding: 15px 20px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideIn 0.3s ease-out;
+        max-width: 350px;
+    `;
+    
+    const colors = {
+        success: '#4CAF50',
+        error: '#F44336',
+        info: '#2196F3',
+        warning: '#FF9800'
+    };
+    
+    notification.style.backgroundColor = colors[type] || colors.info;
+    notification.textContent = message;
+    
+    container.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
 function refreshDeviceList() {
     fetch('/api/devices')
         .then(response => response.json())
         .then(data => {
             const deviceList = document.getElementById('dashboard-device-list');
             deviceList.innerHTML = '';
+            selectedDevices = [];
             
             if (data.data.length === 0) {
                 deviceList.innerHTML = '<div class="alert alert-info">暂无已连接的设备，请检查ADB连接</div>';
             } else {
+                let hasOnlineDevice = false;
                 data.data.forEach(device => {
                     const deviceOption = document.createElement('div');
                     deviceOption.className = 'device-option';
@@ -66,22 +125,36 @@ function refreshDeviceList() {
                     deviceOption.style.alignItems = 'center';
                     deviceOption.style.gap = '15px';
                     deviceOption.style.marginBottom = '10px';
+                    
+                    const isOnline = device.status !== 'offline';
+                    const isChecked = isOnline;
+                    
+                    if (isChecked) {
+                        selectedDevices.push(device.id);
+                        hasOnlineDevice = true;
+                    }
+                    
                     deviceOption.innerHTML = `
-                        <input type="checkbox" id="dashboard-device-${device.id}" name="dashboard-device" value="${device.id}" onchange="updateSelectedDevices()">
+                        <input type="checkbox" id="dashboard-device-${device.id}" name="dashboard-device" value="${device.id}" ${isChecked ? 'checked' : ''} onchange="updateSelectedDevices()">
                         <label for="dashboard-device-${device.id}" style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;">
                             <span style="font-size: 24px;">📱</span>
                             <div>
                                 <div style="font-weight: bold;">${device.name}</div>
-                                <div style="font-size: 12px; color: #666;">${device.id} | ${device.status === 'offline' ? '🔴 离线' : '🟢 在线'}</div>
+                                <div style="font-size: 12px; color: #666;">${device.id} | ${isOnline ? '🟢 在线' : '🔴 离线'}</div>
                             </div>
                         </label>
                     `;
                     deviceList.appendChild(deviceOption);
                 });
+                
+                if (hasOnlineDevice) {
+                    showNotification('已自动选中在线设备', 'success');
+                }
             }
         })
         .catch(error => {
             console.error('获取设备列表失败:', error);
+            showNotification('获取设备列表失败', 'error');
         });
 }
 
@@ -233,9 +306,11 @@ function updateRefreshInterval() {
 
 function startNurturing() {
     if (selectedDevices.length === 0) {
-        alert('请先选择设备');
+        showNotification('请先选择设备', 'warning');
         return;
     }
+    let successCount = 0;
+    let failCount = 0;
     selectedDevices.forEach(deviceId => {
         fetch('/api/yanghao/start', {
             method: 'POST',
@@ -247,18 +322,28 @@ function startNurturing() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log(`设备 ${deviceId} 启动成功`);
+                successCount++;
+                showNotification(`设备 ${deviceId} 启动成功`, 'success');
+            } else {
+                failCount++;
+                showNotification(`设备 ${deviceId} 启动失败: ${data.error || '未知错误'}`, 'error');
             }
+        })
+        .catch(error => {
+            failCount++;
+            showNotification(`设备 ${deviceId} 启动失败: ${error}`, 'error');
         });
     });
-    loadDeviceStatuses();
+    setTimeout(() => loadDeviceStatuses(), 500);
 }
 
 function stopNurturing() {
     if (selectedDevices.length === 0) {
-        alert('请先选择设备');
+        showNotification('请先选择设备', 'warning');
         return;
     }
+    let successCount = 0;
+    let failCount = 0;
     selectedDevices.forEach(deviceId => {
         fetch('/api/yanghao/stop', {
             method: 'POST',
@@ -270,11 +355,19 @@ function stopNurturing() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log(`设备 ${deviceId} 停止成功`);
+                successCount++;
+                showNotification(`设备 ${deviceId} 停止成功`, 'success');
+            } else {
+                failCount++;
+                showNotification(`设备 ${deviceId} 停止失败: ${data.error || '未知错误'}`, 'error');
             }
+        })
+        .catch(error => {
+            failCount++;
+            showNotification(`设备 ${deviceId} 停止失败: ${error}`, 'error');
         });
     });
-    loadDeviceStatuses();
+    setTimeout(() => loadDeviceStatuses(), 500);
 }
 
 function closeXiaohongshu() {

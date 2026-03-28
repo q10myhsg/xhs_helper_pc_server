@@ -57,6 +57,16 @@ class DBManager:
             )
         ''')
         
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS keywords (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_id TEXT NOT NULL,
+                keyword TEXT NOT NULL,
+                create_time TEXT NOT NULL,
+                UNIQUE(device_id, keyword)
+            )
+        ''')
+        
         conn.commit()
         conn.close()
         logger.info("数据库初始化完成")
@@ -167,5 +177,54 @@ class DBManager:
         except Exception as e:
             logger.error(f"获取今日所有设备使用统计失败: {e}")
             return []
+        finally:
+            conn.close()
+    
+    def save_keywords(self, device_id: str, keywords: List[str]) -> bool:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        try:
+            cursor.execute('DELETE FROM keywords WHERE device_id = ?', (device_id,))
+            for keyword in keywords:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO keywords (device_id, keyword, create_time)
+                    VALUES (?, ?, ?)
+                ''', (device_id, keyword, now))
+            conn.commit()
+            logger.info(f"已保存设备 {device_id} 的关键词，共 {len(keywords)} 个")
+            return True
+        except Exception as e:
+            logger.error(f"保存关键词失败: {e}")
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+    
+    def get_keywords(self, device_id: str) -> List[str]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('SELECT keyword FROM keywords WHERE device_id = ? ORDER BY id', (device_id,))
+            rows = cursor.fetchall()
+            return [row['keyword'] for row in rows]
+        except Exception as e:
+            logger.error(f"获取关键词失败: {e}")
+            return []
+        finally:
+            conn.close()
+    
+    def delete_all_keywords(self, device_id: str) -> bool:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('DELETE FROM keywords WHERE device_id = ?', (device_id,))
+            conn.commit()
+            logger.info(f"已删除设备 {device_id} 的所有关键词")
+            return True
+        except Exception as e:
+            logger.error(f"删除关键词失败: {e}")
+            conn.rollback()
+            return False
         finally:
             conn.close()

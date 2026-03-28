@@ -1,7 +1,10 @@
 import json
 import os
 import logging
+import sys
 from typing import Dict, Optional
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from db_manager import DBManager
 
 class ConfigManager:
     """配置管理器"""
@@ -13,6 +16,7 @@ class ConfigManager:
         """
         self.config_path = config_path
         self.logger = logging.getLogger(__name__)
+        self.db_manager = DBManager()
         self._ensure_config_dir()
     
     def _ensure_config_dir(self):
@@ -141,6 +145,10 @@ class ConfigManager:
         :param device_id: 设备ID
         :return: 关键词列表
         """
+        keywords = self.db_manager.get_keywords(device_id)
+        if keywords:
+            return keywords
+        
         config = self.get_device_config(device_id)
         return config.get("keywords", [])
     
@@ -150,9 +158,7 @@ class ConfigManager:
         :param device_id: 设备ID
         :param keywords: 关键词列表
         """
-        device_config = self.get_device_config(device_id)
-        device_config["keywords"] = keywords
-        self.set_device_config(device_id, device_config)
+        self.db_manager.save_keywords(device_id, keywords)
         self.logger.info(f"已更新设备 {device_id} 的关键词列表")
     
     def get_comment_templates(self, device_id: str) -> list:
