@@ -17,7 +17,7 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # 初始化管理器
 nurturing_manager = NurturingManager()
-license_manager = LicenseManager()
+license_manager = nurturing_manager.license_manager
 current_device = {"device_id": None}
 
 # ==================== 页面路由 ====================
