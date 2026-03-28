@@ -199,8 +199,7 @@ def api_keywords(device_id):
     """管理关键词"""
     try:
         if request.method == "GET": 
-            config = nurturing_manager.get_device_config(device_id)
-            keywords = config.get("keywords", [])
+            keywords = nurturing_manager.config_manager.get_keywords(device_id)
             return jsonify({"success": True, "data": keywords})
         else:
             keywords = request.json.get("keywords", [])

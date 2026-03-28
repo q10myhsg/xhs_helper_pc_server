@@ -233,17 +233,12 @@ class ConfigManager:
         :return: 是否有效
         """
         try:
-            # 检查必要字段
-            required_fields = ["keywords", "duration_minutes", "post_visit_ratio", "posts_per_keyword", "discovery_browse_time"]
+            # 检查必要字段（keywords现在在数据库中，不检查）
+            required_fields = ["duration_minutes", "post_visit_ratio", "posts_per_keyword", "discovery_browse_time"]
             for field in required_fields:
                 if field not in config:
                     self.logger.warning(f"配置缺少必要字段: {field}")
                     return False
-
-            # 检查关键词列表（允许空列表）
-            if not isinstance(config["keywords"], list):
-                self.logger.warning("关键词必须是列表")
-                return False
             
             # 检查数值范围
             if config["duration_minutes"] <= 0:
