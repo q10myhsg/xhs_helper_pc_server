@@ -257,6 +257,7 @@ class ConfigManager:
                 self.logger.warning("发现页浏览时间必须大于0")
                 return False
             
+            self.logger.info("配置验证通过")
             return True
         except Exception as e:
             self.logger.error(f"验证配置失败: {e}")

@@ -100,7 +100,7 @@
     "2539cd3d": "英语"
   },
   "2539cd3d": {
-    "discovery_browse_time": 10,
+    "discovery_browse_time": 60,
     "duration_minutes": 60,
     "interaction": {
       "like_prob": 15,

@@ -107,9 +107,11 @@ class LicenseManager:
         """
         license_info = self.get_license_info()
         if not license_info:
+            logger.warning("启动权限检查失败: 未激活，请先输入激活码")
             return False, "未激活，请先输入激活码"
         
         if not license_info.get("active"):
+            logger.warning("启动权限检查失败: 授权已失效")
             return False, "授权已失效"
         
         today = datetime.now().date().isoformat()
@@ -122,10 +124,14 @@ class LicenseManager:
                     expire_date = datetime.strptime(expire_date_str, "%Y-%m-%d").date()
                 
                 if datetime.now().date() > expire_date:
+                    logger.warning(f"启动权限检查失败: 授权已过期，过期日期: {expire_date}")
                     return False, "授权已过期"
+                else:
+                    logger.info(f"授权有效期检查通过，过期日期: {expire_date}")
         except Exception as e:
             logger.warning(f"解析过期日期失败: {e}")
         
+        logger.info("启动权限检查通过")
         return True, "权限检查通过"
     
     def check_daily_limit(self, device_id: str, additional_minutes: int = 0) -> Tuple[bool, str]:
@@ -137,20 +143,27 @@ class LicenseManager:
         """
         license_info = self.get_license_info()
         if not license_info:
+            logger.warning("每日时长限制检查失败: 未激活")
             return False, "未激活"
         
         max_daily = license_info.get("max_daily_minutes", 120)
         if max_daily == -1:
+            logger.info("每日时长限制检查通过: 无时长限制")
             return True, "无时长限制"
         
         usage = self.db_manager.get_daily_usage(device_id)
         current = usage.get("total_minutes", 0) if usage else 0
         
+        logger.info(f"设备 {device_id} 今日已使用 {current} 分钟，请求额外 {additional_minutes} 分钟，每日上限 {max_daily} 分钟")
+        
         if current + additional_minutes > max_daily:
             remaining = max(0, max_daily - current)
+            logger.warning(f"每日时长限制检查失败: 今日时长已达上限，剩余可用 {remaining} 分钟")
             return False, f"今日时长已达上限，剩余可用 {remaining} 分钟"
         
-        return True, f"今日还可使用 {max_daily - current - additional_minutes} 分钟"
+        available = max_daily - current - additional_minutes
+        logger.info(f"每日时长限制检查通过: 今日还可使用 {available} 分钟")
+        return True, f"今日还可使用 {available} 分钟"
     
     def record_usage_start(self, device_id: str):
         """记录使用开始"""
@@ -167,3 +180,4 @@ class LicenseManager:
     def get_all_devices_usage_today(self):
         """获取所有设备今日使用情况"""
         return self.db_manager.get_all_devices_usage_today()
+

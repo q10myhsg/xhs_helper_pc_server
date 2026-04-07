@@ -225,6 +225,43 @@ def api_start_yanghao():
             return jsonify({"success": False, "error": "未选择设备"})
         
         logger.info(f"尝试启动设备 {device_id} 的养号")
+        # 检查启动权限
+        permission_ok, permission_msg = nurturing_manager.license_manager.check_launch_permission()
+        if not permission_ok:
+            logger.error(f"权限检查失败: {permission_msg}")
+            return jsonify({"success": False, "error": f"启动失败: {permission_msg}"})
+        
+        # 获取设备配置
+        config = nurturing_manager.config_manager.get_device_config(device_id)
+        
+        # 检查每日时长限制
+        duration_minutes = config.get("duration_minutes", 20)
+        limit_ok, limit_msg = nurturing_manager.license_manager.check_daily_limit(device_id, duration_minutes)
+        if not limit_ok:
+            logger.error(f"时长限制检查失败: {limit_msg}")
+            return jsonify({"success": False, "error": f"启动失败: {limit_msg}"})
+        
+        # 连接设备
+        if not nurturing_manager.device_manager.connect_device(device_id):
+            logger.error(f"无法连接设备 {device_id}")
+            return jsonify({"success": False, "error": f"启动失败: 无法连接设备 {device_id}"})
+        
+        # 验证配置
+        if not nurturing_manager.config_manager.validate_config(config):
+            logger.error(f"设备 {device_id} 的配置无效")
+            return jsonify({"success": False, "error": f"启动失败: 设备配置无效"})
+        
+        # 从数据库获取关键词
+        keywords = nurturing_manager.config_manager.get_keywords(device_id)
+        config["keywords"] = keywords
+        
+        # 验证关键词
+        from xhs_nurturing.utils import validate_keywords
+        if not validate_keywords(config.get("keywords", [])):
+            logger.error(f"设备 {device_id} 的关键词配置无效")
+            return jsonify({"success": False, "error": f"启动失败: 关键词配置无效"})
+        
+        # 启动养号
         success = nurturing_manager.start_nurturing(device_id)
         if success:
             logger.info(f"设备 {device_id} 养号启动成功")
@@ -234,7 +271,7 @@ def api_start_yanghao():
             return jsonify({"success": False, "error": "启动养号失败，请查看后台日志"})
     except Exception as e:
         logger.error(f"启动养号异常: {e}", exc_info=True)
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({"success": False, "error": f"启动失败: {str(e)}"})
 
 @app.route("/api/yanghao/stop", methods=["POST"])
 def api_stop_yanghao():

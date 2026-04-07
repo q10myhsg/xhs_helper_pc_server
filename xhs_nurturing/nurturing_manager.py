@@ -35,14 +35,10 @@ class NurturingManager:
         :return: 是否成功开始
         """
         try:
+            self.logger.info(f"开始养号流程 - 设备: {device_id}")
+            
             if device_id in self._device_threads:
                 self.logger.warning(f"设备 {device_id} 已经在养号中")
-                return False
-            
-            # 检查启动权限
-            permission_ok, permission_msg = self.license_manager.check_launch_permission()
-            if not permission_ok:
-                self.logger.error(f"权限检查失败: {permission_msg}")
                 return False
             
             # 获取设备配置
@@ -55,29 +51,8 @@ class NurturingManager:
             self.logger.info(f"设备 {device_id} 的配置: {config}")
             self.logger.info(f"配置中的keywords: {config.get('keywords', 'NOT FOUND')}")
 
-            # 检查每日时长限制
-            duration_minutes = config.get("duration_minutes", 20)
-            limit_ok, limit_msg = self.license_manager.check_daily_limit(device_id, duration_minutes)
-            if not limit_ok:
-                self.logger.error(f"时长限制检查失败: {limit_msg}")
-                return False
-
-            # 连接设备
-            if not self.device_manager.connect_device(device_id):
-                self.logger.error(f"无法连接设备 {device_id}")
-                return False
-
-            # 验证配置
-            if not self.config_manager.validate_config(config):
-                self.logger.error(f"设备 {device_id} 的配置无效，配置内容: {config}")
-                return False
-            
-            # 验证关键词
-            if not validate_keywords(config.get("keywords", [])):
-                self.logger.error(f"设备 {device_id} 的关键词配置无效")
-                return False
-            
             # 更新设备状态
+            self.logger.info("更新设备状态")
             self.device_manager.update_device_status(
                 device_id,
                 is_running=True,
@@ -89,9 +64,7 @@ class NurturingManager:
             # 记录开始时间和启动统计
             self._device_start_times[device_id] = time.time()
             self.license_manager.record_usage_start(device_id)
-            
-            # 添加到运行任务
-            # 不需要单独添加到运行任务集合，因为已经存储到_device_threads中
+            self.logger.info("记录开始时间和启动统计")
             
             # 执行养号流程
             self.logger.info(f"开始养号 - 设备: {device_id}, 时长: {config['duration_minutes']}分钟")
@@ -111,10 +84,13 @@ class NurturingManager:
                 "visited": 0,
                 "current_keyword": ""
             }
+            
+            self.logger.info(f"启动养号线程 - 设备: {device_id}")
             thread.start()
+            self.logger.info(f"养号启动成功 - 设备: {device_id}")
             return True
         except Exception as e:
-            self.logger.error(f"开始养号失败: {e}")
+            self.logger.error(f"开始养号失败: {e}", exc_info=True)
             return False
     
     def _run_nurturing(self, device_id: str, config: Dict):
@@ -297,7 +273,7 @@ class NurturingManager:
             self.stop_nurturing(device_id)
             
         except Exception as e:
-            self.logger.error(f"养号异常 - 设备: {device_id}, 错误: {e}")
+            self.logger.error(f"养号异常 - 设备: {device_id}, 错误: {e}", exc_info=True)
             # 更新设备状态并记录使用时长
             self.stop_nurturing(device_id)
     

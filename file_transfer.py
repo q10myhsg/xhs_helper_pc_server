@@ -11,6 +11,7 @@ import subprocess
 import logging
 from typing import Optional, Dict, List
 import time
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
@@ -119,10 +120,12 @@ class FileTransferManager:
         try:
             # 执行ADB广播命令，支持多设备
             logger.info(f"正在发送媒体扫描广播: {path}")
+            # 对路径进行 URL 编码，确保特殊字符正确处理
+            encoded_path = urllib.parse.quote(path)
             adb_cmd = self._build_adb_cmd([
                 'shell', 'am', 'broadcast', 
                 '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE', 
-                '-d', f'file://{path}'
+                '-d', f'file://{encoded_path}'
             ])
             
             result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
@@ -152,10 +155,12 @@ class FileTransferManager:
         """
         try:
             # 使用 am start 启动媒体扫描
+            # 对路径进行 URL 编码，确保特殊字符正确处理
+            encoded_path = urllib.parse.quote(path)
             adb_cmd = self._build_adb_cmd([
                 'shell', 'am', 'startservice',
                 '-a', 'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
-                '-d', f'file://{path}'
+                '-d', f'file://{encoded_path}'
             ])
             
             result = subprocess.run(adb_cmd, capture_output=True, text=True)
@@ -186,32 +191,29 @@ class FileTransferManager:
             logger.info(f"开始扫描目录媒体文件: {dir_path}")
             
             # 先扫描目录本身
-            self._send_media_scanner_broadcast(f"file://{dir_path}")
+            self._send_media_scanner_broadcast(dir_path)
             
-            # 列出目录中的所有文件（包括隐藏文件），不使用引号
-            adb_cmd = self._build_adb_cmd(['shell', 'ls', '-la', dir_path])
+            # 使用 ls -1 命令只列出文件名，避免空格解析问题
+            adb_cmd = self._build_adb_cmd(['shell', 'ls', '-1', dir_path])
             result = subprocess.run(adb_cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
-                lines = result.stdout.strip().split('\n')
+                filenames = result.stdout.strip().split('\n')
                 media_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.pdf', '.mp4', '.mov', '.avi'}
                 
-                for line in lines:
-                    parts = line.split()
-                    if len(parts) >= 8:
-                        # 跳过目录项 . 和 ..
-                        filename = parts[-1]
-                        if filename in ['.', '..']:
-                            continue
-                            
-                        # 检查是否是媒体文件
-                        file_lower = filename.lower()
-                        if any(file_lower.endswith(ext) for ext in media_extensions):
-                            file_path = f"{dir_path}/{filename}"
-                            logger.info(f"扫描媒体文件: {file_path}")
-                            self._send_media_scanner_broadcast(f"file://{file_path}")
-                            # 稍微延迟避免广播过于频繁
-                            time.sleep(0.1)
+                for filename in filenames:
+                    filename = filename.strip()
+                    if not filename or filename in ['.', '..']:
+                        continue
+                        
+                    # 检查是否是媒体文件
+                    file_lower = filename.lower()
+                    if any(file_lower.endswith(ext) for ext in media_extensions):
+                        file_path = f"{dir_path}/{filename}"
+                        logger.info(f"扫描媒体文件: {file_path}")
+                        self._send_media_scanner_broadcast(file_path)
+                        # 稍微延迟避免广播过于频繁
+                        time.sleep(0.1)
             
             # 额外触发一次全面的媒体扫描
             self._trigger_full_media_scan()
