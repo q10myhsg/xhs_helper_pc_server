@@ -453,7 +453,9 @@ class InteractionManager:
             # 检查是否需要停止
             # 由于现在通过杀死线程来停止养号，这里不再需要停止检查
             pass
-                
+            if self.do_like(device, image_container, config):
+                random_delay(1, 3)     
+                           
             self._scroll_randomly(device)
             self.logger.info("向上滚动查看评论")
 
@@ -464,8 +466,7 @@ class InteractionManager:
             pass
                 
             # 执行互动操作
-            if self.do_like(device, image_container, config):
-                random_delay(2, 5)
+
                         #
                         # 浏览完图片后，向上滚动查看评论
             
