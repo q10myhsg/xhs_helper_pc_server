@@ -189,6 +189,16 @@
         grid-template-columns: 1fr;
     }
 }
+
+.copy-btn {
+    transition: all 0.2s;
+}
+
+.copy-btn:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
 </style>
 
 <h1>📄 pdf内容处理</h1>
@@ -250,23 +260,35 @@
                 <h4 style="margin-bottom: 15px; color: #333;">📝 笔记内容编辑</h4>
                 
                 <div class="form-group">
-                    <label>封面文案</label>
-                    <textarea id="edit-note-cover" rows="2" oninput="updateNoteContent('cover', this.value)"></textarea>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <label style="margin: 0;">封面文案</label>
+                        <button class="btn btn-sm btn-outline-secondary copy-btn" id="copy-cover-btn" onclick="copyEditNoteContent('cover')" style="display: none; padding: 2px 8px; font-size: 12px;">📋 复制</button>
+                    </div>
+                    <textarea id="edit-note-cover" rows="2" oninput="updateNoteContent('cover', this.value); toggleCopyButton('cover')"></textarea>
                 </div>
                 
                 <div class="form-group">
-                    <label>标题</label>
-                    <input type="text" id="edit-note-title" oninput="updateNoteContent('title', this.value)">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <label style="margin: 0;">标题</label>
+                        <button class="btn btn-sm btn-outline-secondary copy-btn" id="copy-title-btn" onclick="copyEditNoteContent('title')" style="display: none; padding: 2px 8px; font-size: 12px;">📋 复制</button>
+                    </div>
+                    <input type="text" id="edit-note-title" oninput="updateNoteContent('title', this.value); toggleCopyButton('title')">
                 </div>
                 
                 <div class="form-group">
-                    <label>正文</label>
-                    <textarea id="edit-note-content" rows="5" oninput="updateNoteContent('content', this.value)"></textarea>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <label style="margin: 0;">正文</label>
+                        <button class="btn btn-sm btn-outline-secondary copy-btn" id="copy-content-btn" onclick="copyEditNoteContent('content')" style="display: none; padding: 2px 8px; font-size: 12px;">📋 复制</button>
+                    </div>
+                    <textarea id="edit-note-content" rows="5" oninput="updateNoteContent('content', this.value); toggleCopyButton('content')"></textarea>
                 </div>
                 
                 <div class="form-group">
-                    <label>标签（空格分隔）</label>
-                    <input type="text" id="edit-note-tags" oninput="updateNoteContent('tags', this.value)">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <label style="margin: 0;">标签（空格分隔）</label>
+                        <button class="btn btn-sm btn-outline-secondary copy-btn" id="copy-tags-btn" onclick="copyEditNoteContent('tags')" style="display: none; padding: 2px 8px; font-size: 12px;">📋 复制</button>
+                    </div>
+                    <input type="text" id="edit-note-tags" oninput="updateNoteContent('tags', this.value); toggleCopyButton('tags')">
                 </div>
             </div>
         </div>
@@ -976,6 +998,12 @@ function parseNoteJson() {
         // 显示编辑区域
         document.getElementById('note-content-edit').style.display = 'block';
         
+        // 显示复制按钮
+        toggleCopyButton('cover');
+        toggleCopyButton('title');
+        toggleCopyButton('content');
+        toggleCopyButton('tags');
+        
         showPdfMessage('✅ 笔记内容识别成功！', 'success');
     } catch (e) {
         showPdfMessage('❌ JSON格式错误: ' + e.message, 'error');
@@ -989,6 +1017,62 @@ function updateNoteContent(field, value) {
     } else {
         noteContent[field] = value;
     }
+}
+
+// 切换复制按钮显示/隐藏
+function toggleCopyButton(field) {
+    const btnId = `copy-${field}-btn`;
+    const inputId = `edit-note-${field}`;
+    const btn = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    
+    if (btn && input) {
+        const hasContent = input.value.trim().length > 0;
+        btn.style.display = hasContent ? 'inline-block' : 'none';
+    }
+}
+
+// 复制编辑区域的笔记内容
+function copyEditNoteContent(type) {
+    let text = '';
+    let typeName = '';
+    const inputId = `edit-note-${type}`;
+    const input = document.getElementById(inputId);
+    
+    if (!input) {
+        showPdfMessage('❌ 找不到输入框', 'error');
+        return;
+    }
+    
+    text = input.value;
+    
+    switch(type) {
+        case 'cover':
+            typeName = '封面文案';
+            break;
+        case 'title':
+            typeName = '标题';
+            break;
+        case 'content':
+            typeName = '正文';
+            break;
+        case 'tags':
+            typeName = '标签';
+            break;
+    }
+    
+    if (!text.trim()) {
+        showPdfMessage(`❌ ${typeName}内容为空`, 'error');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            showPdfMessage(`✅ ${typeName}已复制到剪贴板`, 'success');
+        })
+        .catch(err => {
+            showPdfMessage('❌ 复制失败: ' + err.message, 'error');
+        });
 }
 
 // 打开PDF文件选择器
