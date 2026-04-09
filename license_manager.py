@@ -7,6 +7,7 @@
 - 权限检查
 - 自动清理过期数据
 - 云端激活码验证
+- 服务端套餐配置获取（含重试和本地缓存）
 """
 
 import sqlite3
@@ -18,25 +19,54 @@ import requests
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 
-# 默认免费授权配置
+# 默认套餐配置（当服务端不可用时使用）
 # 约定：-1 表示不限制
+DEFAULT_PACKAGE_CONFIG = {
+    "free": {
+        "max_devices": 1,
+        "max_daily_yanghao": 3,
+        "max_daily_create": 5,
+        "max_daily_export": 10,
+        "max_daily_main_image": 5,
+        "max_daily_cover_image": 5,
+        "max_single_yanghao_minutes": 20,
+        "daily_yanghao_device_limit": True,
+    },
+    "basic": {
+        "max_devices": 3,
+        "max_daily_yanghao": 9,
+        "max_daily_create": 15,
+        "max_daily_export": 30,
+        "max_daily_main_image": 15,
+        "max_daily_cover_image": 15,
+        "max_single_yanghao_minutes": 60,
+        "daily_yanghao_device_limit": False,
+    },
+    "advanced": {
+        "max_devices": -1,
+        "max_daily_yanghao": -1,
+        "max_daily_create": -1,
+        "max_daily_export": -1,
+        "max_daily_main_image": -1,
+        "max_daily_cover_image": -1,
+        "max_single_yanghao_minutes": -1,
+        "daily_yanghao_device_limit": False,
+    }
+}
+
+# 默认免费授权配置
 DEFAULT_FREE_LICENSE = {
     "package_type": "free",
     "expire_date": None,
-    "max_devices": 1,
-    "max_daily_yanghao": 3,
-    "max_daily_create": 5,
-    "max_daily_export": 10,
-    "max_daily_main_image": 5,
-    "max_daily_cover_image": 5,
-    "max_single_yanghao_minutes": 20,
-    "daily_yanghao_device_limit": True,
+    **DEFAULT_PACKAGE_CONFIG["free"]
 }
 
 # 配置文件路径
 CONFIG_DIR = "config"
 DB_PATH = os.path.join(CONFIG_DIR, "license.db")
 API_CONFIG_PATH = os.path.join(CONFIG_DIR, "api_config.json")
+PACKAGE_CONFIG_PATH = os.path.join(CONFIG_DIR, "package_config.json")
+PACKAGE_FETCH_DATE_PATH = os.path.join(CONFIG_DIR, "package_fetch_date.json")
 
 # 全局变量用于退出钩子统计
 _current_start_time: Optional[float] = None
@@ -48,6 +78,10 @@ class LicenseManager:
         self._load_api_config()
         self._init_db()
         atexit.register(self._exit_hook)
+        
+        # 初始化套餐配置
+        self.package_config = self._load_package_config()
+        self._fetch_package_config_if_needed()
     
     def _load_api_config(self):
         """加载 API 配置"""
@@ -64,6 +98,93 @@ class LicenseManager:
                         self.api_key = config["api_key"]
             except Exception:
                 pass
+    
+    def _load_package_config(self) -&gt; Dict[str, Any]:
+        """加载本地缓存的套餐配置"""
+        if os.path.exists(PACKAGE_CONFIG_PATH):
+            try:
+                with open(PACKAGE_CONFIG_PATH, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return DEFAULT_PACKAGE_CONFIG.copy()
+    
+    def _save_package_config(self, config: Dict[str, Any]):
+        """保存套餐配置到本地缓存"""
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        try:
+            with open(PACKAGE_CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+            self.package_config = config
+        except Exception:
+            pass
+    
+    def _get_last_fetch_date(self) -&gt; Optional[str]:
+        """获取上次获取套餐配置的日期"""
+        if os.path.exists(PACKAGE_FETCH_DATE_PATH):
+            try:
+                with open(PACKAGE_FETCH_DATE_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("date")
+            except Exception:
+                pass
+        return None
+    
+    def _save_last_fetch_date(self, date: str):
+        """保存获取套餐配置的日期"""
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        try:
+            with open(PACKAGE_FETCH_DATE_PATH, "w", encoding="utf-8") as f:
+                json.dump({"date": date}, f)
+        except Exception:
+            pass
+    
+    def _fetch_package_config_from_server(self) -&gt; Optional[Dict[str, Any]]:
+        """从服务端获取套餐配置"""
+        url = f"{self.api_base_url}/package/config"
+        headers = {
+            "X-API-Key": self.api_key,
+            "Content-Type": "application/json",
+        }
+        
+        try:
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                return None
+            
+            result = resp.json()
+            if result.get("status") != "success":
+                return None
+            
+            return result.get("data")
+        except Exception:
+            return None
+    
+    def _fetch_package_config_if_needed(self):
+        """每天第一次启动时从服务端获取套餐配置"""
+        today = datetime.now().strftime("%Y-%m-%d")
+        last_fetch_date = self._get_last_fetch_date()
+        
+        if last_fetch_date == today:
+            # 今天已经获取过了
+            return
+        
+        # 尝试获取，最多重试3次
+        config = None
+        for attempt in range(3):
+            config = self._fetch_package_config_from_server()
+            if config:
+                break
+            if attempt &lt; 2:
+                time.sleep(5)
+        
+        if config:
+            # 获取成功
+            self._save_package_config(config)
+            self._save_last_fetch_date(today)
+        else:
+            # 获取失败，使用本地缓存或默认配置
+            pass
     
     def _init_db(self):
         """初始化数据库表"""
@@ -395,17 +516,21 @@ class LicenseManager:
             except:
                 pass
         
+        # 从服务端套餐配置中获取配额（优先使用服务端配置）
+        package_type = row[1]
+        package_config = self.package_config.get(package_type, {})
+        
         return {
-            "package_type": row[1],
+            "package_type": package_type,
             "expire_date": row[2],
-            "max_devices": row[3],
-            "max_daily_yanghao": row[4],
-            "max_daily_create": row[5],
-            "max_daily_export": row[6],
-            "max_daily_main_image": row[7],
-            "max_daily_cover_image": row[8],
-            "max_single_yanghao_minutes": row[9],
-            "daily_yanghao_device_limit": bool(row[10]),
+            "max_devices": package_config.get("max_devices", row[3]),
+            "max_daily_yanghao": package_config.get("max_daily_yanghao", row[4]),
+            "max_daily_create": package_config.get("max_daily_create", row[5]),
+            "max_daily_export": package_config.get("max_daily_export", row[6]),
+            "max_daily_main_image": package_config.get("max_daily_main_image", row[7]),
+            "max_daily_cover_image": package_config.get("max_daily_cover_image", row[8]),
+            "max_single_yanghao_minutes": package_config.get("max_single_yanghao_minutes", row[9]),
+            "daily_yanghao_device_limit": package_config.get("daily_yanghao_device_limit", bool(row[10])),
             "activation_code": row[0],
         }
     
@@ -437,44 +562,18 @@ class LicenseManager:
             package_type = license_data.get("package_type", "basic")
             expire_date = license_data.get("expiry_date")
             
-            # 根据套餐类型确定配额
-            # 约定: -1 = 不限制
-            if package_type == "free":
-                max_devices = 1
-                max_daily_yanghao = 3
-                max_daily_create = 5
-                max_daily_export = 10
-                max_daily_main_image = 5
-                max_daily_cover_image = 5
-                max_single_yanghao_minutes = 20
-                daily_yanghao_device_limit = True
-            elif package_type == "basic":
-                max_devices = 3
-                max_daily_yanghao = 9
-                max_daily_create = 15
-                max_daily_export = 30
-                max_daily_main_image = 15
-                max_daily_cover_image = 15
-                max_single_yanghao_minutes = 60
-                daily_yanghao_device_limit = False
-            elif package_type in ["premium", "advanced"]:
-                max_devices = -1
-                max_daily_yanghao = -1
-                max_daily_create = -1
-                max_daily_export = -1
-                max_daily_main_image = -1
-                max_daily_cover_image = -1
-                max_single_yanghao_minutes = -1
-                daily_yanghao_device_limit = False
-            else:  # default to basic
-                max_devices = 3
-                max_daily_yanghao = 9
-                max_daily_create = 15
-                max_daily_export = 30
-                max_daily_main_image = 15
-                max_daily_cover_image = 15
-                max_single_yanghao_minutes = 60
-                daily_yanghao_device_limit = False
+            # 从服务端套餐配置中获取配额
+            package_config = self.package_config.get(package_type, {})
+            
+            # 使用服务端返回的或本地默认的配额
+            max_devices = license_data.get("max_devices", package_config.get("max_devices", 3))
+            max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", 9))
+            max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", 15))
+            max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", 30))
+            max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", 15))
+            max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", 15))
+            max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", 60))
+            daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", False))
             
             # 转换过期日期：从 ISO 格式提取 YYYY-MM-DD
             if expire_date and 'T' in expire_date:
@@ -498,7 +597,7 @@ class LicenseManager:
          max_daily_main_image, max_daily_cover_image, 
          max_single_yanghao_minutes, daily_yanghao_device_limit,
          create_time, update_time, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         """, (activation_code, machine_code, package_type, expire_date, 
               max_devices, max_daily_yanghao, max_daily_create, max_daily_export,
               max_daily_main_image, max_daily_cover_image,
@@ -666,43 +765,17 @@ class LicenseManager:
             package_type = license_data.get("package_type", current["package_type"])
             expire_date = license_data.get("expiry_date")
             
-            # 根据套餐类型确定配额
-            if package_type == "free":
-                max_devices = 1
-                max_daily_yanghao = 3
-                max_daily_create = 5
-                max_daily_export = 10
-                max_daily_main_image = 5
-                max_daily_cover_image = 5
-                max_single_yanghao_minutes = 20
-                daily_yanghao_device_limit = True
-            elif package_type == "basic":
-                max_devices = 3
-                max_daily_yanghao = 9
-                max_daily_create = 15
-                max_daily_export = 30
-                max_daily_main_image = 15
-                max_daily_cover_image = 15
-                max_single_yanghao_minutes = 60
-                daily_yanghao_device_limit = False
-            elif package_type in ["premium", "advanced"]:
-                max_devices = -1
-                max_daily_yanghao = -1
-                max_daily_create = -1
-                max_daily_export = -1
-                max_daily_main_image = -1
-                max_daily_cover_image = -1
-                max_single_yanghao_minutes = -1
-                daily_yanghao_device_limit = False
-            else:
-                max_devices = current.get("max_devices", 3)
-                max_daily_yanghao = current.get("max_daily_yanghao", 9)
-                max_daily_create = current.get("max_daily_create", 15)
-                max_daily_export = current.get("max_daily_export", 30)
-                max_daily_main_image = current.get("max_daily_main_image", 15)
-                max_daily_cover_image = current.get("max_daily_cover_image", 15)
-                max_single_yanghao_minutes = current.get("max_single_yanghao_minutes", 60)
-                daily_yanghao_device_limit = current.get("daily_yanghao_device_limit", False)
+            # 从服务端套餐配置中获取配额
+            package_config = self.package_config.get(package_type, {})
+            
+            max_devices = license_data.get("max_devices", package_config.get("max_devices", current.get("max_devices", 3)))
+            max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", current.get("max_daily_yanghao", 9)))
+            max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", current.get("max_daily_create", 15)))
+            max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", current.get("max_daily_export", 30)))
+            max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", current.get("max_daily_main_image", 15)))
+            max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", current.get("max_daily_cover_image", 15)))
+            max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", current.get("max_single_yanghao_minutes", 60)))
+            daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", current.get("daily_yanghao_device_limit", False)))
             
             # 转换过期日期：从 ISO 格式提取 YYYY-MM-DD
             if expire_date and 'T' in expire_date:
@@ -735,12 +808,4 @@ class LicenseManager:
             return True, f"使用本地缓存授权，网络异常: {str(e)}"
 
 # 单例
-_license_manager: Optional[LicenseManager] = None
-
-def get_license_manager() -&gt; LicenseManager:
-    """获取单例"""
-    global _license_manager
-    if _license_manager is None:
-        _license_manager = LicenseManager()
-    return _license_manager
-
+_
