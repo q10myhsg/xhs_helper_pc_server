@@ -5,7 +5,7 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from xhs_nurturing import NurturingManager
-from license_manager import LicenseManager
+from license_manager import get_license_manager
 from machine_code import get_machine_code
 from pdf_converter import PDFConverter
 from file_transfer import file_transfer_manager
@@ -17,7 +17,7 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # 初始化管理器
 nurturing_manager = NurturingManager()
-license_manager = nurturing_manager.license_manager
+license_manager = get_license_manager()
 current_device = {"device_id": None}
 
 # ==================== 页面路由 ====================
@@ -225,21 +225,20 @@ def api_start_yanghao():
             return jsonify({"success": False, "error": "未选择设备"})
         
         logger.info(f"尝试启动设备 {device_id} 的养号")
-        # 检查启动权限
-        permission_ok, permission_msg = nurturing_manager.license_manager.check_launch_permission()
-        if not permission_ok:
-            logger.error(f"权限检查失败: {permission_msg}")
-            return jsonify({"success": False, "error": f"启动失败: {permission_msg}"})
         
         # 获取设备配置
         config = nurturing_manager.config_manager.get_device_config(device_id)
         
-        # 检查每日时长限制
+        # 检查是否可以启动（使用新的授权管理）
         duration_minutes = config.get("duration_minutes", 20)
-        limit_ok, limit_msg = nurturing_manager.license_manager.check_daily_limit(device_id, duration_minutes)
-        if not limit_ok:
-            logger.error(f"时长限制检查失败: {limit_msg}")
-            return jsonify({"success": False, "error": f"启动失败: {limit_msg}"})
+        can_start, msg, actual_duration = license_manager.check_can_start(device_id, duration_minutes, is_create=False)
+        if not can_start:
+            logger.error(f"启动检查失败: {msg}")
+            return jsonify({"success": False, "error": f"启动失败: {msg}"})
+        
+        # 如果有提示信息，记录日志
+        if msg:
+            logger.info(msg)
         
         # 连接设备
         if not nurturing_manager.device_manager.connect_device(device_id):
@@ -333,17 +332,47 @@ def api_default_config():
 
 @app.route("/api/activation/verify", methods=["POST"])
 def api_verify_activation():
-    """验证激活码"""
+    """验证激活码（兼容旧接口）"""
     try:
         auth_code = request.json.get("auth_code", "")
         if not auth_code:
             return jsonify({"success": False, "error": "激活码不能为空"})
         
-        success, message, data = license_manager.verify_activation_code(auth_code)
+        success, message = license_manager.activate_license(auth_code, license_manager.machine_code)
         if success:
-            return jsonify({"success": True, "message": message, "data": data})
+            stats = license_manager.get_usage_stats()
+            return jsonify({"success": True, "message": message, "data": stats})
         else:
             return jsonify({"success": False, "error": message})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/license/activate", methods=["POST"])
+def api_license_activate():
+    """激活授权（新接口）"""
+    try:
+        activation_code = request.json.get("activation_code")
+        machine_code = request.json.get("machine_code") or license_manager.machine_code
+        
+        if not activation_code:
+            return jsonify({"success": False, "error": "激活码不能为空"})
+        
+        success, message = license_manager.activate_license(activation_code, machine_code)
+        if success:
+            stats = license_manager.get_usage_stats()
+            return jsonify({"success": True, "message": message, "data": stats})
+        else:
+            return jsonify({"success": False, "error": message})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/license/refresh", methods=["POST"])
+def api_license_refresh():
+    """刷新授权"""
+    try:
+        success, message = license_manager.refresh_license()
+        stats = license_manager.get_usage_stats()
+        return jsonify({"success": success, "message": message, "data": stats})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
@@ -351,20 +380,8 @@ def api_verify_activation():
 def api_get_license_info():
     """获取当前授权信息"""
     try:
-        license_info = license_manager.get_license_info()
-        machine_code = get_machine_code()
-        
-        # 获取今日所有设备使用情况
-        devices_usage = license_manager.get_all_devices_usage_today()
-        
-        return jsonify({
-            "success": True,
-            "data": {
-                "license": license_info,
-                "machine_code": machine_code,
-                "devices_usage": devices_usage
-            }
-        })
+        stats = license_manager.get_usage_stats()
+        return jsonify({"success": True, "data": stats})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
@@ -381,12 +398,37 @@ def api_get_device_usage(device_id):
 def api_check_permission():
     """检查启动权限"""
     try:
-        allowed, message = license_manager.check_launch_permission()
+        # 使用新的授权检查逻辑
+        license = license_manager.get_current_license()
+        if license.get("package_type") == "free":
+            return jsonify({
+                "success": True,
+                "data": {
+                    "allowed": False,
+                    "message": "未激活，请先输入激活码"
+                }
+            })
+        # 检查是否过期
+        expire_date = license.get("expire_date")
+        if expire_date:
+            try:
+                from datetime import datetime
+                expire_dt = datetime.strptime(expire_date, "%Y-%m-%d")
+                if datetime.now() > expire_dt:
+                    return jsonify({
+                        "success": True,
+                        "data": {
+                            "allowed": False,
+                            "message": "授权已过期"
+                        }
+                    })
+            except:
+                pass
         return jsonify({
             "success": True,
             "data": {
-                "allowed": allowed,
-                "message": message
+                "allowed": True,
+                "message": "权限检查通过"
             }
         })
     except Exception as e:

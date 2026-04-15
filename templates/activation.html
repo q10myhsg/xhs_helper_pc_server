@@ -174,8 +174,32 @@
                     <span>${license.max_devices || '-'}</span>
                 </div>
                 <div class="license-item">
-                    <strong>每日时长限制</strong>
-                    <span>${license.max_daily_minutes || '-'} 分钟</span>
+                    <strong>每日养号次数</strong>
+                    <span>${license.max_daily_yanghao === -1 ? '无限制' : license.max_daily_yanghao || '-'} 次</span>
+                </div>
+                <div class="license-item">
+                    <strong>单次养号时长</strong>
+                    <span>${license.max_single_yanghao_minutes === -1 ? '无限制' : license.max_single_yanghao_minutes || '-'} 分钟</span>
+                </div>
+                <div class="license-item">
+                    <strong>每日创建次数</strong>
+                    <span>${license.max_daily_create === -1 ? '无限制' : license.max_daily_create || '-'} 次</span>
+                </div>
+                <div class="license-item">
+                    <strong>每日导出次数</strong>
+                    <span>${license.max_daily_export === -1 ? '无限制' : license.max_daily_export || '-'} 次</span>
+                </div>
+                <div class="license-item">
+                    <strong>每日主图次数</strong>
+                    <span>${license.max_daily_main_image === -1 ? '无限制' : license.max_daily_main_image || '-'} 次</span>
+                </div>
+                <div class="license-item">
+                    <strong>每日封面次数</strong>
+                    <span>${license.max_daily_cover_image === -1 ? '无限制' : license.max_daily_cover_image || '-'} 次</span>
+                </div>
+                <div class="license-item">
+                    <strong>每日养号设备限制</strong>
+                    <span>${license.daily_yanghao_device_limit ? '是' : '否'}</span>
                 </div>
                 <div class="license-item">
                     <strong>激活时间</strong>
