@@ -3,9 +3,9 @@ name: Build Cross-Platform
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dabao_test ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dabao_test ]
   workflow_dispatch:
 
 jobs:
