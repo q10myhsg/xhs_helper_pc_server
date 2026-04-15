@@ -50,3 +50,6 @@ Thumbs.db
 # Generated files
 static/pdf_outputs/
 static/generate_files/
+
+
+config/config.json
