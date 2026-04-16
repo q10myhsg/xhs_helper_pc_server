@@ -3,9 +3,9 @@ name: Build Cross-Platform
 
 on:
   push:
-    branches: [ main, dabao_test ]
+    branches: [ dabao_test ]
   pull_request:
-    branches: [ main, dabao_test ]
+    branches: [ dabao_test ]
   workflow_dispatch:
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v3
@@ -21,7 +21,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.9.19'
 
     - name: Install dependencies
       run: |
