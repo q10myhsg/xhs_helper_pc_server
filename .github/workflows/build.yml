@@ -33,50 +33,117 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        pyinstaller --clean --name xhs_helper --onefile --console --noupx \
-          --add-data "templates;templates" \
-          --add-data "static;static" \
-          --add-data "config;config" \
-          --add-data "resources;resources" \
-          --add-data "create_notes;create_notes" \
-          --add-data "xhs_nurturing;xhs_nurturing" \
-          --hidden-import "flask" \
-          --hidden-import "werkzeug" \
-          --hidden-import "uiautomator2" \
-          --hidden-import "PIL" \
-          --hidden-import "bs4" \
-          --hidden-import "lxml" \
-          --hidden-import "xhs_nurturing" \
-          --hidden-import "create_notes" \
-          --hidden-import "license_manager" \
-          --hidden-import "machine_code" \
-          --hidden-import "pdf_converter" \
-          --hidden-import "file_transfer" \
-          --hidden-import "config_manager" \
-          --hidden-import "db_manager" \
-          --hidden-import "utils" \
-          app.py
+        python - << 'EOF'
+        import os
+        import subprocess
+        import sys
+        
+        # 根据平台选择分隔符
+        if sys.platform == 'win32':
+            sep = ';'
+        else:
+            sep = ':'
+        
+        # 构建 PyInstaller 命令
+        cmd = [
+            'pyinstaller',
+            '--clean',
+            '--name', 'xhs_helper',
+            '--onefile',
+            '--console',
+            '--noupx',
+            '--add-data', f'templates{sep}templates',
+            '--add-data', f'static{sep}static',
+            '--add-data', f'config{sep}config',
+            '--add-data', f'resources{sep}resources',
+            '--add-data', f'create_notes{sep}create_notes',
+            '--add-data', f'xhs_nurturing{sep}xhs_nurturing',
+            '--hidden-import', 'flask',
+            '--hidden-import', 'werkzeug',
+            '--hidden-import', 'uiautomator2',
+            '--hidden-import', 'PIL',
+            '--hidden-import', 'bs4',
+            '--hidden-import', 'lxml',
+            '--hidden-import', 'pdf2image',
+            '--hidden-import', 'PyPDF2',
+            '--hidden-import', 'PyMuPDF',
+            '--hidden-import', 'fitz',
+            '--hidden-import', 'openai',
+            '--hidden-import', 'xhs_nurturing',
+            '--hidden-import', 'create_notes',
+            '--hidden-import', 'license_manager',
+            '--hidden-import', 'machine_code',
+            '--hidden-import', 'pdf_converter',
+            '--hidden-import', 'file_transfer',
+            '--hidden-import', 'config_manager',
+            '--hidden-import', 'db_manager',
+            '--hidden-import', 'utils',
+            'app.py'
+        ]
+        
+        print(f"Running PyInstaller with command: {' '.join(cmd)}")
+        result = subprocess.run(cmd)
+        sys.exit(result.returncode)
+        EOF
 
     - name: Create release package
       run: |
-        mkdir -p release
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          VERSION_DIR="xhs_helper_v1.0.0_windows_x64"
-          mkdir release/$VERSION_DIR
-          copy dist\xhs_helper.exe release\$VERSION_DIR\
-          echo "# xhs_helper v1.0.0" > release/$VERSION_DIR/README.md
-          echo "## Windows 版本" >> release/$VERSION_DIR/README.md
-          echo "## 使用方法: 双击 xhs_helper.exe" >> release/$VERSION_DIR/README.md
-          powershell Compress-Archive -Path release\$VERSION_DIR -DestinationPath release\$VERSION_DIR.zip
-        else
-          VERSION_DIR="xhs_helper_v1.0.0_${{ runner.os }}_$(uname -m)"
-          mkdir release/$VERSION_DIR
-          cp dist/xhs_helper release/$VERSION_DIR/
-          echo "# xhs_helper v1.0.0" > release/$VERSION_DIR/README.md
-          echo "## ${{ runner.os }} 版本" >> release/$VERSION_DIR/README.md
-          echo "## 使用方法: chmod +x xhs_helper && ./xhs_helper" >> release/$VERSION_DIR/README.md
-          zip -r release/$VERSION_DIR.zip release/$VERSION_DIR
-        fi
+        python - << 'EOF'
+        import os
+        import sys
+        import zipfile
+        
+        release_dir = 'release'
+        os.makedirs(release_dir, exist_ok=True)
+        
+        if sys.platform == 'win32':
+            version_dir = 'xhs_helper_v1.0.0_windows_x64'
+            exe_path = os.path.join('dist', 'xhs_helper.exe')
+        else:
+            if sys.platform == 'darwin':
+                arch = os.uname().machine
+            else:
+                arch = 'x64'
+            version_dir = f'xhs_helper_v1.0.0_{sys.platform}_{arch}'
+            exe_path = os.path.join('dist', 'xhs_helper')
+        
+        version_path = os.path.join(release_dir, version_dir)
+        os.makedirs(version_path, exist_ok=True)
+        
+        # 复制可执行文件
+        if os.path.exists(exe_path):
+            import shutil
+            shutil.copy(exe_path, version_path)
+        else:
+            print(f"Error: Executable not found: {exe_path}")
+            sys.exit(1)
+        
+        # 创建 README
+        readme_content = f'# xhs_helper v1.0.0\n\n'
+        if sys.platform == 'win32':
+            readme_content += '## Windows 版本\n\n'
+            readme_content += '## 使用方法: 双击 xhs_helper.exe\n\n'
+        else:
+            readme_content += f'## {sys.platform} 版本\n\n'
+            readme_content += '## 使用方法: chmod +x xhs_helper && ./xhs_helper\n\n'
+        
+        readme_path = os.path.join(version_path, 'README.md')
+        with open(readme_path, 'w', encoding='utf-8') as f:
+            f.write(readme_content)
+        
+        # 创建 ZIP 压缩包
+        zip_name = f'{version_dir}.zip'
+        zip_path = os.path.join(release_dir, zip_name)
+        
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(version_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, release_dir)
+                    zipf.write(file_path, arcname)
+        
+        print(f'Created release package: {zip_path}')
+        EOF
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
