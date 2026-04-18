@@ -53,6 +53,16 @@ def start_flask_server():
         traceback.print_exc()
 
 
+def check_server_ready():
+    """检查服务器是否就绪"""
+    import urllib.request
+    try:
+        with urllib.request.urlopen('http://localhost:5002', timeout=1) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
+
 def main():
     setup_logging()
     logger = logging.getLogger(__name__)
@@ -109,27 +119,104 @@ def main():
         import traceback
         traceback.print_exc()
     
-    # 在后台线程中启动 Flask 服务器
-    logger.info("正在启动后台服务器...")
-    server_thread = threading.Thread(target=start_flask_server, daemon=True)
-    server_thread.start()
-    
-    # 等待服务器启动
-    import time
-    time.sleep(2)
-    
-    # 启动 PyWebview 窗口
+    # 启动 PyWebview 窗口，先显示 loading 页面
     logger.info("正在启动桌面窗口...")
     
-    # 创建窗口
+    # 创建一个临时的 loading HTML
+    loading_html = """
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>正在加载...</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+            .loading-container {
+                text-align: center;
+                padding: 40px;
+            }
+            .spinner {
+                width: 60px;
+                height: 60px;
+                border: 4px solid rgba(255, 255, 255, 0.3);
+                border-top-color: white;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px;
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+            h1 {
+                font-size: 28px;
+                margin-bottom: 15px;
+                font-weight: 600;
+            }
+            p {
+                font-size: 16px;
+                opacity: 0.9;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <h1>🚀 正在启动小红书助手</h1>
+            <p>服务器正在准备中，请稍候...</p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    # 创建窗口，先显示 loading 页面
     window = webview.create_window(
         title='小红书助手',
-        url='http://localhost:5002',
+        html=loading_html,
         width=1280,
         height=800,
         resizable=True,
         min_size=(800, 600)
     )
+    
+    # 在后台线程中启动 Flask 服务器
+    logger.info("正在启动后台服务器...")
+    server_thread = threading.Thread(target=start_flask_server, daemon=True)
+    server_thread.start()
+    
+    # 等待服务器启动，同时显示 loading 页面
+    def wait_and_load():
+        import time
+        logger.info("等待服务器就绪...")
+        
+        # 等待服务器准备好
+        max_wait = 30  # 最多等待30秒
+        for i in range(max_wait):
+            if check_server_ready():
+                logger.info(f"服务器在第 {i+1} 秒就绪！")
+                break
+            time.sleep(1)
+        
+        # 跳转到主应用
+        logger.info("加载主应用页面...")
+        window.load_url('http://localhost:5002')
+    
+    # 在另一个线程中等待服务器并加载主页面
+    wait_thread = threading.Thread(target=wait_and_load, daemon=True)
+    wait_thread.start()
     
     # 启动 PyWebview 事件循环
     webview.start()
