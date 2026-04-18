@@ -14,6 +14,11 @@ from pathlib import Path
 from typing import Dict, Optional, List
 
 
+def is_frozen() -> bool:
+    """检查是否是打包后的环境（PyInstaller）"""
+    return getattr(sys, 'frozen', False)
+
+
 class VenvManager:
     """虚拟环境管理器"""
     
@@ -45,6 +50,16 @@ class VenvManager:
             操作结果字典
         """
         try:
+            # 如果是打包环境，不创建虚拟环境
+            if is_frozen():
+                return {
+                    'success': True,
+                    'message': '打包环境中跳过虚拟环境创建，使用当前环境',
+                    'venv_path': None,
+                    'python_path': sys.executable,
+                    'pip_path': None
+                }
+            
             venv_path = os.path.join(self.base_dir, name)
             
             # 如果环境已存在，询问是否删除

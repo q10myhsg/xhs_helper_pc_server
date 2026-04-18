@@ -10,6 +10,7 @@ import sys
 import subprocess
 import platform
 import urllib.request
+import ssl
 import zipfile
 import tarfile
 import shutil
@@ -34,6 +35,11 @@ class EnvInstaller:
         self.is_windows = self.system == 'Windows'
         self.is_mac = self.system == 'Darwin'
         self.is_linux = self.system == 'Linux'
+        
+        # 创建不验证 SSL 的上下文
+        self._ssl_context = ssl.create_default_context()
+        self._ssl_context.check_hostname = False
+        self._ssl_context.verify_mode = ssl.CERT_NONE
         
         # 安装目录
         self.install_dir = self._get_install_dir()
@@ -119,7 +125,7 @@ class EnvInstaller:
             try:
                 url = mirror + filename
                 print(f'尝试从镜像源 {i+1}/{len(self.ADB_MIRRORS)} 下载: {url}')
-                urllib.request.urlretrieve(url, zip_path)
+                urllib.request.urlretrieve(url, zip_path, context=self._ssl_context)
                 print(f'下载成功！')
                 return zip_path
             except Exception as e:
@@ -278,7 +284,7 @@ class EnvInstaller:
             zip_path = os.path.join(tempfile.gettempdir(), 'poppler.zip')
             
             print(f'下载 Poppler...')
-            urllib.request.urlretrieve(url, zip_path)
+            urllib.request.urlretrieve(url, zip_path, context=self._ssl_context)
             
             print(f'解压 Poppler...')
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
