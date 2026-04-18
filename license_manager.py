@@ -191,13 +191,13 @@ class LicenseManager:
             pass
     
     def _init_db(self):
-        """初始化数据库表"""
+        """初始化数据库表 - 包含迁移逻辑"""
         os.makedirs(CONFIG_DIR, exist_ok=True)
         
         conn = sqlite3.connect(self.DB_PATH)
         cursor = conn.cursor()
         
-        # 设备注册信息
+        # ============== 设备注册信息表 ==============
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS registered_devices (
             device_id TEXT PRIMARY KEY,
@@ -208,7 +208,7 @@ class LicenseManager:
         )
         """)
         
-        # 每日使用次数统计表（新）
+        # ============== 每日使用次数统计表 ==============
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS daily_usage_count (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -225,30 +225,69 @@ class LicenseManager:
         )
         """)
         
-        # 用户授权信息
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_license (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            activation_code TEXT UNIQUE NOT NULL,
-            machine_code TEXT UNIQUE,
-            package_type TEXT NOT NULL,
-            expire_date TEXT,
-            max_devices INTEGER NOT NULL,
-            max_daily_yanghao INTEGER NOT NULL,
-            max_daily_create INTEGER NOT NULL,
-            max_daily_export INTEGER NOT NULL,
-            max_daily_main_image INTEGER NOT NULL,
-            max_daily_cover_image INTEGER NOT NULL,
-            max_single_yanghao_minutes INTEGER NOT NULL,
-            daily_yanghao_device_limit BOOLEAN DEFAULT 0,
-            create_time TEXT NOT NULL,
-            update_time TEXT NOT NULL,
-            active BOOLEAN DEFAULT 1
-        )
-        """)
+        # ============== 用户授权信息表 ==============
+        # 先检查表是否存在
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_license'")
+        table_exists = cursor.fetchone() is not None
+        
+        if not table_exists:
+            # 表不存在，创建新表
+            cursor.execute("""
+            CREATE TABLE user_license (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                activation_code TEXT UNIQUE NOT NULL,
+                machine_code TEXT UNIQUE,
+                package_type TEXT NOT NULL,
+                expire_date TEXT,
+                max_devices INTEGER NOT NULL,
+                max_daily_yanghao INTEGER NOT NULL,
+                max_daily_create INTEGER NOT NULL,
+                max_daily_export INTEGER NOT NULL,
+                max_daily_main_image INTEGER NOT NULL,
+                max_daily_cover_image INTEGER NOT NULL,
+                max_single_yanghao_minutes INTEGER NOT NULL,
+                daily_yanghao_device_limit BOOLEAN DEFAULT 0,
+                create_time TEXT NOT NULL,
+                update_time TEXT NOT NULL,
+                active BOOLEAN DEFAULT 1
+            )
+            """)
+        else:
+            # 表已存在，检查并添加缺失的列
+            self._migrate_user_license_table(cursor)
         
         conn.commit()
         conn.close()
+    
+    def _migrate_user_license_table(self, cursor):
+        """迁移 user_license 表，添加缺失的字段"""
+        # 获取当前表的所有列
+        cursor.execute("PRAGMA table_info(user_license)")
+        columns = {row[1] for row in cursor.fetchall()}
+        
+        # 定义所有需要的字段及其默认值（SQLite 不允许直接加 NOT NULL 到已有数据的表）
+        required_columns = {
+            'package_type': ("TEXT", "'free'"),
+            'expire_date': ("TEXT", "NULL"),
+            'max_devices': ("INTEGER", "1"),
+            'max_daily_yanghao': ("INTEGER", "3"),
+            'max_daily_create': ("INTEGER", "5"),
+            'max_daily_export': ("INTEGER", "10"),
+            'max_daily_main_image': ("INTEGER", "5"),
+            'max_daily_cover_image': ("INTEGER", "5"),
+            'max_single_yanghao_minutes': ("INTEGER", "20"),
+            'daily_yanghao_device_limit': ("BOOLEAN", "1"),
+            'active': ("BOOLEAN", "1")
+        }
+        
+        # 添加缺失的列
+        for col_name, (col_type, default_sql) in required_columns.items():
+            if col_name not in columns:
+                try:
+                    cursor.execute(f"ALTER TABLE user_license ADD COLUMN {col_name} {col_type} DEFAULT {default_sql}")
+                    print(f"数据库迁移: 已添加列 {col_name} (默认值: {default_sql})")
+                except Exception as e:
+                    print(f"数据库迁移: 添加列 {col_name} 失败: {e}")
     
     def _exit_hook(self):
         """程序退出钩子，确保统计时长"""
