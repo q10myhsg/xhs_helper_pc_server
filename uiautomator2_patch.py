@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 修复 uiautomator2 在 PyInstaller 打包环境下的资源路径问题
-简单直接的方法：在 uiautomator2 导入前，设置好资源路径
+超级直接的方法 - monkey patch Path 类！
 """
 
 import os
@@ -34,50 +34,46 @@ def patch_uiautomator2():
     print(f"[uiautomator2_patch] Assets 目录存在于 _MEIPASS")
     print(f"[uiautomator2_patch] Assets 目录内容: {os.listdir(assets_in_meipass)}")
     
-    # 先导入 uiautomator2
-    import uiautomator2
-    
-    # 获取 uiautomator2 的安装目录
-    uiautomator2_dir = os.path.dirname(uiautomator2.__file__)
-    print(f"[uiautomator2_patch] uiautomator2 安装目录: {uiautomator2_dir}")
-    
-    # 预期的 assets 路径
-    expected_assets_path = os.path.join(uiautomator2_dir, 'assets')
-    print(f"[uiautomator2_patch] 预期的 assets 路径: {expected_assets_path}")
-    
-    # 检查是否已经有我们的标记文件
-    marker_file = os.path.join(expected_assets_path, '.xhs_helper_patched')
-    
-    if os.path.exists(marker_file):
-        print(f"[uiautomator2_patch] Assets 已经存在且已标记，跳过")
-        return
-    
-    # 尝试复制 assets 目录
+    # 好的，现在我们用最直接的方法 - monkey patch pathlib.Path！
     try:
-        import shutil
+        from pathlib import Path
+        import inspect
         
-        # 如果 expected_assets_path 已存在，先删除
-        if os.path.exists(expected_assets_path):
-            if os.path.islink(expected_assets_path):
-                os.unlink(expected_assets_path)
-            else:
-                shutil.rmtree(expected_assets_path)
+        # 保存原始的 Path.__new__
+        original_path_new = Path.__new__
         
-        # 复制 assets 目录
-        shutil.copytree(assets_in_meipass, expected_assets_path)
+        def patched_path_new(cls, *args, **kwargs):
+            """
+            补丁版的 Path 构造函数
+            """
+            result = original_path_new(cls, *args, **kwargs)
+            
+            # 检查是否是 uiautomator2 在调用
+            stack = inspect.stack()
+            
+            for frame_info in stack:
+                # 检查是否在 uiautomator2/core.py 中
+                if 'core.py' in frame_info.filename and 'uiautomator2' in frame_info.filename:
+                    # 检查是否在找 assets
+                    if len(args) > 0:
+                        arg_str = str(args[0])
+                        if '__file__' in arg_str:
+                            # 哦，我们找到了！这是 Path(__file__)
+                            # 返回我们的 assets 目录的父目录
+                            print(f"[uiautomator2_patch] 检测到 Path(__file__) 调用，返回我们的路径")
+                            return Path(meipass_path) / 'uiautomator2'
+            
+            return result
         
-        # 创建标记文件
-        with open(marker_file, 'w') as f:
-            f.write('patched')
+        # 应用补丁！
+        Path.__new__ = patched_path_new
+        print(f"[uiautomator2_patch] 成功 monkey patch pathlib.Path！")
         
-        print(f"[uiautomator2_patch] 成功复制 assets 到: {expected_assets_path}")
-        print(f"[uiautomator2_patch] Assets 内容: {os.listdir(expected_assets_path)}")
-    
     except Exception as e:
-        print(f"[uiautomator2_patch] 复制 assets 失败: {e}")
+        print(f"[uiautomator2_patch] patch Path 失败: {e}")
         import traceback
         traceback.print_exc()
 
 
-# 自动应用补丁
+# 立即应用补丁
 patch_uiautomator2()
