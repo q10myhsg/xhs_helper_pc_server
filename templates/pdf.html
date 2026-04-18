@@ -698,13 +698,48 @@ function copyEditNoteContent(type) {
         return;
     }
     
-    navigator.clipboard.writeText(text)
-        .then(() => {
+    // 先尝试使用 navigator.clipboard（现代浏览器）
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                showPdfMessage(`✅ ${typeName}已复制到剪贴板`, 'success');
+            })
+            .catch(err => {
+                // 降级使用 execCommand
+                fallbackCopy(text, typeName);
+            });
+    } else {
+        // 直接使用 execCommand
+        fallbackCopy(text, typeName);
+    }
+}
+
+// 降级复制方法
+function fallbackCopy(text, typeName) {
+    // 创建临时文本区域
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    textArea.style.opacity = '0';
+    textArea.style.pointerEvents = 'none';
+    document.body.appendChild(textArea);
+    
+    try {
+        textArea.select();
+        textArea.setSelectionRange(0, textArea.value.length);
+        const successful = document.execCommand('copy');
+        if (successful) {
             showPdfMessage(`✅ ${typeName}已复制到剪贴板`, 'success');
-        })
-        .catch(err => {
-            showPdfMessage('❌ 复制失败: ' + err.message, 'error');
-        });
+        } else {
+            showPdfMessage('❌ 复制失败，请手动复制', 'error');
+        }
+    } catch (err) {
+        showPdfMessage('❌ 复制失败: ' + (err.message || '未知错误'), 'error');
+    } finally {
+        document.body.removeChild(textArea);
+    }
 }
 
 // ==================== PDF转换功能 ====================
@@ -822,6 +857,26 @@ function displayBatchResults(data) {
         card.className = `pdf-results-card ${result.success ? 'success' : 'error'}`;
         
         if (result.success) {
+            // 显示前4张图片的预览
+            let previewHtml = '';
+            if (result.images && result.images.length > 0) {
+                const previewImages = result.images.slice(0, 4);
+                previewHtml = '<div style="margin-top: 10px;">';
+                previewHtml += '<div style="font-size: 12px; color: #666; margin-bottom: 8px;">📷 前4页预览：</div>';
+                previewHtml += '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">';
+                
+                previewImages.forEach((imgUrl, idx) => {
+                    previewHtml += `
+                        <div style="border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background: #f9f9f9;">
+                            <img src="${imgUrl}" style="width: 100%; height: auto; display: block;" alt="第${idx + 1}页">
+                            <div style="text-align: center; font-size: 11px; color: #888; padding: 4px;">第${idx + 1}页</div>
+                        </div>
+                    `;
+                });
+                
+                previewHtml += '</div></div>';
+            }
+            
             card.innerHTML = `
                 <div style="font-weight: 600; margin-bottom: 10px;">
                     ✅ ${result.original_name}
@@ -832,6 +887,7 @@ function displayBatchResults(data) {
                 <div style="color: #28a745; font-size: 12px;">
                     转换成功！
                 </div>
+                ${previewHtml}
             `;
         } else {
             card.innerHTML = `

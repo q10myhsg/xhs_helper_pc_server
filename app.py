@@ -71,10 +71,7 @@ def cover_generator_page():
     """小红书封面生成器页面"""
     return render_template("cover_generator.html", active_page="cover-generator")
 
-@app.route("/product-main-image")
-def product_main_image_page():
-    """商品主图生成器页面"""
-    return render_template("product_main_image.html", active_page="product-main-image")
+
 
 # ==================== API 接口 ====================
 

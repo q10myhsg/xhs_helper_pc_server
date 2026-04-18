@@ -4,18 +4,6 @@
 <h1>📱 文件传输工具</h1>
 <p style="color: #666; margin-bottom: 20px;">一键将电脑文件传输到手机，支持自动清理和传输后清空</p>
 
-<div class="config-section" style="background: #fff3cd; border: 1px solid #ffecb5; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-    <h3 style="color: #856404; margin-top: 0;">⚠️ 重要提示</h3>
-    <p style="color: #856404; margin-bottom: 10px;">为了避免权限问题，建议使用以下手机目录之一：</p>
-    <ul style="color: #856404; margin: 0; padding-left: 20px; margin-bottom: 10px;">
-        <li><strong>/sdcard/Android/media/传输专用目录</strong>（推荐，Android 10+ 兼容性最好）</li>
-        <li><strong>/sdcard/Download/传输专用目录</strong>（较新版本可能有权限问题）</li>
-        <li><strong>/sdcard/Pictures/传输专用目录</strong></li>
-        <li><strong>/sdcard/DCIM/传输专用目录</strong></li>
-    </ul>
-    <p style="color: #856404; margin-bottom: 0;">💡 即使看到 adb 报错 "Operation not permitted"，只要日志显示 "1 file pushed"，文件就传输成功了！</p>
-</div>
-
 <div class="config-section">
     <h2>📱 选择目标设备</h2>
     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">请选择要传输文件的在线设备</p>
@@ -32,8 +20,11 @@
 
     <div class="form-group">
         <label for="ft-computer-dir">电脑目录</label>
-        <input type="text" id="ft-computer-dir" placeholder="例如: /Users/username/Documents/传输文件" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px;">
-        <p style="color: #999; font-size: 12px;">请输入电脑上的完整文件夹路径</p>
+        <div style="display: flex; gap: 8px; margin-bottom: 5px;">
+            <input type="text" id="ft-computer-dir" placeholder="例如: /Users/username/Documents/传输文件" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            <button class="btn btn-primary" onclick="selectComputerDirectory()">📁 选择目录</button>
+        </div>
+        <p style="color: #999; font-size: 12px;">请选择电脑上的文件夹</p>
     </div>
 
     <div class="form-group">
@@ -387,6 +378,25 @@ function showFtResults(data, operationName) {
     
     html += '</div>';
     contentDiv.innerHTML = html;
+}
+
+function selectComputerDirectory() {
+    if (typeof pywebview !== 'undefined' && pywebview.api) {
+        pywebview.api.open_directory_dialog().then(result => {
+            if (result && result.success && result.directory) {
+                document.getElementById('ft-computer-dir').value = result.directory;
+                saveFileTransferConfig();
+                showFtMessage('已选择目录: ' + result.directory, 'success');
+            } else {
+                showFtMessage('未选择目录', 'warning');
+            }
+        }).catch(error => {
+            console.error('选择目录失败:', error);
+            showFtMessage('选择目录失败: ' + error, 'error');
+        });
+    } else {
+        showFtMessage('请在桌面应用中使用此功能', 'warning');
+    }
 }
 
 function showFtMessage(message, type) {

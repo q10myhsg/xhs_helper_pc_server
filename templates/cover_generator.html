@@ -263,10 +263,9 @@
         <p style="color: #666; font-size: 13px; margin: 8px 0;">指定封面图片保存的文件夹路径</p>
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
             <input type="text" id="cover-output-dir" placeholder="例如: /Users/username/Desktop/封面图片" style="flex: 1;">
+            <button class="btn btn-primary" onclick="selectCoverOutputDirectory()">📁 选择目录</button>
         </div>
         <small style="color: #888;">💡 提示：可以直接使用PDF工作区目录，方便统一管理</small>
-        <small style="color: #888; margin-top: 8px; display: block;">⚠️ 注意：由于浏览器安全限制，无法直接选择目录，请手动输入完整路径</small>
-        <small style="color: #888; margin-top: 8px; display: block;">📌 路径格式示例：/Users/username/Desktop/封面图片 或 C:\Users\username\Desktop\封面图片</small>
     </div>
 
 
@@ -792,6 +791,25 @@ function validatePath(path) {
     const simplePathRegex = /^(?:\/|\w:)(?:[^\/\\]+[\/\\])*[^\/\\]+$/;
     
     return unixPathRegex.test(path) || windowsPathRegex.test(path) || simplePathRegex.test(path);
+}
+
+// 选择输出目录
+function selectCoverOutputDirectory() {
+    if (typeof pywebview !== 'undefined' && pywebview.api) {
+        pywebview.api.open_directory_dialog().then(result => {
+            if (result && result.success && result.directory) {
+                document.getElementById('cover-output-dir').value = result.directory;
+                showCoverMessage('已选择目录: ' + result.directory, 'success');
+            } else {
+                showCoverMessage('未选择目录', 'warning');
+            }
+        }).catch(error => {
+            console.error('选择目录失败:', error);
+            showCoverMessage('选择目录失败: ' + error, 'error');
+        });
+    } else {
+        showCoverMessage('请在桌面应用中使用此功能', 'warning');
+    }
 }
 
 // 页码范围功能已移除

@@ -125,6 +125,34 @@ class Api:
                 'success': False,
                 'message': str(e)
             }
+    
+    def open_directory_dialog(self):
+        """打开目录选择对话框"""
+        try:
+            import webview
+            # 使用PyWebview的文件夹选择对话框
+            dir_path = webview.windows[0].create_file_dialog(
+                dialog_type=webview.FOLDER_DIALOG,
+                directory='',
+                allow_multiple=False,
+                save_filename=''
+            )
+            
+            if dir_path and len(dir_path) > 0:
+                return {
+                    'success': True,
+                    'directory': dir_path[0]
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': '未选择目录'
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': str(e)
+            }
 
 
 def main():
