@@ -63,6 +63,70 @@ def check_server_ready():
         return False
 
 
+class Api:
+    """PyWebview API 类，暴露给前端的方法"""
+    
+    def open_file_dialog(self):
+        """打开文件选择对话框，支持多选PDF文件"""
+        try:
+            import webview
+            # 使用PyWebview的文件选择对话框
+            file_paths = webview.windows[0].create_file_dialog(
+                dialog_type=webview.FOLDER_DIALOG | webview.OPEN_DIALOG,
+                directory='',
+                allow_multiple=True,
+                save_filename='',
+                file_types=('PDF文件 (*.pdf)', '所有文件 (*.*)')
+            )
+            
+            if file_paths:
+                # 过滤出PDF文件
+                pdf_paths = [p for p in file_paths if p.lower().endswith('.pdf')]
+                return {
+                    'success': True,
+                    'file_paths': pdf_paths
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': '未选择文件'
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': str(e)
+            }
+    
+    def open_pdf_file_dialog(self):
+        """专门打开PDF文件选择对话框"""
+        try:
+            import webview
+            # 使用PyWebview的文件选择对话框，专门选择PDF文件
+            file_paths = webview.windows[0].create_file_dialog(
+                dialog_type=webview.OPEN_DIALOG,
+                directory='',
+                allow_multiple=True,
+                save_filename='',
+                file_types=('PDF文件 (*.pdf)', '所有文件 (*.*)')
+            )
+            
+            if file_paths:
+                return {
+                    'success': True,
+                    'file_paths': file_paths
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': '未选择文件'
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': str(e)
+            }
+
+
 def main():
     setup_logging()
     logger = logging.getLogger(__name__)
@@ -182,10 +246,14 @@ def main():
     </html>
     """
     
+    # 创建API实例
+    api = Api()
+    
     # 创建窗口，先显示 loading 页面
     window = webview.create_window(
         title='小红书助手',
         html=loading_html,
+        js_api=api,
         width=1280,
         height=800,
         resizable=True,

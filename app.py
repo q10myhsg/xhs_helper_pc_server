@@ -1338,6 +1338,126 @@ def api_check_directory():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+
+@app.route("/api/pdf/batch/convert-full-path", methods=["POST"])
+def api_pdf_batch_convert_full_path():
+    """批量转换PDF文件（使用完整路径）"""
+    try:
+        data = request.json
+        file_paths = data.get('file_paths', [])  # 完整文件路径列表
+        settings = data.get('settings', {})
+        
+        if not file_paths:
+            return jsonify({"success": False, "error": "没有选择文件"})
+        
+        results = []
+        total_files = len(file_paths)
+        
+        # 加载用户配置的图片路径
+        config = load_pdf_images_config()
+        from pdf_converter import PDFConverter
+        converter = PDFConverter(
+            watermark_path=config.get('watermark') or None,
+            header_path=config.get('header') or None,
+            footer_path=config.get('footer') or None,
+            watermark_scale=settings.get('watermark_scale', 100)
+        )
+        
+        for index, file_path in enumerate(file_paths):
+            try:
+                if not os.path.exists(file_path):
+                    results.append({
+                        "file_path": file_path,
+                        "original_name": os.path.basename(file_path),
+                        "success": False,
+                        "error": "文件不存在"
+                    })
+                    continue
+                
+                # 确定输出目录：在PDF所在目录下创建output文件夹
+                pdf_dir = os.path.dirname(file_path)
+                pdf_name = os.path.splitext(os.path.basename(file_path))[0]
+                
+                # 输出目录：优先使用用户指定的，否则在PDF所在目录创建output
+                output_base_dir = settings.get('output_dir')
+                if output_base_dir and os.path.exists(output_base_dir):
+                    output_dir = os.path.join(output_base_dir, pdf_name)
+                else:
+                    output_dir = os.path.join(pdf_dir, 'output', pdf_name)
+                
+                print(f"[PDF转换] 处理文件: {file_path}")
+                print(f"[PDF转换] 输出目录: {output_dir}")
+                
+                # 处理页码范围
+                start_page = settings.get('start_page', 1)
+                end_page = settings.get('end_page')
+                print(f"[PDF转换] 页码范围: {start_page} - {end_page}")
+                
+                result = converter.convert_pdf_to_images(
+                    file_path,
+                    dpi=settings.get('dpi', 300),
+                    fmt=settings.get('format', 'png'),
+                    add_watermark=settings.get('add_watermark', True),
+                    generate_simple_pdf=settings.get('generate_simple_pdf', True),
+                    start_page=start_page,
+                    end_page=end_page,
+                    add_header=settings.get('add_header', False),
+                    add_footer=settings.get('add_footer', False),
+                    watermark_page_range=settings.get('watermark_page_range', 'even'),
+                    watermark_position=settings.get('watermark_position'),
+                    header_position=settings.get('header_position'),
+                    footer_position=settings.get('footer_position'),
+                    output_dir=output_dir,
+                    border_width=settings.get('border_width', 0),
+                    border_color=settings.get('border_color', '#000000'),
+                    background_color=settings.get('background_color', '#ffffff'),
+                    add_random_icon=settings.get('add_random_icon', False)
+                )
+                
+                # 将本地路径转换为URL
+                import time
+                images_urls = [f"{local_path_to_url(img_path)}?t={int(time.time())}" for img_path in result['images']]
+                simple_pdf_url = f"{local_path_to_url(result['simple_pdf'])}?t={int(time.time())}"
+                
+                results.append({
+                    "file_path": file_path,
+                    "original_name": os.path.basename(file_path),
+                    "success": True,
+                    "images": images_urls,
+                    "simple_pdf": simple_pdf_url,
+                    "output_dir": result['output_dir'],
+                    "total_pages": len(result['images']),
+                    "progress": {
+                        "current": index + 1,
+                        "total": total_files
+                    }
+                })
+                
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                results.append({
+                    "file_path": file_path,
+                    "original_name": os.path.basename(file_path) if file_path else 'unknown',
+                    "success": False,
+                    "error": str(e)
+                })
+        
+        return jsonify({
+            "success": True,
+            "message": "批量转换完成",
+            "data": {
+                "results": results,
+                "total": total_files,
+                "success_count": sum(1 for r in results if r['success']),
+                "failed_count": sum(1 for r in results if not r['success'])
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)})
+
 # ==================== 文件传输 API ====================
 
 # 文件传输配置存储文件
