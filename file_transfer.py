@@ -349,7 +349,15 @@ class FileTransferManager:
             # 如果是单个文件，直接传输
             if os.path.isfile(computer_dir):
                 adb_cmd = self._build_adb_cmd(['push', computer_dir, phone_dir])
+                logger.info(f"执行命令: {' '.join(adb_cmd)}")
                 result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                
+                # 打印详细的输出信息，方便调试
+                logger.info(f"adb 返回码: {result.returncode}")
+                if result.stdout:
+                    logger.info(f"adb stdout: {result.stdout.strip()}")
+                if result.stderr:
+                    logger.info(f"adb stderr: {result.stderr.strip()}")
                 
                 # 构建目标文件路径（用于记录）
                 filename = os.path.basename(computer_dir)
@@ -407,7 +415,15 @@ class FileTransferManager:
                     
                     # 传输文件 - 传递目录给 adb push，让它自己处理文件名
                     adb_cmd = self._build_adb_cmd(['push', file_path, target_file_dir])
+                    logger.info(f"执行命令: {' '.join(adb_cmd)}")
                     result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                    
+                    # 打印详细的输出信息，方便调试
+                    logger.info(f"adb 返回码: {result.returncode}")
+                    if result.stdout:
+                        logger.info(f"adb stdout: {result.stdout.strip()}")
+                    if result.stderr:
+                        logger.info(f"adb stderr: {result.stderr.strip()}")
                     
                     # 构建目标文件路径（用于记录和修改时间戳）
                     target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
