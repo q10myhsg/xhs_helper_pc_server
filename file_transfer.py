@@ -439,8 +439,8 @@ class FileTransferManager:
                         file_count += 1
                         # 记录传输的文件路径
                         transferred_files.append(target_file_path)
-                        # 修改文件时间戳，确保按顺序显示
-                        self._modify_file_timestamp(target_file_path, file_count)
+                        # 暂时禁用时间戳修改，测试是否导致文件 0KB
+                        # self._modify_file_timestamp(target_file_path, file_count)
                         logger.info(f"[{file_count}/{len(all_files)}] 传输成功: {rel_path}")
                         if result.returncode != 0:
                             logger.info(f"注意：adb 返回非零退出码但文件传输成功")
