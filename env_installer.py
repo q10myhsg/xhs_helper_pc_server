@@ -23,12 +23,8 @@ class EnvInstaller:
     
     # 国内镜像源列表（优先使用，依次尝试）
     ADB_MIRRORS = [
-        # 腾讯云镜像
-        'https://mirrors.cloud.tencent.com/android/repository/',
-        # 阿里云镜像
-        'https://mirrors.aliyun.com/android/repository/',
-        # 华为云镜像
-        'https://mirrors.huaweicloud.com/android/repository/',
+        # 腾讯云镜像（已验证可用）
+        'https://mirrors.cloud.tencent.com/AndroidSDK/',
         # 官方源（最后备选）
         'https://dl.google.com/android/repository/'
     ]
