@@ -347,16 +347,22 @@ class FileTransferManager:
             
             # 如果是单个文件，直接传输
             if os.path.isfile(computer_dir):
-                adb_cmd = self._build_adb_cmd(['push', computer_dir, phone_dir])
+                filename = os.path.basename(computer_dir)
+                target_file_path = f"{phone_dir}/{filename}"
+                
+                adb_cmd = self._build_adb_cmd(['push', computer_dir, target_file_path])
                 result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
-                if result.returncode == 0:
+                
+                # 检查是否传输成功 - 有时 adb 会返回非零错误码但实际上文件已传输成功
+                transfer_success = result.returncode == 0 or "1 file pushed" in result.stdout or "file pushed" in result.stdout
+                
+                if transfer_success:
                     file_count = 1
-                    filename = os.path.basename(computer_dir)
-                    transferred_files.append(f"{phone_dir}/{filename}")
+                    transferred_files.append(target_file_path)
                     logger.info(f"文件传输成功: {filename}")
                 else:
-                    logger.error(f"文件传输失败: {result.stderr}")
-                    return {"success": False, "error": result.stderr}
+                    logger.error(f"文件传输失败: {result.stderr or result.stdout}")
+                    return {"success": False, "error": result.stderr or result.stdout}
             else:
                 # 如果是目录，先获取所有文件，按文件名排序后逐个传输
                 dir_name = os.path.basename(computer_dir)
@@ -392,21 +398,25 @@ class FileTransferManager:
                         success = False
                         break
                     
-                    # 传输文件
-                    adb_cmd = self._build_adb_cmd(['push', file_path, target_file_dir])
+                    # 传输文件 - 直接指定完整目标路径
+                    target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
+                    target_file_path = target_file_path.replace('//', '/')
+                    
+                    adb_cmd = self._build_adb_cmd(['push', file_path, target_file_path])
                     result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                     
-                    if result.returncode == 0:
+                    # 检查是否传输成功 - 有时 adb 会返回非零错误码但实际上文件已传输成功
+                    transfer_success = result.returncode == 0 or "1 file pushed" in result.stdout or "file pushed" in result.stdout
+                    
+                    if transfer_success:
                         file_count += 1
-                        # 记录传输的文件路径（移除多余的斜杠）
-                        target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
-                        target_file_path = target_file_path.replace('//', '/')
+                        # 记录传输的文件路径
                         transferred_files.append(target_file_path)
                         # 修改文件时间戳，确保按顺序显示
                         self._modify_file_timestamp(target_file_path, file_count)
                         logger.info(f"[{file_count}/{len(all_files)}] 传输成功: {rel_path}")
                     else:
-                        logger.error(f"传输失败: {rel_path}, 错误: {result.stderr}")
+                        logger.error(f"传输失败: {rel_path}, 错误: {result.stderr or result.stdout}")
                         success = False
                         break
             
