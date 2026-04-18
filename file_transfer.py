@@ -348,7 +348,11 @@ class FileTransferManager:
             
             # 如果是单个文件，直接传输
             if os.path.isfile(computer_dir):
-                adb_cmd = self._build_adb_cmd(['push', computer_dir, phone_dir])
+                # 构建完整的目标文件路径
+                filename = os.path.basename(computer_dir)
+                target_file_path = f"{phone_dir}/{filename}"
+                
+                adb_cmd = self._build_adb_cmd(['push', computer_dir, target_file_path])
                 logger.info(f"执行命令: {' '.join(adb_cmd)}")
                 result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
@@ -358,10 +362,6 @@ class FileTransferManager:
                     logger.info(f"adb stdout: {result.stdout.strip()}")
                 if result.stderr:
                     logger.info(f"adb stderr: {result.stderr.strip()}")
-                
-                # 构建目标文件路径（用于记录）
-                filename = os.path.basename(computer_dir)
-                target_file_path = f"{phone_dir}/{filename}"
                 
                 # 合并 stdout 和 stderr 进行检查
                 combined_output = (result.stdout or '') + (result.stderr or '')
@@ -407,6 +407,10 @@ class FileTransferManager:
                     target_file_dir = os.path.join(target_dir, os.path.dirname(rel_path))
                     target_file_dir = target_file_dir.replace('\\', '/')
                     
+                    # 构建完整的目标文件路径
+                    target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
+                    target_file_path = target_file_path.replace('//', '/')
+                    
                     # 创建目标文件所在目录
                     dir_created = self._create_dir_on_device(target_file_dir)
                     if not dir_created:
@@ -414,8 +418,8 @@ class FileTransferManager:
                         success = False
                         break
                     
-                    # 传输文件 - 传递目录给 adb push，让它自己处理文件名
-                    adb_cmd = self._build_adb_cmd(['push', file_path, target_file_dir])
+                    # 传输文件 - 直接指定完整目标文件路径
+                    adb_cmd = self._build_adb_cmd(['push', file_path, target_file_path])
                     logger.info(f"执行命令: {' '.join(adb_cmd)}")
                     result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                     
@@ -425,10 +429,6 @@ class FileTransferManager:
                         logger.info(f"adb stdout: {result.stdout.strip()}")
                     if result.stderr:
                         logger.info(f"adb stderr: {result.stderr.strip()}")
-                    
-                    # 构建目标文件路径（用于记录和修改时间戳）
-                    target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
-                    target_file_path = target_file_path.replace('//', '/')
                     
                     # 合并 stdout 和 stderr 进行检查
                     combined_output = (result.stdout or '') + (result.stderr or '')
