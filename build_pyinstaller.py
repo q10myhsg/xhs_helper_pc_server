@@ -42,7 +42,12 @@ cmd = [
     '--hidden-import', 'config_manager',
     '--hidden-import', 'db_manager',
     '--hidden-import', 'utils',
-    'app.py'
+    '--hidden-import', 'env_checker',
+    '--hidden-import', 'env_installer',
+    '--hidden-import', 'venv_manager',
+    '--hidden-import', 'env_setup_gui',
+    '--hidden-import', 'tkinter',
+    'launcher.py'
 ]
 
 print(f"Running PyInstaller with command: {' '.join(cmd)}")
