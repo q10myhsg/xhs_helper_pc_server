@@ -37,39 +37,6 @@ class FileTransferManager:
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise RuntimeError("ADB命令不可用，请确保已安装Android SDK并将adb添加到环境变量")
     
-    def _find_writable_directory(self, base_paths: List[str]) -> Optional[str]:
-        """
-        从多个候选路径中找到一个可写入的目录
-        
-        参数:
-            base_paths: 候选路径列表
-            
-        返回:
-            可写入的路径，如果都不可写入返回None
-        """
-        for base_path in base_paths:
-            try:
-                # 先尝试创建目录
-                self._create_dir_on_device(base_path)
-                
-                # 尝试创建一个测试文件
-                test_file = f"{base_path}/.test_write.tmp"
-                adb_cmd = self._build_adb_cmd(['shell', 'echo', 'test', '>', test_file])
-                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
-                
-                # 检查文件是否创建成功
-                if self._check_path_exists_on_device(test_file):
-                    # 清理测试文件
-                    self._build_adb_cmd(['shell', 'rm', '-f', test_file])
-                    logger.info(f"找到可写入目录: {base_path}")
-                    return base_path
-            except Exception as e:
-                logger.debug(f"路径 {base_path} 不可写入: {e}")
-                continue
-        
-        logger.warning("所有候选路径都不可写入")
-        return None
-    
     def _build_adb_cmd(self, cmd: List[str]) -> List[str]:
         """构建ADB命令"""
         adb_cmd = ['adb']
@@ -81,10 +48,11 @@ class FileTransferManager:
     def _check_path_exists_on_device(self, path: str) -> bool:
         """检查手机上的路径是否存在"""
         try:
-            # 直接传递路径参数，不需要引号（因为我们传递的是参数列表）
-            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', path, '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
-            return "yes" in result.stdout
+            # 使用简单的 test 命令，不使用 shell 操作符
+            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', path])
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            # 如果返回码是 0，表示路径存在
+            return result.returncode == 0
         except KeyboardInterrupt:
             # 捕获用户中断信号，不记录错误
             raise

@@ -19,7 +19,7 @@ cmd = [
     '--clean',
     '--name', 'xhs_helper',
     '--onefile',
-    '--windowed',  # 使用窗口模式，不显示控制台
+    '--console',  # 显示控制台窗口，方便查看日志
     '--noupx',
     '--add-data', f'templates{sep}templates',
     '--add-data', f'static{sep}static',
