@@ -373,8 +373,9 @@ class FileTransferManager:
                     file_count = 1
                     transferred_files.append(target_file_path)
                     logger.info(f"文件传输成功: {filename}")
-                    if result.returncode != 0:
-                        logger.info(f"注意：adb 返回非零退出码但文件传输成功")
+                    # 检查是否有 "1 file pushed" 的成功提示，即使返回码非零也没问题
+                    if "1 file pushed" in combined_output:
+                        logger.info(f"  文件已成功传输（adb 返回码可忽略）")
                 else:
                     logger.error(f"文件传输失败: {result.stderr or result.stdout}")
                     return {"success": False, "error": result.stderr or result.stdout}
@@ -442,8 +443,9 @@ class FileTransferManager:
                         # 暂时禁用时间戳修改，测试是否导致文件 0KB
                         # self._modify_file_timestamp(target_file_path, file_count)
                         logger.info(f"[{file_count}/{len(all_files)}] 传输成功: {rel_path}")
-                        if result.returncode != 0:
-                            logger.info(f"注意：adb 返回非零退出码但文件传输成功")
+                        # 检查是否有 "1 file pushed" 的成功提示，即使返回码非零也没问题
+                        if "1 file pushed" in combined_output:
+                            logger.info(f"  文件已成功传输（adb 返回码可忽略）")
                     else:
                         logger.error(f"传输失败: {rel_path}, 错误: {result.stderr or result.stdout}")
                         success = False
