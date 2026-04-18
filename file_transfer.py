@@ -48,8 +48,8 @@ class FileTransferManager:
     def _check_path_exists_on_device(self, path: str) -> bool:
         """检查手机上的路径是否存在"""
         try:
-            # 使用引号包裹路径，避免特殊字符导致的shell语法错误
-            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', f'"{path}"', '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
+            # 直接传递路径参数，不需要引号（因为我们传递的是参数列表）
+            adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', path, '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             return "yes" in result.stdout
         except KeyboardInterrupt:
@@ -62,8 +62,8 @@ class FileTransferManager:
     def _create_dir_on_device(self, path: str) -> bool:
         """在手机上创建目录"""
         try:
-            # 使用引号包裹路径，避免特殊字符导致的shell语法错误
-            adb_cmd = self._build_adb_cmd(['shell', 'mkdir', '-p', f'"{path}"'])
+            # 直接传递路径参数，不需要引号（因为我们传递的是参数列表）
+            adb_cmd = self._build_adb_cmd(['shell', 'mkdir', '-p', path])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             logger.info(f"已创建手机目录: {path}")
             return True
@@ -84,9 +84,9 @@ class FileTransferManager:
                 logger.info(f"目录不存在，无需删除: {path}")
                 return True
             
-            # 执行ADB删除目录命令（使用引号包裹路径）
+            # 执行ADB删除目录命令（直接传递路径参数）
             logger.info(f"正在删除手机目录: {path}")
-            adb_cmd = self._build_adb_cmd(['shell', 'rm', '-rf', f'"{path}"'])
+            adb_cmd = self._build_adb_cmd(['shell', 'rm', '-rf', path])
             result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             
             # 验证目录是否已删除
@@ -273,7 +273,7 @@ class FileTransferManager:
             
             logger.info(f"正在修改文件时间戳: {file_path} -> {time_str}")
             adb_cmd = self._build_adb_cmd([
-                'shell', 'touch', '-a', '-m', '-t', time_str, f'"{file_path}"'
+                'shell', 'touch', '-a', '-m', '-t', time_str, file_path
             ])
             
             result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
@@ -347,11 +347,12 @@ class FileTransferManager:
             
             # 如果是单个文件，直接传输
             if os.path.isfile(computer_dir):
+                adb_cmd = self._build_adb_cmd(['push', computer_dir, phone_dir])
+                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                
+                # 构建目标文件路径（用于记录）
                 filename = os.path.basename(computer_dir)
                 target_file_path = f"{phone_dir}/{filename}"
-                
-                adb_cmd = self._build_adb_cmd(['push', computer_dir, target_file_path])
-                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
                 # 检查是否传输成功 - 有时 adb 会返回非零错误码但实际上文件已传输成功
                 transfer_success = result.returncode == 0 or "1 file pushed" in result.stdout or "file pushed" in result.stdout
@@ -398,12 +399,13 @@ class FileTransferManager:
                         success = False
                         break
                     
-                    # 传输文件 - 直接指定完整目标路径
+                    # 传输文件 - 传递目录给 adb push，让它自己处理文件名
+                    adb_cmd = self._build_adb_cmd(['push', file_path, target_file_dir])
+                    result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                    
+                    # 构建目标文件路径（用于记录和修改时间戳）
                     target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
                     target_file_path = target_file_path.replace('//', '/')
-                    
-                    adb_cmd = self._build_adb_cmd(['push', file_path, target_file_path])
-                    result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                     
                     # 检查是否传输成功 - 有时 adb 会返回非零错误码但实际上文件已传输成功
                     transfer_success = result.returncode == 0 or "1 file pushed" in result.stdout or "file pushed" in result.stdout
