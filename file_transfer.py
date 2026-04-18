@@ -32,7 +32,7 @@ class FileTransferManager:
     def _check_adb(self) -> bool:
         """检查ADB是否可用"""
         try:
-            subprocess.run(['adb', 'version'], check=True, capture_output=True, text=True)
+            subprocess.run(['adb', 'version'], check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise RuntimeError("ADB命令不可用，请确保已安装Android SDK并将adb添加到环境变量")
@@ -50,7 +50,7 @@ class FileTransferManager:
         try:
             # 使用引号包裹路径，避免特殊字符导致的shell语法错误
             adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', f'"{path}"', '&&', 'echo', 'yes', '||', 'echo', 'not exist'])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             return "yes" in result.stdout
         except KeyboardInterrupt:
             # 捕获用户中断信号，不记录错误
@@ -64,7 +64,7 @@ class FileTransferManager:
         try:
             # 使用引号包裹路径，避免特殊字符导致的shell语法错误
             adb_cmd = self._build_adb_cmd(['shell', 'mkdir', '-p', f'"{path}"'])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             logger.info(f"已创建手机目录: {path}")
             return True
         except KeyboardInterrupt:
@@ -87,7 +87,7 @@ class FileTransferManager:
             # 执行ADB删除目录命令（使用引号包裹路径）
             logger.info(f"正在删除手机目录: {path}")
             adb_cmd = self._build_adb_cmd(['shell', 'rm', '-rf', f'"{path}"'])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             
             # 验证目录是否已删除
             if not self._check_path_exists_on_device(path):
@@ -128,7 +128,7 @@ class FileTransferManager:
                 '-d', f'file://{encoded_path}'
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             
             logger.info(f"媒体扫描广播发送成功: {result.stdout.strip()}")
             return True
@@ -163,7 +163,7 @@ class FileTransferManager:
                 '-d', f'file://{encoded_path}'
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             logger.info(f"MediaStore 扫描触发结果: {result.returncode}")
             
             # 等待一下让系统处理
@@ -195,13 +195,15 @@ class FileTransferManager:
             
             # 使用 ls -1 命令只列出文件名，避免空格解析问题
             adb_cmd = self._build_adb_cmd(['shell', 'ls', '-1', dir_path])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             
-            if result.returncode == 0:
+            if result.returncode == 0 and result.stdout:
                 filenames = result.stdout.strip().split('\n')
                 media_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.pdf', '.mp4', '.mov', '.avi'}
                 
                 for filename in filenames:
+                    if not filename:
+                        continue
                     filename = filename.strip()
                     if not filename or filename in ['.', '..']:
                         continue
@@ -238,7 +240,7 @@ class FileTransferManager:
                 '-d', 'file:///storage/emulated/0'
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             logger.info(f"全面媒体扫描触发结果: {result.returncode}")
             
             return True
@@ -274,7 +276,7 @@ class FileTransferManager:
                 'shell', 'touch', '-a', '-m', '-t', time_str, f'"{file_path}"'
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             logger.info(f"文件时间戳修改成功: {file_path}")
             return True
         except KeyboardInterrupt:
@@ -346,7 +348,7 @@ class FileTransferManager:
             # 如果是单个文件，直接传输
             if os.path.isfile(computer_dir):
                 adb_cmd = self._build_adb_cmd(['push', computer_dir, phone_dir])
-                result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 if result.returncode == 0:
                     file_count = 1
                     filename = os.path.basename(computer_dir)
@@ -392,12 +394,13 @@ class FileTransferManager:
                     
                     # 传输文件
                     adb_cmd = self._build_adb_cmd(['push', file_path, target_file_dir])
-                    result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                    result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                     
                     if result.returncode == 0:
                         file_count += 1
-                        # 记录传输的文件路径
+                        # 记录传输的文件路径（移除多余的斜杠）
                         target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
+                        target_file_path = target_file_path.replace('//', '/')
                         transferred_files.append(target_file_path)
                         # 修改文件时间戳，确保按顺序显示
                         self._modify_file_timestamp(target_file_path, file_count)
@@ -575,7 +578,7 @@ class FileTransferManager:
             
             # 检查是否是单个文件
             adb_cmd = self._build_adb_cmd(['shell', 'test', '-f', phone_dir, '&&', 'echo', 'file', '||', 'echo', 'dir'])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True)
+            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             is_file = 'file' in result.stdout
             
             if is_file:
@@ -584,7 +587,7 @@ class FileTransferManager:
                 target_path = os.path.join(computer_dir, filename)
                 
                 adb_cmd = self._build_adb_cmd(['pull', phone_dir, target_path])
-                result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
                 if result.returncode == 0:
                     file_count = 1
@@ -597,7 +600,7 @@ class FileTransferManager:
                 # 目录，需要递归拉取
                 # 先获取目录结构
                 adb_cmd = self._build_adb_cmd(['shell', 'find', phone_dir, '-type', 'f'])
-                result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
                 if result.returncode != 0:
                     return {"success": False, "error": f"获取手机文件列表失败: {result.stderr}"}
@@ -617,7 +620,7 @@ class FileTransferManager:
                     
                     # 拉取文件
                     adb_cmd = self._build_adb_cmd(['pull', phone_file_path, target_file_path])
-                    result = subprocess.run(adb_cmd, capture_output=True, text=True)
+                    result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                     
                     if result.returncode == 0:
                         file_count += 1
