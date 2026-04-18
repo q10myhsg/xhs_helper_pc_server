@@ -7,7 +7,6 @@
 
 import os
 import sys
-import subprocess
 
 
 def main():
@@ -70,25 +69,29 @@ def main():
 
 
 def launch_app():
-    """启动主应用"""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    app_path = os.path.join(script_dir, 'app.py')
-    
-    if not os.path.exists(app_path):
-        print(f"错误: 找不到 app.py: {app_path}")
-        return 1
-    
-    print(f"启动主应用: {app_path}")
-    
-    # 使用当前 Python 解释器启动 app.py
+    """启动主应用 - 直接导入运行，兼容打包环境"""
     try:
-        subprocess.run([sys.executable, app_path])
+        print("启动主应用...")
+        
+        # 确保配置文件存在
+        os.makedirs("config", exist_ok=True)
+        if not os.path.exists("config/config.json"):
+            import json
+            with open("config/config.json", "w", encoding="utf-8") as f:
+                json.dump({}, f, indent=2, ensure_ascii=False)
+        
+        # 直接导入并运行 app
+        from app import app
+        app.run(host="0.0.0.0", port=5002, debug=False, threaded=True)
         return 0
+        
     except KeyboardInterrupt:
         print("\n应用已停止")
         return 0
     except Exception as e:
         print(f"启动主应用失败: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
 
