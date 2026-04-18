@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import uiautomator2
 
 # 根据平台选择分隔符
 if sys.platform == 'win32':
@@ -8,13 +9,17 @@ if sys.platform == 'win32':
 else:
     sep = ':'
 
+# 获取 uiautomator2 的 assets 目录路径
+uiautomator2_path = os.path.dirname(uiautomator2.__file__)
+uiautomator2_assets_path = os.path.join(uiautomator2_path, 'assets')
+
 # 构建 PyInstaller 命令
 cmd = [
     'pyinstaller',
     '--clean',
     '--name', 'xhs_helper',
     '--onefile',
-    '--console',
+    '--windowed',  # 使用窗口模式，不显示控制台
     '--noupx',
     '--add-data', f'templates{sep}templates',
     '--add-data', f'static{sep}static',
@@ -22,6 +27,7 @@ cmd = [
     '--add-data', f'resources{sep}resources',
     '--add-data', f'create_notes{sep}create_notes',
     '--add-data', f'xhs_nurturing{sep}xhs_nurturing',
+    '--add-data', f'{uiautomator2_assets_path}{sep}uiautomator2/assets',
     '--hidden-import', 'flask',
     '--hidden-import', 'werkzeug',
     '--hidden-import', 'uiautomator2',
@@ -47,7 +53,10 @@ cmd = [
     '--hidden-import', 'venv_manager',
     '--hidden-import', 'env_setup_gui',
     '--hidden-import', 'tkinter',
-    'launcher.py'
+    '--hidden-import', 'webview',
+    '--hidden-import', 'waitress',
+    '--hidden-import', 'uiautomator2_patch',
+    'desktop_app.py'
 ]
 
 print(f"Running PyInstaller with command: {' '.join(cmd)}")

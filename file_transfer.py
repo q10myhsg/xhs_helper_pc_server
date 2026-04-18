@@ -37,6 +37,39 @@ class FileTransferManager:
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise RuntimeError("ADB命令不可用，请确保已安装Android SDK并将adb添加到环境变量")
     
+    def _find_writable_directory(self, base_paths: List[str]) -> Optional[str]:
+        """
+        从多个候选路径中找到一个可写入的目录
+        
+        参数:
+            base_paths: 候选路径列表
+            
+        返回:
+            可写入的路径，如果都不可写入返回None
+        """
+        for base_path in base_paths:
+            try:
+                # 先尝试创建目录
+                self._create_dir_on_device(base_path)
+                
+                # 尝试创建一个测试文件
+                test_file = f"{base_path}/.test_write.tmp"
+                adb_cmd = self._build_adb_cmd(['shell', 'echo', 'test', '>', test_file])
+                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                
+                # 检查文件是否创建成功
+                if self._check_path_exists_on_device(test_file):
+                    # 清理测试文件
+                    self._build_adb_cmd(['shell', 'rm', '-f', test_file])
+                    logger.info(f"找到可写入目录: {base_path}")
+                    return base_path
+            except Exception as e:
+                logger.debug(f"路径 {base_path} 不可写入: {e}")
+                continue
+        
+        logger.warning("所有候选路径都不可写入")
+        return None
+    
     def _build_adb_cmd(self, cmd: List[str]) -> List[str]:
         """构建ADB命令"""
         adb_cmd = ['adb']
@@ -354,13 +387,18 @@ class FileTransferManager:
                 filename = os.path.basename(computer_dir)
                 target_file_path = f"{phone_dir}/{filename}"
                 
+                # 合并 stdout 和 stderr 进行检查
+                combined_output = (result.stdout or '') + (result.stderr or '')
+                
                 # 检查是否传输成功 - 有时 adb 会返回非零错误码但实际上文件已传输成功
-                transfer_success = result.returncode == 0 or "1 file pushed" in result.stdout or "file pushed" in result.stdout
+                transfer_success = result.returncode == 0 or "1 file pushed" in combined_output or "file pushed" in combined_output
                 
                 if transfer_success:
                     file_count = 1
                     transferred_files.append(target_file_path)
                     logger.info(f"文件传输成功: {filename}")
+                    if result.returncode != 0:
+                        logger.info(f"注意：adb 返回非零退出码但文件传输成功")
                 else:
                     logger.error(f"文件传输失败: {result.stderr or result.stdout}")
                     return {"success": False, "error": result.stderr or result.stdout}
@@ -407,8 +445,11 @@ class FileTransferManager:
                     target_file_path = f"{target_file_dir}/{os.path.basename(file_path)}"
                     target_file_path = target_file_path.replace('//', '/')
                     
+                    # 合并 stdout 和 stderr 进行检查
+                    combined_output = (result.stdout or '') + (result.stderr or '')
+                    
                     # 检查是否传输成功 - 有时 adb 会返回非零错误码但实际上文件已传输成功
-                    transfer_success = result.returncode == 0 or "1 file pushed" in result.stdout or "file pushed" in result.stdout
+                    transfer_success = result.returncode == 0 or "1 file pushed" in combined_output or "file pushed" in combined_output
                     
                     if transfer_success:
                         file_count += 1
@@ -417,6 +458,8 @@ class FileTransferManager:
                         # 修改文件时间戳，确保按顺序显示
                         self._modify_file_timestamp(target_file_path, file_count)
                         logger.info(f"[{file_count}/{len(all_files)}] 传输成功: {rel_path}")
+                        if result.returncode != 0:
+                            logger.info(f"注意：adb 返回非零退出码但文件传输成功")
                     else:
                         logger.error(f"传输失败: {rel_path}, 错误: {result.stderr or result.stdout}")
                         success = False

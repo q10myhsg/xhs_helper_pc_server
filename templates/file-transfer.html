@@ -4,6 +4,17 @@
 <h1>📱 文件传输工具</h1>
 <p style="color: #666; margin-bottom: 20px;">一键将电脑文件传输到手机，支持自动清理和传输后清空</p>
 
+<div class="config-section" style="background: #fff3cd; border: 1px solid #ffecb5; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+    <h3 style="color: #856404; margin-top: 0;">⚠️ 重要提示</h3>
+    <p style="color: #856404; margin-bottom: 10px;">为了避免 "Operation not permitted" 错误，建议使用以下手机目录之一：</p>
+    <ul style="color: #856404; margin: 0; padding-left: 20px;">
+        <li><strong>/sdcard/Android/media/传输专用目录</strong>（推荐，Android 10+ 兼容性最好）</li>
+        <li><strong>/sdcard/Download/传输专用目录</strong>（较新版本可能有权限问题）</li>
+        <li><strong>/sdcard/Pictures/传输专用目录</strong></li>
+        <li><strong>/sdcard/DCIM/传输专用目录</strong></li>
+    </ul>
+</div>
+
 <div class="config-section">
     <h2>📱 选择目标设备</h2>
     <p style="color: #666; font-size: 14px; margin-bottom: 15px;">请选择要传输文件的在线设备</p>
@@ -26,7 +37,13 @@
 
     <div class="form-group">
         <label for="ft-phone-dir">手机目录</label>
-        <input type="text" id="ft-phone-dir" placeholder="例如: /sdcard/Download/传输专用目录" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        <input type="text" id="ft-phone-dir" placeholder="例如: /sdcard/Android/media/传输专用目录" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+        <p style="color: #999; font-size: 12px; margin-bottom: 10px;">建议使用 /sdcard/Android/media/ 开头的路径</p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-sm btn-info" onclick="setPhoneDir('/sdcard/Android/media/传输专用目录')">📁 使用推荐路径</button>
+            <button class="btn btn-sm btn-info" onclick="setPhoneDir('/sdcard/Download/传输专用目录')">📁 使用 Download 路径</button>
+            <button class="btn btn-sm btn-info" onclick="setPhoneDir('/sdcard/Pictures/传输专用目录')">📁 使用 Pictures 路径</button>
+        </div>
     </div>
 
     <button class="btn btn-secondary" onclick="saveFileTransferConfig()">💾 保存配置</button>
@@ -83,6 +100,11 @@ function initFileTransferConfig() {
         if (config.computer_dir) document.getElementById('ft-computer-dir').value = config.computer_dir;
         if (config.phone_dir) document.getElementById('ft-phone-dir').value = config.phone_dir;
     }
+}
+
+function setPhoneDir(path) {
+    document.getElementById('ft-phone-dir').value = path;
+    saveFileTransferConfig();
 }
 
 function saveFileTransferConfig() {
