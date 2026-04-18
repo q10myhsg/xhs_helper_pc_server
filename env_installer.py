@@ -36,15 +36,29 @@ class EnvInstaller:
         self.is_mac = self.system == 'Darwin'
         self.is_linux = self.system == 'Linux'
         
-        # 创建不验证 SSL 的上下文
-        self._ssl_context = ssl.create_default_context()
-        self._ssl_context.check_hostname = False
-        self._ssl_context.verify_mode = ssl.CERT_NONE
+        # 禁用 SSL 验证（全局设置）
+        self._disable_ssl_verification()
         
         # 安装目录
         self.install_dir = self._get_install_dir()
         self.bin_dir = os.path.join(self.install_dir, 'bin')
         os.makedirs(self.bin_dir, exist_ok=True)
+    
+    def _disable_ssl_verification(self):
+        """禁用 SSL 证书验证，兼容所有 Python 版本"""
+        try:
+            # 方法1: 创建默认的不验证 SSL 的上下文
+            self._ssl_context = ssl.create_default_context()
+            self._ssl_context.check_hostname = False
+            self._ssl_context.verify_mode = ssl.CERT_NONE
+        except:
+            pass
+        
+        try:
+            # 方法2: 全局禁用 SSL 验证
+            ssl._create_default_https_context = ssl._create_unverified_context
+        except:
+            pass
     
     def _get_install_dir(self) -> str:
         """获取安装目录"""
@@ -125,7 +139,7 @@ class EnvInstaller:
             try:
                 url = mirror + filename
                 print(f'尝试从镜像源 {i+1}/{len(self.ADB_MIRRORS)} 下载: {url}')
-                urllib.request.urlretrieve(url, zip_path, context=self._ssl_context)
+                urllib.request.urlretrieve(url, zip_path)
                 print(f'下载成功！')
                 return zip_path
             except Exception as e:
@@ -284,7 +298,7 @@ class EnvInstaller:
             zip_path = os.path.join(tempfile.gettempdir(), 'poppler.zip')
             
             print(f'下载 Poppler...')
-            urllib.request.urlretrieve(url, zip_path, context=self._ssl_context)
+            urllib.request.urlretrieve(url, zip_path)
             
             print(f'解压 Poppler...')
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
