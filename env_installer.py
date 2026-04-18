@@ -21,6 +21,18 @@ import tempfile
 class EnvInstaller:
     """环境安装器"""
     
+    # 国内镜像源列表（优先使用，依次尝试）
+    ADB_MIRRORS = [
+        # 腾讯云镜像
+        'https://mirrors.cloud.tencent.com/android/repository/',
+        # 阿里云镜像
+        'https://mirrors.aliyun.com/android/repository/',
+        # 华为云镜像
+        'https://mirrors.huaweicloud.com/android/repository/',
+        # 官方源（最后备选）
+        'https://dl.google.com/android/repository/'
+    ]
+    
     def __init__(self):
         self.system = platform.system()
         self.is_windows = self.system == 'Windows'
@@ -95,15 +107,43 @@ class EnvInstaller:
         else:
             return self._install_adb_linux()
     
+    def _download_with_mirrors(self, filename: str) -> Optional[str]:
+        """
+        使用多个镜像源下载文件
+        
+        参数:
+            filename: 要下载的文件名
+            
+        返回:
+            下载成功的文件路径，失败返回 None
+        """
+        zip_path = os.path.join(tempfile.gettempdir(), filename)
+        
+        for i, mirror in enumerate(self.ADB_MIRRORS):
+            try:
+                url = mirror + filename
+                print(f'尝试从镜像源 {i+1}/{len(self.ADB_MIRRORS)} 下载: {url}')
+                urllib.request.urlretrieve(url, zip_path)
+                print(f'下载成功！')
+                return zip_path
+            except Exception as e:
+                print(f'镜像源 {i+1} 下载失败: {str(e)}')
+                continue
+        
+        print('所有镜像源都下载失败')
+        return None
+    
     def _install_adb_windows(self) -> Dict:
         """Windows 下安装 ADB"""
         try:
-            # 使用 Google 的 Platform Tools
-            url = 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip'
-            zip_path = os.path.join(tempfile.gettempdir(), 'platform-tools.zip')
-            
             print(f'下载 ADB 工具...')
-            urllib.request.urlretrieve(url, zip_path)
+            zip_path = self._download_with_mirrors('platform-tools-latest-windows.zip')
+            
+            if not zip_path:
+                return {
+                    'success': False,
+                    'message': 'ADB 下载失败，请检查网络连接\n或手动安装: https://developer.android.com/studio/releases/platform-tools'
+                }
             
             print(f'解压 ADB 工具...')
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -154,12 +194,15 @@ class EnvInstaller:
                         'message': 'ADB 安装成功'
                     }
             
-            # 直接下载 Platform Tools
-            url = 'https://dl.google.com/android/repository/platform-tools-latest-darwin.zip'
-            zip_path = os.path.join(tempfile.gettempdir(), 'platform-tools.zip')
-            
+            # 直接下载 Platform Tools（使用镜像源）
             print(f'下载 ADB 工具...')
-            urllib.request.urlretrieve(url, zip_path)
+            zip_path = self._download_with_mirrors('platform-tools-latest-darwin.zip')
+            
+            if not zip_path:
+                return {
+                    'success': False,
+                    'message': 'ADB 下载失败，请检查网络连接\n或手动运行: brew install --cask android-platform-tools'
+                }
             
             print(f'解压 ADB 工具...')
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
