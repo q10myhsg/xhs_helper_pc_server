@@ -482,7 +482,7 @@
             
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 <!-- 水印图片 -->
-                <div class="pdf-upload-area" id="watermark-upload-area" ondragover="handleDragOver(event, 'watermark')" ondragleave="handleDragLeave(event, 'watermark')" ondrop="handleDrop(event, 'watermark')">
+                <div class="pdf-upload-area" id="watermark-upload-area">
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <div style="flex: 0 0 80px; text-align: center;">
                             <div style="width: 60px; height: 60px; background: #667eea; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
@@ -491,18 +491,11 @@
                             <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">水印图片</label>
                         </div>
                         <div style="flex: 1; min-width: 200px;">
-                            <input type="file" id="pdf-watermark-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <button class="btn btn-primary" onclick="document.getElementById('pdf-watermark-input').click()">
+                                <button class="btn btn-primary" onclick="selectPdfImage('watermark')">
                                     📁 选择文件
                                 </button>
                                 <span id="pdf-watermark-status" style="color: #666; font-size: 13px;">支持 JPG、PNG、GIF 格式</span>
-                            </div>
-                            <div id="pdf-watermark-progress" style="display: none; margin-top: 10px;">
-                                <div class="pdf-progress-bar">
-                                    <div class="pdf-progress-fill" id="pdf-watermark-progress-bar" style="width: 0%;"></div>
-                                </div>
-                                <span style="font-size: 12px; color: #888;">上传中...</span>
                             </div>
                             <div id="pdf-watermark-name" style="margin-top: 8px; color: #333; font-weight: 500;">使用默认水印</div>
                         </div>
@@ -514,7 +507,7 @@
                 </div>
 
                 <!-- 页眉图片 -->
-                <div class="pdf-upload-area" id="header-upload-area" ondragover="handleDragOver(event, 'header')" ondragleave="handleDragLeave(event, 'header')" ondrop="handleDrop(event, 'header')">
+                <div class="pdf-upload-area" id="header-upload-area">
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <div style="flex: 0 0 80px; text-align: center;">
                             <div style="width: 60px; height: 60px; background: #11998e; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
@@ -523,18 +516,11 @@
                             <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">页眉图片</label>
                         </div>
                         <div style="flex: 1; min-width: 200px;">
-                            <input type="file" id="pdf-header-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <button class="btn btn-success" onclick="document.getElementById('pdf-header-input').click()">
+                                <button class="btn btn-success" onclick="selectPdfImage('header')">
                                     📁 选择文件
                                 </button>
                                 <span id="pdf-header-status" style="color: #666; font-size: 13px;">支持 JPG、PNG、GIF 格式</span>
-                            </div>
-                            <div id="pdf-header-progress" style="display: none; margin-top: 10px;">
-                                <div class="pdf-progress-bar">
-                                    <div class="pdf-progress-fill" id="pdf-header-progress-bar" style="width: 0%; background: #11998e;"></div>
-                                </div>
-                                <span style="font-size: 12px; color: #888;">上传中...</span>
                             </div>
                             <div id="pdf-header-name" style="margin-top: 8px; color: #333; font-weight: 500;">未选择</div>
                         </div>
@@ -546,7 +532,7 @@
                 </div>
 
                 <!-- 页脚图片 -->
-                <div class="pdf-upload-area" id="footer-upload-area" ondragover="handleDragOver(event, 'footer')" ondragleave="handleDragLeave(event, 'footer')" ondrop="handleDrop(event, 'footer')">
+                <div class="pdf-upload-area" id="footer-upload-area">
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <div style="flex: 0 0 80px; text-align: center;">
                             <div style="width: 60px; height: 60px; background: #f093fb; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
@@ -555,18 +541,11 @@
                             <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">页脚图片</label>
                         </div>
                         <div style="flex: 1; min-width: 200px;">
-                            <input type="file" id="pdf-footer-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
                             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                                <button class="btn btn-primary" style="background: #f093fb; border: none;" onclick="document.getElementById('pdf-footer-input').click()">
+                                <button class="btn btn-primary" style="background: #f093fb; border: none;" onclick="selectPdfImage('footer')">
                                     📁 选择文件
                                 </button>
                                 <span id="pdf-footer-status" style="color: #666; font-size: 13px;">支持 JPG、PNG、GIF 格式</span>
-                            </div>
-                            <div id="pdf-footer-progress" style="display: none; margin-top: 10px;">
-                                <div class="pdf-progress-bar">
-                                    <div class="pdf-progress-fill" id="pdf-footer-progress-bar" style="width: 0%; background: #f093fb;"></div>
-                                </div>
-                                <span style="font-size: 12px; color: #888;">上传中...</span>
                             </div>
                             <div id="pdf-footer-name" style="margin-top: 8px; color: #333; font-weight: 500;">未选择</div>
                         </div>
@@ -772,6 +751,17 @@ let pdfImagesConfig = {
     footer: null
 };
 
+// 将本地文件路径转换为可访问的URL
+function getLocalFileUrl(filePath) {
+    if (!filePath) return null;
+    // 如果已经是URL格式，直接返回
+    if (filePath.startsWith('/static/') || filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        return filePath;
+    }
+    // 本地文件路径，使用/local-file路由
+    return '/local-file?path=' + encodeURIComponent(filePath);
+}
+
 // 页面加载时初始化PDF图片配置
 function initPdfImagesConfig() {
     // 从localStorage加载配置
@@ -800,139 +790,89 @@ function updatePdfImagesUI() {
     if (pdfImagesConfig.watermark) {
         document.getElementById('pdf-watermark-name').textContent = '已选择自定义水印';
         document.getElementById('pdf-watermark-preview').style.display = 'block';
-        document.getElementById('pdf-watermark-preview').querySelector('img').src = pdfImagesConfig.watermark;
+        document.getElementById('pdf-watermark-preview').querySelector('img').src = getLocalFileUrl(pdfImagesConfig.watermark);
     }
     
     // 页眉
     if (pdfImagesConfig.header) {
         document.getElementById('pdf-header-name').textContent = '已选择页眉';
         document.getElementById('pdf-header-preview').style.display = 'block';
-        document.getElementById('pdf-header-preview').querySelector('img').src = pdfImagesConfig.header;
+        document.getElementById('pdf-header-preview').querySelector('img').src = getLocalFileUrl(pdfImagesConfig.header);
     }
     
     // 页脚
     if (pdfImagesConfig.footer) {
         document.getElementById('pdf-footer-name').textContent = '已选择页脚';
         document.getElementById('pdf-footer-preview').style.display = 'block';
-        document.getElementById('pdf-footer-preview').querySelector('img').src = pdfImagesConfig.footer;
+        document.getElementById('pdf-footer-preview').querySelector('img').src = getLocalFileUrl(pdfImagesConfig.footer);
     }
 }
 
-// 处理PDF图片上传
-function handlePdfImageUpload(event, type) {
-    const file = event.target.files[0];
-    if (!file) return;
-    processPdfImageFile(file, type);
-}
-
-// 处理拖放上传
-function handleDragOver(event, type) {
-    event.preventDefault();
-    event.stopPropagation();
-    const area = document.getElementById(`${type}-upload-area`);
-    area.classList.add('drag-over');
-}
-
-function handleDragLeave(event, type) {
-    event.preventDefault();
-    event.stopPropagation();
-    const area = document.getElementById(`${type}-upload-area`);
-    area.classList.remove('drag-over');
-}
-
-function handleDrop(event, type) {
-    event.preventDefault();
-    event.stopPropagation();
-    const area = document.getElementById(`${type}-upload-area`);
-    area.classList.remove('drag-over');
-    
-    const files = event.dataTransfer.files;
-    if (files.length > 0) {
-        const file = files[0];
-        if (file.type.startsWith('image/')) {
-            processPdfImageFile(file, type);
-        } else {
-            showPdfMessage('请上传图片文件（JPG、PNG、GIF）', 'error');
-        }
+// 打开图片文件选择对话框（使用PyWebview原生选择器）
+function selectPdfImage(type) {
+    if (isPyWebview()) {
+        // 使用PyWebview原生文件选择器
+        pywebview.api.open_image_file_dialog().then(result => {
+            if (result.success) {
+                // 保存本地文件路径到配置
+                pdfImagesConfig[type] = result.file_path;
+                localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+                
+                // 同时保存到服务器配置
+                savePdfImageConfig(type, result.file_path);
+                
+                // 更新UI
+                updatePdfImagesUI();
+                showPdfMessage(`${type === 'watermark' ? '水印' : type === 'header' ? '页眉' : '页脚'}图片已选择`, 'success');
+            } else {
+                showPdfMessage(result.message || '未选择文件', 'warning');
+            }
+        }).catch(error => {
+            console.error('文件选择失败:', error);
+            showPdfMessage('文件选择失败: ' + error, 'error');
+        });
+    } else {
+        // 浏览器环境下使用传统方式
+        showPdfMessage('请在桌面应用中使用此功能以支持完整路径记忆', 'warning');
     }
 }
 
-// 处理图片文件上传
-function processPdfImageFile(file, type) {
-    // 验证文件类型
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
-    if (!validTypes.includes(file.type)) {
-        showPdfMessage('不支持的文件格式，请上传 JPG、PNG 或 GIF 格式的图片', 'error');
-        return;
-    }
-
-    // 显示进度条
-    const progressDiv = document.getElementById(`pdf-${type}-progress`);
-    const progressBar = document.getElementById(`pdf-${type}-progress-bar`);
-    const statusSpan = document.getElementById(`pdf-${type}-status`);
-    progressDiv.style.display = 'block';
-    statusSpan.textContent = '上传中...';
-    
-    // 模拟进度
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        progress += 10;
-        progressBar.style.width = progress + '%';
-        if (progress >= 90) clearInterval(progressInterval);
-    }, 100);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', type);
-
-    fetch('/api/pdf/images/upload', {
+// 保存图片配置到服务器
+function savePdfImageConfig(type, filePath) {
+    fetch('/api/pdf/images/config', {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ...pdfImagesConfig,
+            [type]: filePath
+        })
     })
     .then(response => response.json())
     .then(data => {
-        clearInterval(progressInterval);
-        progressBar.style.width = '100%';
-        
-        setTimeout(() => {
-            progressDiv.style.display = 'none';
-            progressBar.style.width = '0%';
-            
-            if (data.success) {
-                pdfImagesConfig[type] = data.data.path;
-                localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
-                updatePdfImagesUI();
-                showPdfMessage(`${type === 'watermark' ? '水印' : type === 'header' ? '页眉' : '页脚'}上传成功`, 'success');
-            } else {
-                statusSpan.textContent = '上传失败';
-                showPdfMessage('上传失败: ' + data.error, 'error');
-            }
-        }, 300);
+        if (!data.success) {
+            console.error('保存配置失败:', data.error);
+        }
     })
     .catch(error => {
-        clearInterval(progressInterval);
-        progressDiv.style.display = 'none';
-        progressBar.style.width = '0%';
-        statusSpan.textContent = '上传出错';
-        showPdfMessage('上传错误: ' + error.message, 'error');
+        console.error('保存配置失败:', error);
     });
 }
 
 // 清除PDF图片
 function clearPdfImage(type) {
-    // 先调用后端API删除服务器上的图片和配置
-    fetch('/api/pdf/images/delete', {
+    // 更新前端配置
+    pdfImagesConfig[type] = null;
+    localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+    
+    // 更新服务器配置
+    fetch('/api/pdf/images/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: type })
+        body: JSON.stringify(pdfImagesConfig)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // 更新前端配置
-            pdfImagesConfig[type] = null;
-            localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
-            
             // 更新UI
             const nameMap = {
                 'watermark': '使用默认水印',
@@ -941,7 +881,6 @@ function clearPdfImage(type) {
             };
             document.getElementById(`pdf-${type}-name`).textContent = nameMap[type];
             document.getElementById(`pdf-${type}-preview`).style.display = 'none';
-            document.getElementById(`pdf-${type}-input`).value = '';
             
             showPdfMessage('已清除', 'success');
         } else {

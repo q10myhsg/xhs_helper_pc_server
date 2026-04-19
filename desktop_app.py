@@ -153,6 +153,35 @@ class Api:
                 'success': False,
                 'message': str(e)
             }
+    
+    def open_image_file_dialog(self):
+        """打开图片文件选择对话框，用于选择水印/页眉/页脚图片"""
+        try:
+            import webview
+            # 使用PyWebview的文件选择对话框，专门选择图片文件
+            file_paths = webview.windows[0].create_file_dialog(
+                dialog_type=webview.OPEN_DIALOG,
+                directory='',
+                allow_multiple=False,
+                save_filename='',
+                file_types=('图片文件 (*.png;*.jpg;*.jpeg;*.gif;*.bmp)', '所有文件 (*.*)')
+            )
+            
+            if file_paths and len(file_paths) > 0:
+                return {
+                    'success': True,
+                    'file_path': file_paths[0]
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': '未选择文件'
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'message': str(e)
+            }
 
 
 def main():
