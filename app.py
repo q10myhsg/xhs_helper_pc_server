@@ -847,7 +847,16 @@ def api_pdf_batch_convert():
                     end_page=settings.get('end_page'),
                     add_header=settings.get('add_header', False),
                     add_footer=settings.get('add_footer', False),
-                    output_dir=output_dir
+                    watermark_page_range=settings.get('watermark_page_range', 'even'),
+                    watermark_position=settings.get('watermark_position'),
+                    header_position=settings.get('header_position'),
+                    footer_position=settings.get('footer_position'),
+                    output_dir=output_dir,
+                    border_width=settings.get('border_width', 0),
+                    border_color=settings.get('border_color', '#000000'),
+                    background_color=settings.get('background_color', '#ffffff'),
+                    add_random_icon=settings.get('add_random_icon', False),
+                    icon_size=settings.get('icon_size')
                 )
 
                 # 获取相对路径
@@ -1099,7 +1108,8 @@ def api_pdf_batch_convert_local():
                     border_width=settings.get('border_width', 0),
                     border_color=settings.get('border_color', '#000000'),
                     background_color=settings.get('background_color', '#ffffff'),
-                    add_random_icon=settings.get('add_random_icon', False)
+                    add_random_icon=settings.get('add_random_icon', False),
+                    icon_size=settings.get('icon_size')
                 )
 
                 # 将本地路径转换为URL
@@ -1408,7 +1418,8 @@ def api_pdf_batch_convert_full_path():
                     border_width=settings.get('border_width', 0),
                     border_color=settings.get('border_color', '#000000'),
                     background_color=settings.get('background_color', '#ffffff'),
-                    add_random_icon=settings.get('add_random_icon', False)
+                    add_random_icon=settings.get('add_random_icon', False),
+                    icon_size=settings.get('icon_size')
                 )
                 
                 # 将本地路径转换为URL

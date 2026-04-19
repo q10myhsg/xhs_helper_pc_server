@@ -112,6 +112,11 @@
     background: #f5f5f5;
 }
 
+.pdf-upload-area.drag-over {
+    border-color: #667eea;
+    background: rgba(102,126,234,0.1);
+}
+
 .pdf-progress-bar {
     height: 8px;
     background: #e8e8e8;
@@ -179,18 +184,6 @@
     border-left: 4px solid #f56565;
 }
 
-.file-path-display {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-family: monospace;
-    font-size: 12px;
-    color: #495057;
-    word-break: break-all;
-    margin-top: 5px;
-}
-
 @media (max-width: 768px) {
     .pdf-grid {
         grid-template-columns: 1fr;
@@ -206,10 +199,22 @@
     color: white;
     border-color: #667eea;
 }
+
+.file-path-display {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #495057;
+    word-break: break-all;
+    margin-top: 5px;
+}
 </style>
 
 <h1>📄 pdf内容处理</h1>
-<p style="color: #666; margin-bottom: 20px;">支持批量处理多个PDF文件，自动记住文件路径</p>
+<p style="color: #666; margin-bottom: 20px;">支持批量处理多个PDF文件，自动记住完整路径</p>
 
 <!-- 步骤1: 选择PDF文件 -->
 <div class="pdf-step-card">
@@ -300,7 +305,7 @@
 
 <!-- 步骤2: 配置转换选项 -->
 <div class="pdf-step-card">
-    <div class="pdf-step-header step-2">
+    <div class="pdf-step-header.step-2">
         <div class="pdf-step-icon">⚙️</div>
         <div class="pdf-step-title">
             <h2>步骤2: 配置水印和页眉页脚等</h2>
@@ -360,7 +365,7 @@
                     </label>
                     <label class="pdf-checkbox-label">
                         <input type="checkbox" id="pdf-generate-simple" checked>
-                        <span>生成精简版PDF（前3页）</span>
+                        <span>生成精简PDF（前3页）</span>
                     </label>
                 </div>
 
@@ -372,82 +377,226 @@
     </div>
 </div>
 
-<!-- 高级配置区域 -->
-<div class="pdf-step-card" style="border-left: 4px solid #f093fb;">
-    <div class="pdf-step-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer;" onclick="toggleAdvancedConfig()">
-        <div class="pdf-step-icon">🎛️</div>
-        <div class="pdf-step-title" style="flex: 1;">
-            <h2>高级配置</h2>
-            <p>边框、背景色等高级选项（点击展开/收起）</p>
-        </div>
-        <span id="advanced-config-toggle" style="font-size: 20px;">▼</span>
-    </div>
-    <div class="pdf-step-body" id="advanced-config-content" style="display: none;">
-        <div class="pdf-grid">
-            <div>
-                <h4 style="margin-bottom: 15px; color: #333;">� 水印设置</h4>
-                <div class="form-group">
-                    <label>水印页面范围</label>
-                    <select id="pdf-watermark-page-range">
-                        <option value="even">偶数页</option>
-                        <option value="odd">奇数页</option>
-                        <option value="all">全部页</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>水印位置 X（百分比）</label>
-                    <input type="number" id="pdf-watermark-pos-x" min="0" max="100" value="50" style="width: 100px;">
-                </div>
-                
-                <div class="form-group">
-                    <label>水印位置 Y（百分比）</label>
-                    <input type="number" id="pdf-watermark-pos-y" min="0" max="100" value="50" style="width: 100px;">
-                </div>
-                
-                <div class="form-group">
-                    <label>水印缩放比例（%）</label>
-                    <input type="number" id="pdf-watermark-scale" min="10" max="300" value="100" style="width: 100px;">
-                    <small style="color: #888; display: block; margin-top: 4px;">100表示原图大小</small>
-                </div>
-            </div>
-            
-            <div>
-                <h4 style="margin-bottom: 15px; color: #333;">📑 页眉页脚设置</h4>
-                <div class="form-group">
-                    <label>页眉顶部偏移（像素）</label>
-                    <input type="number" id="pdf-header-top" min="0" value="0" style="width: 100px;">
-                </div>
-                
-                <div class="form-group">
-                    <label>页脚底部偏移（像素）</label>
-                    <input type="number" id="pdf-footer-bottom" min="0" value="0" style="width: 100px;">
-                </div>
-                
-                <h4 style="margin: 20px 0 15px 0; color: #333;">🎯 随机图标设置</h4>
-                <div class="form-group">
-                    <label>图标大小（像素）</label>
-                    <input type="number" id="pdf-icon-size" min="20" max="200" value="80" placeholder="80" style="width: 100px;">
-                    <small style="color: #888; display: block; margin-top: 4px;">留空表示使用原始大小</small>
-                </div>
-            </div>
-        </div>
-        
-        <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
-            <h4 style="margin-bottom: 15px; color: #333;">�️ 边框与背景</h4>
+<!-- 高级设置 -->
+<div style="margin-bottom: 20px;">
+    <button class="btn btn-secondary" onclick="toggleWatermarkAdvancedOptions()" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+        <span>🔧 高级设置</span>
+        <span id="advanced-toggle-icon">▼</span>
+    </button>
+</div>
+
+<div class="pdf-step-card" id="advanced-options-section" style="display: none;">
+    <div class="pdf-step-body">
+        <!-- 水印高级设置 -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="color: #667eea; margin-bottom: 15px; font-size: 16px;">💧 水印高级设置</h3>
             <div class="pdf-grid">
                 <div>
+                    <h4 style="margin-bottom: 12px;">📄 水印应用页面范围</h4>
                     <div class="form-group">
-                        <label class="pdf-checkbox-label" style="background: transparent; padding: 0; margin-bottom: 15px;">
-                            <input type="checkbox" id="pdf-add-border-background" onchange="toggleBorderBackgroundOptions()">
-                            <span>启用边框和背景</span>
-                        </label>
+                        <label>选择模式</label>
+                        <select id="pdf-watermark-page-mode" onchange="toggleWatermarkPageInput()">
+                            <option value="even">偶数页</option>
+                            <option value="odd">奇数页</option>
+                            <option value="all">全部页面</option>
+                            <option value="custom">自定义页码</option>
+                        </select>
                     </div>
+                    
+                    <div class="form-group" id="watermark-custom-pages-group" style="display: none;">
+                        <label>自定义页码</label>
+                        <input type="text" id="pdf-watermark-custom-pages" placeholder="例如: 1,3,5 或 1-5 或 1,3,5-7">
+                        <small style="color: #888; display: block; margin-top: 6px;">支持格式：离散页码(1,3,5)、连续范围(1-5)、混合(1,3,5-7)</small>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="margin-bottom: 12px;">📍 水印位置调整</h4>
+                    <div class="form-group">
+                        <label>水平位置</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="pdf-watermark-pos-x" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
+                            <span id="watermark-pos-x-value" style="min-width: 40px; text-align: center; font-weight: 500; color: #667eea;">50%</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>垂直位置</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="pdf-watermark-pos-y" min="0" max="100" value="50" style="flex: 1;" oninput="updateWatermarkPositionPreview()">
+                            <span id="watermark-pos-y-value" style="min-width: 40px; text-align: center; font-weight: 500; color: #667eea;">50%</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+                        <div class="pdf-preview-box">
+                            <div class="pdf-preview-dot" id="watermark-position-dot"></div>
+                        </div>
+                        <small style="color: #888; display: block; margin-top: 6px;">水印位置预览</small>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="margin-bottom: 12px;">🔍 水印大小调整</h4>
+                    <div class="form-group">
+                        <label>缩放比例</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="pdf-watermark-scale" min="10" max="200" value="100" style="flex: 1;" oninput="updateWatermarkScalePreview()">
+                            <span id="watermark-scale-value" style="min-width: 50px; text-align: center; font-weight: 500; color: #667eea;">100%</span>
+                        </div>
+                        <small style="color: #888; display: block; margin-top: 6px;">100% = 原图大小</small>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+                        <div class="pdf-preview-box" style="display: flex; align-items: center; justify-content: center;">
+                            <div class="pdf-preview-scale" id="watermark-scale-box" style="width: 40px; height: 30px;"></div>
+                        </div>
+                        <small style="color: #888; display: block; margin-top: 6px;">水印大小预览</small>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    <div id="border-options" style="display: none;">
+        <!-- 页眉页脚位置设置 -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="color: #667eea; margin-bottom: 15px; font-size: 16px;">📐 页眉页脚位置设置</h3>
+            <div class="pdf-grid">
+                <div class="form-group">
+                    <label>页眉顶部偏移（像素）</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="pdf-header-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('header-offset-value').textContent = this.value + 'px'">
+                        <span id="header-offset-value" style="min-width: 50px; text-align: center; font-weight: 500; color: #667eea;">0px</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>页脚底部偏移（像素）</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="pdf-footer-offset" min="0" max="100" value="0" style="flex: 1;" oninput="document.getElementById('footer-offset-value').textContent = this.value + 'px'">
+                        <span id="footer-offset-value" style="min-width: 50px; text-align: center; font-weight: 500; color: #667eea;">0px</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片素材设置 -->
+        <div style="margin-bottom: 30px;">
+            <h3 style="color: #667eea; margin-bottom: 15px; font-size: 16px;">🎨 图片素材设置</h3>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">上传自定义水印、页眉、页脚图片，将自动记住您的选择</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- 水印图片 -->
+                <div class="pdf-upload-area" id="watermark-upload-area" ondragover="handleDragOver(event, 'watermark')" ondragleave="handleDragLeave(event, 'watermark')" ondrop="handleDrop(event, 'watermark')">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 0 0 80px; text-align: center;">
+                            <div style="width: 60px; height: 60px; background: #667eea; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                <span style="font-size: 24px;">💧</span>
+                            </div>
+                            <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">水印图片</label>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="file" id="pdf-watermark-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'watermark')">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="document.getElementById('pdf-watermark-input').click()">
+                                    📁 选择文件
+                                </button>
+                                <span id="pdf-watermark-status" style="color: #666; font-size: 13px;">支持 JPG、PNG、GIF 格式</span>
+                            </div>
+                            <div id="pdf-watermark-progress" style="display: none; margin-top: 10px;">
+                                <div class="pdf-progress-bar">
+                                    <div class="pdf-progress-fill" id="pdf-watermark-progress-bar" style="width: 0%;"></div>
+                                </div>
+                                <span style="font-size: 12px; color: #888;">上传中...</span>
+                            </div>
+                            <div id="pdf-watermark-name" style="margin-top: 8px; color: #333; font-weight: 500;">使用默认水印</div>
+                        </div>
+                        <div id="pdf-watermark-preview" style="flex: 0 0 auto; display: none;">
+                            <img src="" class="pdf-image-preview">
+                        </div>
+                        <button class="btn btn-danger" onclick="clearPdfImage('watermark')" style="font-size: 12px; padding: 6px 12px;">🗑️ 清除</button>
+                    </div>
+                </div>
+
+                <!-- 页眉图片 -->
+                <div class="pdf-upload-area" id="header-upload-area" ondragover="handleDragOver(event, 'header')" ondragleave="handleDragLeave(event, 'header')" ondrop="handleDrop(event, 'header')">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 0 0 80px; text-align: center;">
+                            <div style="width: 60px; height: 60px; background: #11998e; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                <span style="font-size: 24px;">📰</span>
+                            </div>
+                            <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">页眉图片</label>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="file" id="pdf-header-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'header')">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <button class="btn btn-success" onclick="document.getElementById('pdf-header-input').click()">
+                                    📁 选择文件
+                                </button>
+                                <span id="pdf-header-status" style="color: #666; font-size: 13px;">支持 JPG、PNG、GIF 格式</span>
+                            </div>
+                            <div id="pdf-header-progress" style="display: none; margin-top: 10px;">
+                                <div class="pdf-progress-bar">
+                                    <div class="pdf-progress-fill" id="pdf-header-progress-bar" style="width: 0%; background: #11998e;"></div>
+                                </div>
+                                <span style="font-size: 12px; color: #888;">上传中...</span>
+                            </div>
+                            <div id="pdf-header-name" style="margin-top: 8px; color: #333; font-weight: 500;">未选择</div>
+                        </div>
+                        <div id="pdf-header-preview" style="flex: 0 0 auto; display: none;">
+                            <img src="" class="pdf-image-preview">
+                        </div>
+                        <button class="btn btn-danger" onclick="clearPdfImage('header')" style="font-size: 12px; padding: 6px 12px;">🗑️ 清除</button>
+                    </div>
+                </div>
+
+                <!-- 页脚图片 -->
+                <div class="pdf-upload-area" id="footer-upload-area" ondragover="handleDragOver(event, 'footer')" ondragleave="handleDragLeave(event, 'footer')" ondrop="handleDrop(event, 'footer')">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 0 0 80px; text-align: center;">
+                            <div style="width: 60px; height: 60px; background: #f093fb; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                <span style="font-size: 24px;">📃</span>
+                            </div>
+                            <label style="margin-top: 8px; font-weight: 600; color: #333; font-size: 13px;">页脚图片</label>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="file" id="pdf-footer-input" accept="image/jpeg,image/png,image/gif,image/jpg" style="display: none;" onchange="handlePdfImageUpload(event, 'footer')">
+                            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <button class="btn btn-primary" style="background: #f093fb; border: none;" onclick="document.getElementById('pdf-footer-input').click()">
+                                    📁 选择文件
+                                </button>
+                                <span id="pdf-footer-status" style="color: #666; font-size: 13px;">支持 JPG、PNG、GIF 格式</span>
+                            </div>
+                            <div id="pdf-footer-progress" style="display: none; margin-top: 10px;">
+                                <div class="pdf-progress-bar">
+                                    <div class="pdf-progress-fill" id="pdf-footer-progress-bar" style="width: 0%; background: #f093fb;"></div>
+                                </div>
+                                <span style="font-size: 12px; color: #888;">上传中...</span>
+                            </div>
+                            <div id="pdf-footer-name" style="margin-top: 8px; color: #333; font-weight: 500;">未选择</div>
+                        </div>
+                        <div id="pdf-footer-preview" style="flex: 0 0 auto; display: none;">
+                            <img src="" class="pdf-image-preview">
+                        </div>
+                        <button class="btn btn-danger" onclick="clearPdfImage('footer')" style="font-size: 12px; padding: 6px 12px;">🗑️ 清除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片边框和背景设置 -->
+        <div>
+            <h3 style="color: #667eea; margin-bottom: 15px; font-size: 16px;">🖼️ 图片边框和背景设置</h3>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">为转换后的图片添加边框和背景色（可选）</p>
+            
+            <div class="form-group">
+                <label class="pdf-checkbox-label" style="background: transparent; padding: 0; margin-bottom: 15px;">
+                    <input type="checkbox" id="pdf-add-border-background" onchange="toggleBorderBackgroundOptions()">
+                    <span>启用图片边框和背景设置</span>
+                </label>
+            </div>
+            
+            <div id="border-background-options" style="display: none;">
+                <div class="pdf-grid">
+                    <div>
                         <div class="form-group">
                             <label>边框宽度（像素）</label>
-                            <input type="number" id="pdf-border-width" min="0" max="50" value="10" placeholder="10" style="width: 120px;">
+                            <input type="number" id="pdf-border-width" min="0" max="50" value="0" placeholder="0" style="width: 120px;">
                             <small style="color: #888; display: block; margin-top: 4px;">0表示无边框</small>
                         </div>
 
@@ -475,7 +624,7 @@
 
 <!-- 步骤3: 开始转换 -->
 <div class="pdf-step-card">
-    <div class="pdf-step-header step-3">
+    <div class="pdf-step-header.step-3">
         <div class="pdf-step-icon">🚀</div>
         <div class="pdf-step-title">
             <h2>步骤3: 开始转换</h2>
@@ -531,11 +680,11 @@ const persistentFormIds = [
     // PDF转换配置
     'pdf-output-format', 'pdf-dpi', 'pdf-start-page', 'pdf-end-page',
     'pdf-add-watermark', 'pdf-add-header', 'pdf-add-footer', 'pdf-generate-simple',
+    'pdf-watermark-page-mode', 'pdf-watermark-custom-pages',
+    'pdf-watermark-pos-x', 'pdf-watermark-pos-y', 'pdf-watermark-scale',
+    'pdf-header-offset', 'pdf-footer-offset',
     'pdf-add-border-background', 'pdf-border-width', 'pdf-border-color', 'pdf-background-color',
-    'pdf-add-random-icon',
-    // 高级配置
-    'pdf-watermark-page-range', 'pdf-watermark-pos-x', 'pdf-watermark-pos-y', 'pdf-watermark-scale',
-    'pdf-header-top', 'pdf-footer-bottom', 'pdf-icon-size'
+    'pdf-add-random-icon'
 ];
 
 // 保存所有表单数据到localStorage
@@ -551,7 +700,7 @@ function saveAllFormData() {
             }
         }
     });
-    // 保存选择的PDF文件路径
+    // 保存选择的PDF文件（完整路径）
     if (selectedPdfFiles.length > 0) {
         formData['pdf-files'] = selectedPdfFiles;
     }
@@ -593,7 +742,7 @@ function restoreAllFormData() {
     }
 }
 
-// 设置自动保存监听器
+// 设置自动保存监听
 function setupAutoSaveListeners() {
     persistentFormIds.forEach(id => {
         const element = document.getElementById(id);
@@ -604,6 +753,203 @@ function setupAutoSaveListeners() {
                 element.addEventListener('change', saveAllFormData);
             }
         }
+    });
+
+    // 滑块在input时实时保存
+    ['pdf-watermark-pos-x', 'pdf-watermark-pos-y', 'pdf-watermark-scale', 'pdf-header-offset', 'pdf-footer-offset'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', saveAllFormData);
+        }
+    });
+}
+
+// ==================== PDF图片配置功能 ====================
+
+let pdfImagesConfig = {
+    watermark: null,
+    header: null,
+    footer: null
+};
+
+// 页面加载时初始化PDF图片配置
+function initPdfImagesConfig() {
+    // 从localStorage加载配置
+    const savedConfig = localStorage.getItem('pdfImagesConfig');
+    if (savedConfig) {
+        pdfImagesConfig = JSON.parse(savedConfig);
+        updatePdfImagesUI();
+    }
+
+    // 从服务器加载配置
+    fetch('/api/pdf/images/config')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                pdfImagesConfig = data.data;
+                localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+                updatePdfImagesUI();
+            }
+        })
+        .catch(error => console.log('加载配置失败:', error));
+}
+
+// 更新PDF图片UI
+function updatePdfImagesUI() {
+    // 水印
+    if (pdfImagesConfig.watermark) {
+        document.getElementById('pdf-watermark-name').textContent = '已选择自定义水印';
+        document.getElementById('pdf-watermark-preview').style.display = 'block';
+        document.getElementById('pdf-watermark-preview').querySelector('img').src = pdfImagesConfig.watermark;
+    }
+    
+    // 页眉
+    if (pdfImagesConfig.header) {
+        document.getElementById('pdf-header-name').textContent = '已选择页眉';
+        document.getElementById('pdf-header-preview').style.display = 'block';
+        document.getElementById('pdf-header-preview').querySelector('img').src = pdfImagesConfig.header;
+    }
+    
+    // 页脚
+    if (pdfImagesConfig.footer) {
+        document.getElementById('pdf-footer-name').textContent = '已选择页脚';
+        document.getElementById('pdf-footer-preview').style.display = 'block';
+        document.getElementById('pdf-footer-preview').querySelector('img').src = pdfImagesConfig.footer;
+    }
+}
+
+// 处理PDF图片上传
+function handlePdfImageUpload(event, type) {
+    const file = event.target.files[0];
+    if (!file) return;
+    processPdfImageFile(file, type);
+}
+
+// 处理拖放上传
+function handleDragOver(event, type) {
+    event.preventDefault();
+    event.stopPropagation();
+    const area = document.getElementById(`${type}-upload-area`);
+    area.classList.add('drag-over');
+}
+
+function handleDragLeave(event, type) {
+    event.preventDefault();
+    event.stopPropagation();
+    const area = document.getElementById(`${type}-upload-area`);
+    area.classList.remove('drag-over');
+}
+
+function handleDrop(event, type) {
+    event.preventDefault();
+    event.stopPropagation();
+    const area = document.getElementById(`${type}-upload-area`);
+    area.classList.remove('drag-over');
+    
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith('image/')) {
+            processPdfImageFile(file, type);
+        } else {
+            showPdfMessage('请上传图片文件（JPG、PNG、GIF）', 'error');
+        }
+    }
+}
+
+// 处理图片文件上传
+function processPdfImageFile(file, type) {
+    // 验证文件类型
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+        showPdfMessage('不支持的文件格式，请上传 JPG、PNG 或 GIF 格式的图片', 'error');
+        return;
+    }
+
+    // 显示进度条
+    const progressDiv = document.getElementById(`pdf-${type}-progress`);
+    const progressBar = document.getElementById(`pdf-${type}-progress-bar`);
+    const statusSpan = document.getElementById(`pdf-${type}-status`);
+    progressDiv.style.display = 'block';
+    statusSpan.textContent = '上传中...';
+    
+    // 模拟进度
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += 10;
+        progressBar.style.width = progress + '%';
+        if (progress >= 90) clearInterval(progressInterval);
+    }, 100);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    fetch('/api/pdf/images/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        setTimeout(() => {
+            progressDiv.style.display = 'none';
+            progressBar.style.width = '0%';
+            
+            if (data.success) {
+                pdfImagesConfig[type] = data.data.path;
+                localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+                updatePdfImagesUI();
+                showPdfMessage(`${type === 'watermark' ? '水印' : type === 'header' ? '页眉' : '页脚'}上传成功`, 'success');
+            } else {
+                statusSpan.textContent = '上传失败';
+                showPdfMessage('上传失败: ' + data.error, 'error');
+            }
+        }, 300);
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        progressDiv.style.display = 'none';
+        progressBar.style.width = '0%';
+        statusSpan.textContent = '上传出错';
+        showPdfMessage('上传错误: ' + error.message, 'error');
+    });
+}
+
+// 清除PDF图片
+function clearPdfImage(type) {
+    // 先调用后端API删除服务器上的图片和配置
+    fetch('/api/pdf/images/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: type })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 更新前端配置
+            pdfImagesConfig[type] = null;
+            localStorage.setItem('pdfImagesConfig', JSON.stringify(pdfImagesConfig));
+            
+            // 更新UI
+            const nameMap = {
+                'watermark': '使用默认水印',
+                'header': '未选择',
+                'footer': '未选择'
+            };
+            document.getElementById(`pdf-${type}-name`).textContent = nameMap[type];
+            document.getElementById(`pdf-${type}-preview`).style.display = 'none';
+            document.getElementById(`pdf-${type}-input`).value = '';
+            
+            showPdfMessage('已清除', 'success');
+        } else {
+            showPdfMessage('清除失败: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showPdfMessage('清除失败: ' + error.message, 'error');
     });
 }
 
@@ -640,7 +986,6 @@ function openPdfFileDialog() {
     } else {
         // 浏览器环境下使用传统方式（作为备用）
         showPdfMessage('请在桌面应用中使用此功能以支持完整路径记忆', 'warning');
-        // 可以添加传统文件选择作为备用
     }
 }
 
@@ -702,7 +1047,7 @@ let noteContent = {
 function parseNoteJson() {
     const jsonInput = document.getElementById('note-json-input').value.trim();
     
-    if (!jsonInput) {
+    if (!jsonInput) {;
         showPdfMessage('请输入JSON格式的笔记内容', 'error');
         return;
     }
@@ -840,65 +1185,66 @@ function fallbackCopy(text, typeName) {
             showPdfMessage('❌ 复制失败，请手动复制', 'error');
         }
     } catch (err) {
-        showPdfMessage('❌ 复制失败: ' + (err.message || '未知错误'), 'error');
+        showPdfMessage('❌ 复制失败: ' + err.message, 'error');
     } finally {
         document.body.removeChild(textArea);
     }
 }
 
-// ==================== PDF转换功能 ====================
+// ==================== 水印高级设置功能 ====================
 
-// 显示PDF消息
-function showPdfMessage(message, type = 'info') {
-    const errorDiv = document.getElementById('pdf-error');
-    const alertDiv = errorDiv.querySelector('.alert');
-    
-    if (type === 'error') {
-        alertDiv.className = 'alert alert-danger';
-    } else if (type === 'success') {
-        alertDiv.className = 'alert alert-success';
-    } else if (type === 'warning') {
-        alertDiv.className = 'alert alert-warning';
-    } else {
-        alertDiv.className = 'alert alert-info';
-    }
-    
-    alertDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-    }, 5000);
-}
-
-// 切换水印选项
 function toggleWatermarkOptions() {
     const isEnabled = document.getElementById('pdf-add-watermark').checked;
-    saveAllFormData();
+    // 高级设置区域由"高级设置"按钮控制，这里不做处理
 }
 
-// 高级配置展开/收起
-function toggleAdvancedConfig() {
-    const content = document.getElementById('advanced-config-content');
-    const toggle = document.getElementById('advanced-config-toggle');
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        toggle.textContent = '▲';
-    } else {
-        content.style.display = 'none';
-        toggle.textContent = '▼';
-    }
+function toggleWatermarkAdvancedOptions() {
+    const section = document.getElementById('advanced-options-section');
+    const icon = document.getElementById('advanced-toggle-icon');
+    const isVisible = section.style.display !== 'none';
+    section.style.display = isVisible ? 'none' : 'block';
+    icon.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
-// 边框背景选项切换
+function toggleWatermarkPageInput() {
+    const mode = document.getElementById('pdf-watermark-page-mode').value;
+    const customGroup = document.getElementById('watermark-custom-pages-group');
+    customGroup.style.display = mode === 'custom' ? 'block' : 'none';
+}
+
+function updateWatermarkPositionPreview() {
+    const x = document.getElementById('pdf-watermark-pos-x').value;
+    const y = document.getElementById('pdf-watermark-pos-y').value;
+    
+    document.getElementById('watermark-pos-x-value').textContent = x + '%';
+    document.getElementById('watermark-pos-y-value').textContent = y + '%';
+    
+    const dot = document.getElementById('watermark-position-dot');
+    dot.style.left = x + '%';
+    dot.style.top = y + '%';
+}
+
+function updateWatermarkScalePreview() {
+    const scale = document.getElementById('pdf-watermark-scale').value;
+    document.getElementById('watermark-scale-value').textContent = scale + '%';
+    
+    const box = document.getElementById('watermark-scale-box');
+    const baseWidth = 40;
+    const baseHeight = 30;
+    const newWidth = baseWidth * (scale / 100);
+    const newHeight = baseHeight * (scale / 100);
+    
+    box.style.width = newWidth + 'px';
+    box.style.height = newHeight + 'px';
+}
+
 function toggleBorderBackgroundOptions() {
     const isEnabled = document.getElementById('pdf-add-border-background').checked;
-    const borderOptions = document.getElementById('border-options');
+    const borderOptions = document.getElementById('border-background-options');
     borderOptions.style.display = isEnabled ? 'block' : 'none';
     saveAllFormData();
 }
 
-// 同步边框颜色
 function syncBorderColor() {
     const textInput = document.getElementById('pdf-border-color-text');
     const colorInput = document.getElementById('pdf-border-color');
@@ -911,7 +1257,6 @@ function syncBorderColor() {
     }
 }
 
-// 同步背景颜色
 function syncBackgroundColor() {
     const textInput = document.getElementById('pdf-background-color-text');
     const colorInput = document.getElementById('pdf-background-color');
@@ -924,70 +1269,62 @@ function syncBackgroundColor() {
     }
 }
 
-// 批量转换PDF
+// ==================== PDF转换功能 ====================
+
+function getWatermarkPageRange() {
+    const mode = document.getElementById('pdf-watermark-page-mode').value;
+    
+    if (mode === 'custom') {
+        const customPages = document.getElementById('pdf-watermark-custom-pages').value;
+        return customPages || 'even';
+    }
+    
+    return mode;
+}
+
+function getWatermarkPosition() {
+    const x = parseInt(document.getElementById('pdf-watermark-pos-x').value) / 100;
+    const y = parseInt(document.getElementById('pdf-watermark-pos-y').value) / 100;
+    return { x, y };
+}
+
+function getHeaderFooterPositions() {
+    const headerOffset = parseInt(document.getElementById('pdf-header-offset').value);
+    const footerOffset = parseInt(document.getElementById('pdf-footer-offset').value);
+    return {
+        header: { top: headerOffset },
+        footer: { bottom: footerOffset }
+    };
+}
+
+// 批量转换PDF（使用完整路径方式）
 function batchConvertPdfs() {
     if (selectedPdfFiles.length === 0) {
-        showPdfMessage('请先选择PDF文件', 'error');
+        showPdfMessage('请选择PDF文件', 'error');
         return;
     }
 
-    // 获取配置 - 使用下划线命名与后端API一致
+    // 获取水印和位置设置
+    const watermarkPageRange = getWatermarkPageRange();
+    const watermarkPosition = getWatermarkPosition();
+    const positions = getHeaderFooterPositions();
+
     const settings = {
-        'format': document.getElementById('pdf-output-format').value,
-        'dpi': parseInt(document.getElementById('pdf-dpi').value),
-        'add_watermark': document.getElementById('pdf-add-watermark').checked,
-        'add_header': document.getElementById('pdf-add-header').checked,
-        'add_footer': document.getElementById('pdf-add-footer').checked,
-        'generate_simple_pdf': document.getElementById('pdf-generate-simple').checked,
-        'add_random_icon': document.getElementById('pdf-add-random-icon').checked,
-        'add_border_background': document.getElementById('pdf-add-border-background').checked,
-        'border_width': parseInt(document.getElementById('pdf-border-width').value) || 0,
-        'border_color': document.getElementById('pdf-border-color').value,
-        'background_color': document.getElementById('pdf-background-color').value
+        format: document.getElementById('pdf-output-format').value,
+        dpi: parseInt(document.getElementById('pdf-dpi').value),
+        add_watermark: document.getElementById('pdf-add-watermark').checked,
+        add_header: document.getElementById('pdf-add-header').checked,
+        add_footer: document.getElementById('pdf-add-footer').checked,
+        generate_simple_pdf: document.getElementById('pdf-generate-simple').checked,
+        add_random_icon: document.getElementById('pdf-add-random-icon').checked,
+        watermark_page_range: watermarkPageRange,
+        watermark_position: watermarkPosition,
+        watermark_scale: parseInt(document.getElementById('pdf-watermark-scale').value) || 100,
+        header_position: positions.header,
+        footer_position: positions.footer
     };
 
-    // 水印页面范围
-    const watermarkPageRange = document.getElementById('pdf-watermark-page-range');
-    if (watermarkPageRange && watermarkPageRange.value) {
-        settings['watermark_page_range'] = watermarkPageRange.value;
-    }
-
-    // 水印位置
-    const watermarkPosX = document.getElementById('pdf-watermark-pos-x');
-    const watermarkPosY = document.getElementById('pdf-watermark-pos-y');
-    if (watermarkPosX && watermarkPosY) {
-        settings['watermark_position'] = {
-            'x': parseFloat(watermarkPosX.value) / 100,
-            'y': parseFloat(watermarkPosY.value) / 100
-        };
-    }
-
-    // 页眉页脚位置
-    const headerTop = document.getElementById('pdf-header-top');
-    if (headerTop && headerTop.value) {
-        settings['header_position'] = {
-            'top': parseInt(headerTop.value)
-        };
-    }
-    const footerBottom = document.getElementById('pdf-footer-bottom');
-    if (footerBottom && footerBottom.value) {
-        settings['footer_position'] = {
-            'bottom': parseInt(footerBottom.value)
-        };
-    }
-
-    // 水印缩放比例
-    const watermarkScale = document.getElementById('pdf-watermark-scale');
-    if (watermarkScale && watermarkScale.value) {
-        settings['watermark_scale'] = parseInt(watermarkScale.value);
-    }
-
-    // 图标大小
-    const iconSize = document.getElementById('pdf-icon-size');
-    if (iconSize && iconSize.value) {
-        settings['icon_size'] = parseInt(iconSize.value);
-    }
-
+    // 页码范围
     const startPage = document.getElementById('pdf-start-page').value;
     const endPage = document.getElementById('pdf-end-page').value;
 
@@ -997,12 +1334,20 @@ function batchConvertPdfs() {
     if (endPage) {
         settings['end_page'] = parseInt(endPage);
     }
-    
+
+    // 边框背景设置
+    const addBorderBackground = document.getElementById('pdf-add-border-background').checked;
+    if (addBorderBackground) {
+        settings['border_width'] = parseInt(document.getElementById('pdf-border-width').value) || 0;
+        settings['border_color'] = document.getElementById('pdf-border-color').value;
+        settings['background_color'] = document.getElementById('pdf-background-color').value;
+    }
+
     // 显示进度
     document.getElementById('pdf-batch-progress').style.display = 'block';
     document.getElementById('pdf-batch-results').style.display = 'none';
     document.getElementById('pdf-convert-btn').disabled = true;
-    
+
     // 发送请求
     fetch('/api/pdf/batch/convert-full-path', {
         method: 'POST',
@@ -1031,122 +1376,266 @@ function batchConvertPdfs() {
     });
 }
 
-// 显示批量转换结果
+// 显示批量转换结果（完整功能版）
 function displayBatchResults(data) {
-    const resultsContainer = document.getElementById('pdf-batch-results');
-    const summaryDiv = document.getElementById('pdf-results-summary');
-    const container = document.getElementById('pdf-results-container');
-
-    resultsContainer.style.display = 'block';
-    container.innerHTML = '';
-
+    document.getElementById('pdf-batch-results').style.display = 'block';
+    
     // 显示摘要
-    summaryDiv.innerHTML = `
-        <div class="alert alert-success">
-            <strong>✅ 转换完成！</strong>
-            共 ${data.total} 个文件，成功 ${data.success_count} 个，失败 ${data.failed_count} 个
+    const summaryHtml = `
+        <div class="pdf-step-card" style="background: #f0fff4;">
+            <div class="pdf-step-body">
+                <h4 style="margin: 0 0 12px 0; color: #333;">📊 转换统计</h4>
+                <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                    <div style="font-size: 14px;"><strong>总文件数:</strong> ${data.total}</div>
+                    <div style="font-size: 14px; color: #48bb78;"><strong>成功:</strong> ${data.success_count}</div>
+                    <div style="font-size: 14px; color: #f56565;"><strong>失败:</strong> ${data.failed_count}</div>
+                </div>
+            </div>
         </div>
     `;
+    document.getElementById('pdf-results-summary').innerHTML = summaryHtml;
     
-    // 显示每个文件的结果
-    data.results.forEach(result => {
-        const card = document.createElement('div');
-        card.className = `pdf-results-card ${result.success ? 'success' : 'error'}`;
+    // 显示详细结果
+    const container = document.getElementById('pdf-results-container');
+    container.innerHTML = '';
+    
+    data.results.forEach((result, index) => {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'pdf-results-card ' + (result.success ? 'success' : 'error');
         
         if (result.success) {
-            // 显示前4张图片的预览
-            let previewHtml = '';
-            if (result.images && result.images.length > 0) {
-                const previewImages = result.images.slice(0, 4);
-                previewHtml = '<div style="margin-top: 10px;">';
-                previewHtml += '<div style="font-size: 12px; color: #666; margin-bottom: 8px;">📷 前4页预览：</div>';
-                previewHtml += '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">';
-                
-                previewImages.forEach((imgUrl, idx) => {
-                    previewHtml += `
-                        <div style="border: 1px solid #ddd; border-radius: 4px; overflow: hidden; background: #f9f9f9;">
-                            <img src="${imgUrl}" style="width: 100%; height: auto; display: block;" alt="第${idx + 1}页">
-                            <div style="text-align: center; font-size: 11px; color: #888; padding: 4px;">第${idx + 1}页</div>
-                        </div>
-                    `;
-                });
-                
-                previewHtml += '</div></div>';
-            }
+            const imagesHtml = result.images.slice(0, 4).map(img => 
+                `<img src="${img}" style="width: 80px; height: auto; border: 1px solid #e8e8e8; border-radius: 5px; cursor: pointer; margin-right: 8px; margin-bottom: 8px;" onclick="window.open('${img}', '_blank')" alt="第${result.images.indexOf(img)+1}页">`
+            ).join('');
             
-            // 为每个PDF添加独立的后续操作按钮
-            let actionButtonsHtml = '';
-            const coverText = noteContent.cover || '';
+            const moreImages = result.images.length > 4 ? `<div style="color: #888; font-size: 12px; margin-top: 6px;">还有 ${result.images.length - 4} 张图片...</div>` : '';
             
-            actionButtonsHtml = `
-                <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef;">
-                    <div style="font-weight: 600; margin-bottom: 10px; color: #333;">🚀 后续操作</div>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <a href="/cover-generator?outputDir=${encodeURIComponent(result.output_dir)}&cover=${encodeURIComponent(coverText)}" class="btn btn-primary" style="padding: 8px 16px; text-decoration: none;">
-                            🎨 生成封面
-                        </a>
-                        <button class="btn btn-info" style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="goToFileTransfer('${encodeURIComponent(result.output_dir)}')">
-                            📁 文件传输
-                        </button>
+            resultDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="color: #48bb78; font-size: 20px;">✓</span>
+                        <strong style="font-size: 15px; color: #333;">${result.original_name}</strong>
+                    </div>
+                    <span style="color: #888; font-size: 13px;">${result.total_pages} 页</span>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">${imagesHtml}</div>
+                ${moreImages}
+                <div style="background: #f0f9ff; padding: 10px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid #0066cc;">
+                    <div style="font-size: 13px; color: #666;">
+                        <strong>📁 存储位置:</strong> <span style="color: #333; font-family: monospace;">${result.output_dir || '未指定'}</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${result.output_dir || ''}')" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">📋 复制路径</button>
                     </div>
                 </div>
-            `;
-            
-            card.innerHTML = `
-                <div style="font-weight: 600; margin-bottom: 10px;">
-                    ✅ ${result.original_name}
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-danger" onclick="clearOutputDirectory('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🗑️ 清空目录</button>
+                    <button class="btn btn-success" onclick="generateCoverImage('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🎨 生成封面</button>
+                    <button class="btn btn-warning" onclick="generateProductImages('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🛍️ 生成主图</button>
+                    <button class="btn btn-info" onclick="transferToPhone('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">📱 传手机</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('cover')" style="padding: 6px 12px; font-size: 12px;">📋 复制封面文案</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('title')" style="padding: 6px 12px; font-size: 12px;">📋 复制标题</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('content')" style="padding: 6px 12px; font-size: 12px;">📋 复制正文</button>
+                    <button class="btn btn-outline-primary" onclick="copyNoteContent('tags')" style="padding: 6px 12px; font-size: 12px;">📋 复制标签</button>
                 </div>
-                <div style="color: #666; font-size: 13px; margin-bottom: 8px;">
-                    共 ${result.total_pages} 页，输出目录: ${result.output_dir}
-                </div>
-                <div style="color: #28a745; font-size: 12px;">
-                    转换成功！
-                </div>
-                ${previewHtml}
-                ${actionButtonsHtml}
             `;
         } else {
-            card.innerHTML = `
-                <div style="font-weight: 600; margin-bottom: 10px;">
-                    ❌ ${result.original_name}
+            resultDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="color: #f56565; font-size: 20px;">✗</span>
+                        <strong style="font-size: 15px; color: #333;">${result.original_name}</strong>
+                    </div>
+                    <span style="color: #f56565; font-size: 13px;">失败</span>
                 </div>
-                <div style="color: #dc3545; font-size: 13px;">
-                    错误: ${result.error}
-                </div>
+                <div style="color: #f56565; font-size: 13px; margin-top: 8px;">${result.error}</div>
             `;
         }
         
-        container.appendChild(card);
+        container.appendChild(resultDiv);
     });
 }
 
-// 跳转到文件传输页面
-function goToFileTransfer(encodedOutputDir) {
-    const outputDir = decodeURIComponent(encodedOutputDir);
-    // 存储到localStorage供文件传输页面读取
+// 清空生成目录
+function clearOutputDirectory(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法清空');
+        return;
+    }
+    
+    if (!confirm(`确定要清空目录吗？\n${outputDir}\n\n⚠️ 此操作将删除该目录下的所有文件，不可恢复！`)) {
+        return;
+    }
+    
+    fetch('/api/pdf/clear-output-dir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ output_dir: outputDir })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ 目录已清空！');
+        } else {
+            alert('❌ 清空失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('❌ 清空出错: ' + error.message);
+    });
+}
+
+// 复制到剪贴板
+function copyToClipboard(text) {
+    if (!text) {
+        showPdfMessage('复制内容为空', 'error');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            showPdfMessage('✅ 路径已复制到剪贴板', 'success');
+        })
+        .catch(err => {
+            showPdfMessage('❌ 复制失败: ' + err.message, 'error');
+        });
+}
+
+// 复制笔记内容
+function copyNoteContent(type) {
+    let text = '';
+    let typeName = '';
+    
+    switch(type) {
+        case 'cover':
+            text = noteContent.cover;
+            typeName = '封面文案';
+            break;
+        case 'title':
+            text = noteContent.title;
+            typeName = '标题';
+            break;
+        case 'content':
+            text = noteContent.content;
+            typeName = '正文';
+            break;
+        case 'tags':
+            text = noteContent.tags.join(' ');
+            typeName = '标签';
+            break;
+    }
+    
+    if (!text) {
+        showPdfMessage(`❌ ${typeName}内容为空，请先识别笔记内容`, 'error');
+        return;
+    }
+    
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            showPdfMessage(`✅ ${typeName}已复制到剪贴板`, 'success');
+        })
+        .catch(err => {
+            showPdfMessage('❌ 复制失败: ' + err.message, 'error');
+        });
+}
+
+// 生成封面图
+function generateCoverImage(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法生成封面');
+        return;
+    }
+    
+    // 构建URL参数
+    const params = new URLSearchParams();
+    params.set('outputDir', outputDir);
+    if (noteContent.cover) {
+        params.set('cover', encodeURIComponent(noteContent.cover));
+    }
+    if (noteContent.title) {
+        params.set('title', encodeURIComponent(noteContent.title));
+    }
+    if (noteContent.content) {
+        params.set('content', encodeURIComponent(noteContent.content));
+    }
+    if (noteContent.tags && noteContent.tags.length > 0) {
+        params.set('tags', encodeURIComponent(noteContent.tags.join(' ')));
+    }
+    
+    const url = '/cover-generator?' + params.toString();
+    window.open(url, '_blank');
+}
+
+// 生成商品主图
+function generateProductImages(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法生成商品主图');
+        return;
+    }
+    
+    // 保存输出目录到localStorage，然后跳转到商品主图生成器
+    localStorage.setItem('productMainImageOutputDir', outputDir);
+    window.open('/product-main-image', '_blank');
+}
+
+// 传输到手机
+function transferToPhone(outputDir) {
+    if (!outputDir) {
+        alert('目录路径为空，无法传输');
+        return;
+    }
+    
+    // 保存输出目录到localStorage，然后跳转到文件传输页面
     localStorage.setItem('fileTransferSourceDir', outputDir);
-    window.location.href = '/file-transfer';
+    window.open('/file-transfer', '_blank');
 }
 
 // 清空所有PDF数据
 function clearAllPdfData() {
-    selectedPdfFiles = [];
-    document.getElementById('pdf-file-list').style.display = 'none';
+    pdfBatchFiles = [];
+    pdfBatchResults = [];
+    
+    document.getElementById('pdf-batch-input').value = '';
     document.getElementById('pdf-batch-count').textContent = '未选择文件';
+    document.getElementById('pdf-file-list').style.display = 'none';
+    document.getElementById('pdf-files-container').innerHTML = '';
     document.getElementById('pdf-batch-results').style.display = 'none';
+    document.getElementById('pdf-batch-progress').style.display = 'none';
     document.getElementById('pdf-convert-btn').disabled = true;
-    document.getElementById('note-content-edit').style.display = 'none';
-    document.getElementById('note-json-input').value = '';
-    noteContent = { cover: '', title: '', content: '', tags: [] };
-    saveAllFormData();
+    
+    // 重置水印设置
+    document.getElementById('pdf-watermark-page-mode').value = 'even';
+    document.getElementById('pdf-watermark-custom-pages').value = '';
+    document.getElementById('watermark-custom-pages-group').style.display = 'none';
+    document.getElementById('pdf-watermark-pos-x').value = 50;
+    document.getElementById('pdf-watermark-pos-y').value = 50;
+    document.getElementById('watermark-pos-x-value').textContent = '50%';
+    document.getElementById('watermark-pos-y-value').textContent = '50%';
+    updateWatermarkPositionPreview();
+    document.getElementById('pdf-watermark-scale').value = 100;
+    document.getElementById('watermark-scale-value').textContent = '100%';
+    updateWatermarkScalePreview();
+    
+    showPdfMessage('已清空所有数据', 'success');
 }
 
-// ==================== 页面初始化 ====================
+// 显示PDF消息
+function showPdfMessage(message, type) {
+    const errorDiv = document.getElementById('pdf-error');
+    if (type === 'error') {
+        errorDiv.style.display = 'block';
+        errorDiv.querySelector('.alert-danger').textContent = message;
+    } else {
+        errorDiv.style.display = 'none';
+    }
+}
 
+// 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 初始化PDF图片配置
+    initPdfImagesConfig();
+    // 恢复所有用户输入数据
     restoreAllFormData();
+    // 设置自动保存监听
     setupAutoSaveListeners();
-    console.log('PDF页面初始化完成');
 });
 </script>
 {% endblock %}
