@@ -1321,6 +1321,9 @@ function batchConvertPdfs() {
 function displayBatchResults(data) {
     document.getElementById('pdf-batch-results').style.display = 'block';
     
+    // 保存结果数据
+    batchResultsData = data.results;
+    
     // 显示摘要
     const summaryHtml = `
         <div class="pdf-step-card" style="background: #f0fff4;">
@@ -1351,7 +1354,9 @@ function displayBatchResults(data) {
             
             const moreImages = result.images.length > 4 ? `<div style="color: #888; font-size: 12px; margin-top: 6px;">还有 ${result.images.length - 4} 张图片...</div>` : '';
             
-            resultDiv.innerHTML = `
+            // 先创建一个临时容器来安全地构建HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="color: #48bb78; font-size: 20px;">✓</span>
@@ -1363,20 +1368,29 @@ function displayBatchResults(data) {
                 ${moreImages}
                 <div style="background: #f0f9ff; padding: 10px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid #0066cc;">
                     <div style="font-size: 13px; color: #666;">
-                        <strong>📁 存储位置:</strong> <span style="color: #333; font-family: monospace;">${result.output_dir || '未指定'}</span>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${result.output_dir || ''}')" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">📋 复制路径</button>
+                        <strong>📁 存储位置:</strong> <span style="color: #333; font-family: monospace;" id="path-${index}"></span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboardFromElement('path-${index}')" style="margin-left: 8px; padding: 2px 8px; font-size: 12px;">📋 复制路径</button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="btn btn-danger" onclick="clearOutputDirectory('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🗑️ 清空目录</button>
-                    <button class="btn btn-success" onclick="generateCoverImage('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🎨 生成封面</button>
-                    <button class="btn btn-info" onclick="transferToPhone('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">📱 传手机</button>
+                    <button class="btn btn-danger" onclick="clearOutputDirectoryFromResult(${index})" style="padding: 6px 12px; font-size: 12px;">🗑️ 清空目录</button>
+                    <button class="btn btn-success" onclick="generateCoverImageFromResult(${index})" style="padding: 6px 12px; font-size: 12px;">🎨 生成封面</button>
+                    <button class="btn btn-info" onclick="transferToPhoneFromResult(${index})" style="padding: 6px 12px; font-size: 12px;">📱 传手机</button>
                     <button class="btn btn-outline-primary" onclick="copyNoteContent('cover')" style="padding: 6px 12px; font-size: 12px;">📋 复制封面文案</button>
                     <button class="btn btn-outline-primary" onclick="copyNoteContent('title')" style="padding: 6px 12px; font-size: 12px;">📋 复制标题</button>
                     <button class="btn btn-outline-primary" onclick="copyNoteContent('content')" style="padding: 6px 12px; font-size: 12px;">📋 复制正文</button>
                     <button class="btn btn-outline-primary" onclick="copyNoteContent('tags')" style="padding: 6px 12px; font-size: 12px;">📋 复制标签</button>
                 </div>
             `;
+            
+            // 将临时内容添加到结果div
+            resultDiv.appendChild(tempDiv);
+            
+            // 安全地设置路径文本，避免HTML转义问题
+            const pathElement = resultDiv.querySelector(`#path-${index}`);
+            if (pathElement) {
+                pathElement.textContent = result.output_dir || '未指定';
+            }
         } else {
             resultDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1437,6 +1451,43 @@ function copyToClipboard(text) {
         .catch(err => {
             showPdfMessage('❌ 复制失败: ' + err.message, 'error');
         });
+}
+
+// 从元素复制到剪贴板
+function copyToClipboardFromElement(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        showPdfMessage('找不到元素', 'error');
+        return;
+    }
+    copyToClipboard(element.textContent);
+}
+
+// 存储批量转换结果
+let batchResultsData = [];
+
+// 从结果数据清空目录
+function clearOutputDirectoryFromResult(index) {
+    const result = batchResultsData[index];
+    if (result && result.output_dir) {
+        clearOutputDirectory(result.output_dir);
+    }
+}
+
+// 从结果数据生成封面
+function generateCoverImageFromResult(index) {
+    const result = batchResultsData[index];
+    if (result && result.output_dir) {
+        generateCoverImage(result.output_dir);
+    }
+}
+
+// 从结果数据传输到手机
+function transferToPhoneFromResult(index) {
+    const result = batchResultsData[index];
+    if (result && result.output_dir) {
+        transferToPhone(result.output_dir);
+    }
 }
 
 // 复制笔记内容

@@ -1689,7 +1689,9 @@ def local_path_to_url(path):
     # 将本地路径转换为 /local-file?path=xxx URL
     # 对路径进行URL编码
     from urllib.parse import quote
-    encoded_path = quote(path, safe='')
+    # 先标准化路径，确保使用正确的分隔符
+    normalized_path = os.path.normpath(path)
+    encoded_path = quote(normalized_path, safe='')
     return f"/local-file?path={encoded_path}"
 
 
@@ -1719,18 +1721,25 @@ def serve_local_file():
         if '?' in decoded_path:
             decoded_path = decoded_path.split('?')[0]
         
+        # 标准化路径分隔符，支持Windows和Unix
+        decoded_path = os.path.normpath(decoded_path)
+        
         logging.info(f"Local file request: decoded={decoded_path}")
         
         # 安全检查：确保路径是允许的目录之一
+        # 同时支持正斜杠和反斜杠的Windows路径
         allowed_prefixes = [
             '/Users/',
             '/home/',
             'C:/',
             'D:/',
+            'C:\\',
+            'D:\\',
         ]
         
         is_allowed = any(decoded_path.startswith(prefix) for prefix in allowed_prefixes)
         if not is_allowed:
+            logging.warning(f"Access denied for path: {decoded_path}")
             return jsonify({"success": False, "error": "访问被拒绝"}), 403
         
         # 检查文件是否存在
