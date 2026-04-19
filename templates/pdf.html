@@ -1370,7 +1370,6 @@ function displayBatchResults(data) {
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button class="btn btn-danger" onclick="clearOutputDirectory('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🗑️ 清空目录</button>
                     <button class="btn btn-success" onclick="generateCoverImage('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🎨 生成封面</button>
-                    <button class="btn btn-warning" onclick="generateProductImages('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">🛍️ 生成主图</button>
                     <button class="btn btn-info" onclick="transferToPhone('${result.output_dir || ''}')" style="padding: 6px 12px; font-size: 12px;">📱 传手机</button>
                     <button class="btn btn-outline-primary" onclick="copyNoteContent('cover')" style="padding: 6px 12px; font-size: 12px;">📋 复制封面文案</button>
                     <button class="btn btn-outline-primary" onclick="copyNoteContent('title')" style="padding: 6px 12px; font-size: 12px;">📋 复制标题</button>

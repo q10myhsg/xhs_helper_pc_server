@@ -1112,10 +1112,9 @@ def api_pdf_batch_convert_local():
                     icon_size=settings.get('icon_size')
                 )
 
-                # 将本地路径转换为URL
-                import time
-                images_urls = [f"{local_path_to_url(img_path)}?t={int(time.time())}" for img_path in result['images']]
-                simple_pdf_url = f"{local_path_to_url(result['simple_pdf'])}?t={int(time.time())}"
+                # 将本地路径转换为URL - 不添加时间戳参数，避免路径解析问题
+                images_urls = [local_path_to_url(img_path) for img_path in result['images']]
+                simple_pdf_url = local_path_to_url(result['simple_pdf'])
                 
                 results.append({
                     "original_name": original_name,
@@ -1422,10 +1421,9 @@ def api_pdf_batch_convert_full_path():
                     icon_size=settings.get('icon_size')
                 )
                 
-                # 将本地路径转换为URL
-                import time
-                images_urls = [f"{local_path_to_url(img_path)}?t={int(time.time())}" for img_path in result['images']]
-                simple_pdf_url = f"{local_path_to_url(result['simple_pdf'])}?t={int(time.time())}"
+                # 将本地路径转换为URL - 不添加时间戳参数，避免路径解析问题
+                images_urls = [local_path_to_url(img_path) for img_path in result['images']]
+                simple_pdf_url = local_path_to_url(result['simple_pdf'])
                 
                 results.append({
                     "file_path": file_path,
