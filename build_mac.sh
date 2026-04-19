@@ -127,14 +127,31 @@ if [ ! -f "$EXE_PATH" ]; then
     exit 1
 fi
 
-# 创建版本目录
-VERSION_DIR="${APP_NAME}_v${VERSION}_macos_$(uname -m)"
-VERSION_PATH="$RELEASE_DIR/$VERSION_DIR"
-mkdir -p "$VERSION_PATH"
+# 创建发布包（单层结构）
+echo -e "${YELLOW}[4/4] 创建发布包（单层结构）...${NC}"
+mkdir -p "$RELEASE_DIR"
 
-# 复制可执行文件
-cp "$EXE_PATH" "$VERSION_PATH"
+# 检查输出目录
+if [ ! -d "dist" ]; then
+    echo -e "${RED}  错误: 找不到输出目录: dist${NC}"
+    exit 1
+fi
+
+# 查找可执行文件
+EXE_NAME="$APP_NAME"
+EXE_PATH="dist/$EXE_NAME"
+
+if [ ! -f "$EXE_PATH" ]; then
+    echo -e "${RED}  错误: 找不到可执行文件: $EXE_PATH${NC}"
+    exit 1
+fi
+
+# 复制可执行文件到发布目录（单层结构）
+cp "$EXE_PATH" "$RELEASE_DIR/$EXE_NAME"
 echo -e "  ${GREEN}复制可执行文件: $EXE_NAME${NC}"
+
+# 授予执行权限
+chmod +x "$RELEASE_DIR/$EXE_NAME"
 
 # 创建 README
 README_CONTENT="# $APP_NAME v$VERSION
@@ -158,18 +175,18 @@ README_CONTENT="# $APP_NAME v$VERSION
 - PDF 转换
 - 文件传输"
 
-echo "$README_CONTENT" > "$VERSION_PATH/README.md"
+echo "$README_CONTENT" > "$RELEASE_DIR/README.md"
 echo -e "  ${GREEN}创建 README.md${NC}"
 
-# 创建压缩包
-ZIP_NAME="$VERSION_DIR.zip"
+# 创建压缩包（单层结构，直接压缩可执行文件和README）
+ZIP_NAME="${APP_NAME}_v${VERSION}_macos_$(uname -m).zip"
 ZIP_PATH="$RELEASE_DIR/$ZIP_NAME"
 
 cd "$RELEASE_DIR"
-zip -r "$ZIP_NAME" "$VERSION_DIR"
+zip "$ZIP_NAME" "$EXE_NAME" README.md
 cd ..
 
-echo -e "  ${GREEN}创建压缩包: $ZIP_NAME${NC}"
+echo -e "  ${GREEN}创建压缩包: $ZIP_NAME（单层结构）${NC}"
 
 # 显示结果
 echo
@@ -182,22 +199,19 @@ echo -e "${GREEN}版本: $VERSION${NC}"
 echo -e "${GREEN}平台: macOS $(uname -m)${NC}"
 echo
 echo -e "${YELLOW}文件列表:${NC}"
-echo -e "  - ${VERSION_DIR}/"
-echo -e "    - ${EXE_NAME}"
-echo -e "    - README.md"
-echo -e "  - ${ZIP_NAME}"
+echo -e "  - $EXE_NAME"
+echo -e "  - README.md"
+echo -e "  - $ZIP_NAME"
 echo
 
-# 授予执行权限
-chmod +x "$VERSION_PATH/$EXE_NAME"
-
 # 检查文件大小
-FILE_SIZE=$(du -h "$VERSION_PATH/$EXE_NAME" | cut -f1)
+FILE_SIZE=$(du -h "$RELEASE_DIR/$EXE_NAME" | cut -f1)
 echo -e "${GREEN}可执行文件大小: $FILE_SIZE${NC}"
 echo
 
 echo -e "${GREEN}使用方法:${NC}"
 echo -e "  解压 $ZIP_NAME"
+echo -e "  运行 chmod +x $EXE_NAME"
 echo -e "  运行 ./$EXE_NAME"
 echo -e "  浏览器访问 http://localhost:5000"
 

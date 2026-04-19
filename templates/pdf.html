@@ -372,6 +372,72 @@
     </div>
 </div>
 
+<!-- 高级配置区域 -->
+<div class="pdf-step-card" style="border-left: 4px solid #f093fb;">
+    <div class="pdf-step-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer;" onclick="toggleAdvancedConfig()">
+        <div class="pdf-step-icon">🎛️</div>
+        <div class="pdf-step-title" style="flex: 1;">
+            <h2>高级配置</h2>
+            <p>边框、背景色等高级选项（点击展开/收起）</p>
+        </div>
+        <span id="advanced-config-toggle" style="font-size: 20px;">▼</span>
+    </div>
+    <div class="pdf-step-body" id="advanced-config-content" style="display: none;">
+        <div class="pdf-grid">
+            <div>
+                <h4 style="margin-bottom: 15px; color: #333;">🖼️ 边框与背景</h4>
+                <div class="form-group">
+                    <label class="pdf-checkbox-label" style="background: transparent; padding: 0; margin-bottom: 15px;">
+                        <input type="checkbox" id="pdf-add-border-background" onchange="toggleBorderBackgroundOptions()">
+                        <span>启用边框和背景</span>
+                    </label>
+                </div>
+
+                <div id="border-options" style="display: none;">
+                    <div class="form-group">
+                        <label>边框宽度（像素）</label>
+                        <input type="number" id="pdf-border-width" min="0" max="50" value="10" placeholder="10" style="width: 120px;">
+                        <small style="color: #888; display: block; margin-top: 4px;">0表示无边框</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>边框颜色</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="color" id="pdf-border-color" value="#000000" style="width: 60px; height: 35px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+                            <input type="text" id="pdf-border-color-text" value="#000000" style="width: 100px;" oninput="syncBorderColor()">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>背景颜色</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="color" id="pdf-background-color" value="#ffffff" style="width: 60px; height: 35px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+                            <input type="text" id="pdf-background-color-text" value="#ffffff" style="width: 100px;" oninput="syncBackgroundColor()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h4 style="margin-bottom: 15px; color: #333;">🎯 随机图标设置</h4>
+                <div class="form-group">
+                    <label class="pdf-checkbox-label" style="background: transparent; padding: 0;">
+                        <input type="checkbox" id="pdf-random-icon-enabled">
+                        <span>启用随机图标</span>
+                    </label>
+                    <small style="color: #888; display: block; margin-top: 5px; margin-left: 26px;">勾选"添加随机图标"后生效</small>
+                </div>
+
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>图标大小（像素）</label>
+                    <input type="number" id="pdf-icon-size" min="20" max="200" value="80" placeholder="80" style="width: 120px;">
+                    <small style="color: #888; display: block; margin-top: 4px;">留空表示使用原始大小</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 步骤3: 开始转换 -->
 <div class="pdf-step-card">
     <div class="pdf-step-header step-3">
@@ -773,13 +839,60 @@ function toggleWatermarkOptions() {
     saveAllFormData();
 }
 
+// 高级配置展开/收起
+function toggleAdvancedConfig() {
+    const content = document.getElementById('advanced-config-content');
+    const toggle = document.getElementById('advanced-config-toggle');
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        content.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+// 边框背景选项切换
+function toggleBorderBackgroundOptions() {
+    const isEnabled = document.getElementById('pdf-add-border-background').checked;
+    const borderOptions = document.getElementById('border-options');
+    borderOptions.style.display = isEnabled ? 'block' : 'none';
+    saveAllFormData();
+}
+
+// 同步边框颜色
+function syncBorderColor() {
+    const textInput = document.getElementById('pdf-border-color-text');
+    const colorInput = document.getElementById('pdf-border-color');
+    let value = textInput.value.trim();
+    if (!value.startsWith('#')) {
+        value = '#' + value;
+    }
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        colorInput.value = value;
+    }
+}
+
+// 同步背景颜色
+function syncBackgroundColor() {
+    const textInput = document.getElementById('pdf-background-color-text');
+    const colorInput = document.getElementById('pdf-background-color');
+    let value = textInput.value.trim();
+    if (!value.startsWith('#')) {
+        value = '#' + value;
+    }
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        colorInput.value = value;
+    }
+}
+
 // 批量转换PDF
 function batchConvertPdfs() {
     if (selectedPdfFiles.length === 0) {
         showPdfMessage('请先选择PDF文件', 'error');
         return;
     }
-    
+
     // 获取配置
     const settings = {
         'output-format': document.getElementById('pdf-output-format').value,
@@ -788,12 +901,16 @@ function batchConvertPdfs() {
         'add-header': document.getElementById('pdf-add-header').checked,
         'add-footer': document.getElementById('pdf-add-footer').checked,
         'generate-simple': document.getElementById('pdf-generate-simple').checked,
-        'add-random-icon': document.getElementById('pdf-add-random-icon').checked
+        'add-random-icon': document.getElementById('pdf-add-random-icon').checked,
+        'add-border-background': document.getElementById('pdf-add-border-background').checked,
+        'border-width': parseInt(document.getElementById('pdf-border-width').value) || 0,
+        'border-color': document.getElementById('pdf-border-color').value,
+        'background-color': document.getElementById('pdf-background-color').value
     };
-    
+
     const startPage = document.getElementById('pdf-start-page').value;
     const endPage = document.getElementById('pdf-end-page').value;
-    
+
     if (startPage) {
         settings['start-page'] = parseInt(startPage);
     }
@@ -839,15 +956,29 @@ function displayBatchResults(data) {
     const resultsContainer = document.getElementById('pdf-batch-results');
     const summaryDiv = document.getElementById('pdf-results-summary');
     const container = document.getElementById('pdf-results-container');
-    
+
     resultsContainer.style.display = 'block';
     container.innerHTML = '';
-    
-    // 显示摘要
+
+    // 显示摘要和跳转按钮
+    const successResults = data.results.filter(r => r.success);
+    const firstResult = successResults.length > 0 ? successResults[0] : null;
+
     summaryDiv.innerHTML = `
         <div class="alert alert-success">
             <strong>✅ 转换完成！</strong>
             共 ${data.total} 个文件，成功 ${data.success_count} 个，失败 ${data.failed_count} 个
+        </div>
+        <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef;">
+            <div style="font-weight: 600; margin-bottom: 10px; color: #333;">🚀 后续操作</div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="/cover-generator${firstResult ? '?pdf_dir=' + encodeURIComponent(firstResult.output_dir) : ''}" class="btn btn-primary" style="padding: 8px 16px; text-decoration: none;">
+                    🎨 封面生成
+                </a>
+                <a href="/file-transfer${firstResult ? '?dir=' + encodeURIComponent(firstResult.output_dir) : ''}" class="btn btn-info" style="padding: 8px 16px; text-decoration: none; background: #17a2b8; color: white; border-radius: 4px;">
+                    📁 文件传输
+                </a>
+            </div>
         </div>
     `;
     
