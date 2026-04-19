@@ -824,7 +824,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 获取输出目录
     const outputDir = urlParams.get('outputDir');
     if (outputDir) {
-        document.getElementById('cover-output-dir').value = outputDir;
+        const decodedOutputDir = decodeURIComponent(outputDir);
+        document.getElementById('cover-output-dir').value = decodedOutputDir;
         showCoverMessage('已自动填充输出目录', 'success');
     }
     

@@ -1714,18 +1714,12 @@ def serve_local_file():
         if not encoded_path:
             return jsonify({"success": False, "error": "缺少path参数"}), 400
         
-        # 解码路径
+        # 解码路径 - 只解码一次，避免过度解码
         decoded_path = unquote(encoded_path)
         
-        # 解码路径
-        while '%' in decoded_path:
-            new_path = unquote(decoded_path)
-            if new_path == decoded_path:
-                break
-            decoded_path = new_path
-        
-        # 去除时间戳参数
-        decoded_path = decoded_path.split('?')[0]
+        # 去除时间戳参数（如果有的话）
+        if '?' in decoded_path:
+            decoded_path = decoded_path.split('?')[0]
         
         logging.info(f"Local file request: decoded={decoded_path}")
         
