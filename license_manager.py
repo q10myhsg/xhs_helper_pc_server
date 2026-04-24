@@ -42,7 +42,7 @@ DEFAULT_PACKAGE_CONFIG = {
         "max_single_yanghao_minutes": 60,
         "daily_yanghao_device_limit": False,
     },
-    "advanced": {
+    "premium": {
         "max_devices": -1,
         "max_daily_yanghao": -1,
         "max_daily_create": -1,
