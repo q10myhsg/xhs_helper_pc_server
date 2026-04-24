@@ -34,15 +34,15 @@ DEFAULT_PACKAGE_CONFIG = {
     },
     "basic": {
         "max_devices": 3,
-        "max_daily_yanghao": 15,
-        "max_daily_create": 30,
-        "max_daily_export": 60,
-        "max_daily_main_image": 30,
-        "max_daily_cover_image": 30,
+        "max_daily_yanghao": 9,
+        "max_daily_create": 15,
+        "max_daily_export": 30,
+        "max_daily_main_image": 15,
+        "max_daily_cover_image": 15,
         "max_single_yanghao_minutes": 60,
         "daily_yanghao_device_limit": False,
     },
-    "premium": {
+    "advanced": {
         "max_devices": -1,
         "max_daily_yanghao": -1,
         "max_daily_create": -1,
@@ -156,7 +156,7 @@ class LicenseManager:
             if result.get("status") != "success":
                 return None
             
-            return result.get("data")
+            return result.get("data", {}).get("pc-client")
         except Exception:
             return None
     
