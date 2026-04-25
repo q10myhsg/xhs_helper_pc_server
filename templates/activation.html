@@ -72,6 +72,75 @@
         background: #9e9e9e;
         color: white;
     }
+    .usage-progress-section {
+        margin-top: 20px;
+    }
+    .usage-item {
+        margin-bottom: 15px;
+        padding: 12px;
+        background: white;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .usage-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .usage-name {
+        font-weight: bold;
+        color: #333;
+    }
+    .usage-count {
+        font-size: 14px;
+        color: #666;
+    }
+    .usage-count.near-limit {
+        color: #f59e0b;
+        font-weight: bold;
+    }
+    .usage-count.over-limit {
+        color: #ef4444;
+        font-weight: bold;
+    }
+    .progress-bar {
+        width: 100%;
+        height: 10px;
+        background: #e5e7eb;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 5px;
+        transition: width 0.3s ease;
+    }
+    .progress-fill.warning {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+    .progress-fill.danger {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+    .usage-warning {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        border-radius: 4px;
+        color: #92400e;
+        font-size: 13px;
+    }
+    .usage-danger {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background: #fee2e2;
+        border-left: 4px solid #ef4444;
+        border-radius: 4px;
+        color: #991b1b;
+        font-size: 13px;
+    }
 </style>
 
 <h1>🔑 软件激活</h1>
@@ -102,19 +171,10 @@
     </div>
 
     <!-- 使用情况 -->
-    <div class="usage-section" id="usage-section" style="display: none;">
+    <div class="usage-progress-section" id="usage-progress-section" style="display: none;">
         <h3>📊 今日使用情况</h3>
-        <table class="usage-table">
-            <thead>
-                <tr>
-                    <th>设备ID</th>
-                    <th>使用分钟</th>
-                    <th>启动次数</th>
-                </tr>
-            </thead>
-            <tbody id="usage-table-body">
-            </tbody>
-        </table>
+        <div id="usage-progress-container">
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -133,7 +193,7 @@
                 if (data.success) {
                     document.getElementById('machine-code').value = data.data.machine_code;
                     renderLicenseInfo(data.data.license);
-                    renderUsageInfo(data.data.devices_usage);
+                    renderUsageProgress(data.data);
                 }
             })
             .catch(error => {
@@ -178,10 +238,6 @@
                     <span>${license.max_daily_yanghao === -1 ? '无限制' : license.max_daily_yanghao || '-'} 次</span>
                 </div>
                 <div class="license-item">
-                    <strong>单次养号时长</strong>
-                    <span>${license.max_single_yanghao_minutes === -1 ? '无限制' : license.max_single_yanghao_minutes || '-'} 分钟</span>
-                </div>
-                <div class="license-item">
                     <strong>每日创建次数</strong>
                     <span>${license.max_daily_create === -1 ? '无限制' : license.max_daily_create || '-'} 次</span>
                 </div>
@@ -198,8 +254,8 @@
                     <span>${license.max_daily_cover_image === -1 ? '无限制' : license.max_daily_cover_image || '-'} 次</span>
                 </div>
                 <div class="license-item">
-                    <strong>每日养号设备限制</strong>
-                    <span>${license.daily_yanghao_device_limit ? '是' : '否'}</span>
+                    <strong>每日传输次数</strong>
+                    <span>${license.max_daily_transfer === -1 ? '无限制' : license.max_daily_transfer || '-'} 次</span>
                 </div>
                 <div class="license-item">
                     <strong>激活时间</strong>
@@ -209,27 +265,106 @@
         `;
     }
 
-    function renderUsageInfo(devicesUsage) {
-        const section = document.getElementById('usage-section');
-        const tbody = document.getElementById('usage-table-body');
+    function renderUsageProgress(statsData) {
+        const section = document.getElementById('usage-progress-section');
+        const container = document.getElementById('usage-progress-container');
         
-        if (!devicesUsage || devicesUsage.length === 0) {
+        const license = statsData.license;
+        
+        if (!license) {
             section.style.display = 'none';
             return;
         }
 
         section.style.display = 'block';
-        tbody.innerHTML = '';
         
-        devicesUsage.forEach(usage => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${usage.device_id}</td>
-                <td>${usage.total_minutes}</td>
-                <td>${usage.start_count}</td>
+        const usageItems = [
+            {
+            name: '🎯 养号',
+            used: statsData.used_daily_yanghao || 0,
+            max: license.max_daily_yanghao,
+            key: 'yanghao',
+            warning: '今日养号次数即将用尽！'
+            },
+            {
+            name: '📝 内容创建',
+            used: statsData.used_daily_create || 0,
+            max: license.max_daily_create,
+            key: 'create',
+            warning: '今日创建次数即将用尽！'
+            },
+            {
+            name: '📄 PDF导出',
+            used: statsData.used_daily_export || 0,
+            max: license.max_daily_export,
+            key: 'export',
+            warning: '今日导出次数即将用尽！'
+            },
+            {
+            name: '🖼️ 主图生成',
+            used: statsData.used_daily_main_image || 0,
+            max: license.max_daily_main_image,
+            key: 'main_image',
+            warning: '今日主图生成次数即将用尽！'
+            },
+            {
+            name: '🎨 封面生成',
+            used: statsData.used_daily_cover_image || 0,
+            max: license.max_daily_cover_image,
+            key: 'cover_image',
+            warning: '今日封面生成次数即将用尽！'
+            },
+            {
+            name: '📲 文件传输',
+            used: statsData.used_daily_transfer || 0,
+            max: license.max_daily_transfer,
+            key: 'transfer',
+            warning: '今日文件传输次数即将用尽！'
+            }
+        ];
+        
+        let html = '';
+        usageItems.forEach(item => {
+            let isUnlimited = item.max === -1;
+            let percentage = isUnlimited ? 0 : (item.used / item.max) * 100;
+            let isNearLimit = !isUnlimited && percentage >= 80 && percentage < 100;
+            let isOverLimit = !isUnlimited && percentage >= 100;
+            
+            let countClass = '';
+            let fillClass = '';
+            let warningHtml = '';
+            
+            if (isNearLimit) {
+                countClass = 'near-limit';
+                fillClass = 'warning';
+                warningHtml = `<div class="usage-warning">⚠️ ${item.warning}请合理使用，建议升级套餐！</div>`;
+            }
+            
+            if (isOverLimit) {
+                countClass = 'over-limit';
+                fillClass = 'danger';
+                warningHtml = `<div class="usage-danger">⛔ 今日${item.name}次数已用尽！请升级套餐或明日再使用。</div>`;
+            }
+            
+            html += `
+                <div class="usage-item">
+                    <div class="usage-header">
+                        <span class="usage-name">${item.name}</span>
+                        <span class="usage-count ${countClass}">
+                            ${isUnlimited ? '♾️ 无限制' : `${item.used} / ${item.max} 次`}
+                        </span>
+                    </div>
+                    ${!isUnlimited ? `
+                        <div class="progress-bar">
+                            <div class="progress-fill ${fillClass}" style="width: ${Math.min(percentage, 100)}%;"></div>
+                        </div>
+                    ` : ''}
+                    ${warningHtml}
+                </div>
             `;
-            tbody.appendChild(row);
         });
+        
+        container.innerHTML = html;
     }
 
     function verifyActivation() {

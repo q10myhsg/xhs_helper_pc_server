@@ -702,6 +702,7 @@ class LicenseManager:
             "max_daily_export": package_config.get("max_daily_export", row[6]),
             "max_daily_main_image": package_config.get("max_daily_main_image", row[7]),
             "max_daily_cover_image": package_config.get("max_daily_cover_image", row[8]),
+            "max_daily_transfer": package_config.get("max_daily_transfer", 10),
             "max_single_yanghao_minutes": package_config.get("max_single_yanghao_minutes", row[9]),
             "daily_yanghao_device_limit": package_config.get("daily_yanghao_device_limit", bool(row[10])),
             "activation_code": row[0],
