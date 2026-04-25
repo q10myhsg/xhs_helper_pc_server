@@ -30,6 +30,7 @@ DEFAULT_PACKAGE_CONFIG = {
         "max_daily_export": 10,
         "max_daily_main_image": 5,
         "max_daily_cover_image": 5,
+        "max_daily_transfer": 10,
         "max_single_yanghao_minutes": 20,
         "daily_yanghao_device_limit": True,
     },
@@ -40,16 +41,18 @@ DEFAULT_PACKAGE_CONFIG = {
         "max_daily_export": 30,
         "max_daily_main_image": 15,
         "max_daily_cover_image": 15,
+        "max_daily_transfer": 30,
         "max_single_yanghao_minutes": 60,
         "daily_yanghao_device_limit": False,
     },
-    "advanced": {
+    "premium": {
         "max_devices": -1,
         "max_daily_yanghao": -1,
         "max_daily_create": -1,
         "max_daily_export": -1,
         "max_daily_main_image": -1,
         "max_daily_cover_image": -1,
+        "max_daily_transfer": -1,
         "max_single_yanghao_minutes": -1,
         "daily_yanghao_device_limit": False,
     }
@@ -164,6 +167,102 @@ class LicenseManager:
         except Exception:
             return None
     
+    def fetch_device_info_from_server(self, machine_code: str = None) -> Optional[Dict[str, Any]]:
+        """从服务端获取设备信息和权限配置
+        
+        对应接口协议: POST /device/info
+        """
+        if not machine_code:
+            machine_code = self.machine_code
+            
+        url = f"{self.api_base_url}/device/info"
+        headers = {
+            "X-API-Key": self.api_key,
+            "Content-Type": "application/json",
+        }
+        data = {
+            "machine_code": machine_code,
+            "client_type": "pc-client",
+            "plugin_version": "1.0.0",
+        }
+        
+        try:
+            resp = requests.post(url, json=data, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                print(f"获取设备信息失败: HTTP {resp.status_code}")
+                return None
+            
+            result = resp.json()
+            if result.get("status") != "success":
+                print(f"获取设备信息失败: {result.get('message', '未知错误')}")
+                return None
+            
+            return result.get("data")
+        except Exception as e:
+            print(f"获取设备信息异常: {str(e)}")
+            return None
+    
+    def _parse_permissions_from_protocol(self, permissions: Dict[str, Any]) -> Dict[str, Any]:
+        """将协议中的 permissions 结构解析为本地使用的配置格式
+        
+        协议格式:
+        {
+            "auto_use": {"device_count": 3, "device_time": 60},
+            "pdf": {"daily_limit": 30},
+            "cover": {"daily_limit": 30},
+            "transfer": {"daily_limit": 30}
+        }
+        
+        本地格式:
+        {
+            "max_devices": 3,
+            "max_daily_yanghao": 9,
+            "max_daily_create": 15,
+            "max_daily_export": 30,
+            "max_daily_main_image": 15,
+            "max_daily_cover_image": 15,
+            "max_single_yanghao_minutes": 60,
+            "daily_yanghao_device_limit": False,
+        }
+        """
+        if not permissions:
+            return {}
+        
+        parsed = {}
+        
+        # 解析 auto_use 权限
+        auto_use = permissions.get("auto_use", {})
+        if auto_use:
+            parsed["max_devices"] = auto_use.get("device_count", 3)
+            parsed["max_single_yanghao_minutes"] = auto_use.get("device_time", 60)
+        
+        # 解析 pdf 权限 (对应导出次数)
+        pdf = permissions.get("pdf", {})
+        if pdf:
+            parsed["max_daily_export"] = pdf.get("daily_limit", 30)
+        
+        # 解析 cover 权限 (对应封面生成次数)
+        cover = permissions.get("cover", {})
+        if cover:
+            parsed["max_daily_cover_image"] = cover.get("daily_limit", 30)
+        
+        # 解析 transfer 权限 (对应文件传输次数)
+        transfer = permissions.get("transfer", {})
+        if transfer:
+            parsed["max_daily_transfer"] = transfer.get("daily_limit", 30)
+        
+        # 其他字段使用默认值或从其他来源获取
+        # 养号次数和创作次数可能需要从其他配置获取
+        parsed.setdefault("max_daily_yanghao", 9)
+        parsed.setdefault("max_daily_create", 15)
+        parsed.setdefault("max_daily_main_image", 15)
+        
+        # 根据套餐类型设置 device_limit
+        # 免费版有限制，其他版本没有
+        parsed["daily_yanghao_device_limit"] = parsed.get("max_devices", 3) == 1
+        
+        return parsed
+    
     def _fetch_package_config_if_needed(self):
         """每天第一次启动时从服务端获取套餐配置"""
         today = datetime.now().strftime("%Y-%m-%d")
@@ -219,6 +318,7 @@ class LicenseManager:
             export_count INTEGER DEFAULT 0,
             main_image_count INTEGER DEFAULT 0,
             cover_image_count INTEGER DEFAULT 0,
+            transfer_count INTEGER DEFAULT 0,
             yanghao_device_id TEXT,
             update_time TEXT NOT NULL,
             UNIQUE(device_id, use_date)
@@ -256,6 +356,9 @@ class LicenseManager:
             # 表已存在，检查并添加缺失的列
             self._migrate_user_license_table(cursor)
         
+        # 迁移每日使用统计表
+        self._migrate_daily_usage_table(cursor)
+        
         conn.commit()
         conn.close()
     
@@ -288,6 +391,20 @@ class LicenseManager:
                     print(f"数据库迁移: 已添加列 {col_name} (默认值: {default_sql})")
                 except Exception as e:
                     print(f"数据库迁移: 添加列 {col_name} 失败: {e}")
+    
+    def _migrate_daily_usage_table(self, cursor):
+        """迁移 daily_usage_count 表，添加缺失的字段"""
+        # 获取当前表的所有列
+        cursor.execute("PRAGMA table_info(daily_usage_count)")
+        columns = {row[1] for row in cursor.fetchall()}
+        
+        # 添加 transfer_count 字段（如果不存在）
+        if 'transfer_count' not in columns:
+            try:
+                cursor.execute("ALTER TABLE daily_usage_count ADD COLUMN transfer_count INTEGER DEFAULT 0")
+                print("数据库迁移: 已添加列 transfer_count (默认值: 0)")
+            except Exception as e:
+                print(f"数据库迁移: 添加列 transfer_count 失败: {e}")
     
     def _exit_hook(self):
         """程序退出钩子，确保统计时长"""
@@ -322,14 +439,14 @@ class LicenseManager:
         Args:
             device_id: 设备ID
             date: 日期 (YYYY-MM-DD)
-            count_type: 计数类型 ('yanghao', 'create', 'export', 'main_image', 'cover_image')
+            count_type: 计数类型 ('yanghao', 'create', 'export', 'main_image', 'cover_image', 'transfer')
         """
         conn = sqlite3.connect(self.DB_PATH)
         cursor = conn.cursor()
         
         # 查询是否已有今日记录
         cursor.execute("""
-        SELECT yanghao_count, create_count, export_count, main_image_count, cover_image_count, yanghao_device_id
+        SELECT yanghao_count, create_count, export_count, main_image_count, cover_image_count, transfer_count, yanghao_device_id
         FROM daily_usage_count 
         WHERE device_id = ? AND use_date = ?
         """, (device_id, date))
@@ -338,7 +455,7 @@ class LicenseManager:
         now = datetime.now().isoformat()
         
         if row:
-            yanghao_count, create_count, export_count, main_image_count, cover_image_count, yanghao_device_id = row
+            yanghao_count, create_count, export_count, main_image_count, cover_image_count, transfer_count, yanghao_device_id = row
             
             if count_type == 'yanghao':
                 yanghao_count += 1
@@ -354,19 +471,22 @@ class LicenseManager:
                 main_image_count += 1
             elif count_type == 'cover_image':
                 cover_image_count += 1
+            elif count_type == 'transfer':
+                transfer_count += 1
             
             cursor.execute("""
             UPDATE daily_usage_count 
             SET yanghao_count = ?, create_count = ?, export_count = ?, 
-                main_image_count = ?, cover_image_count = ?, yanghao_device_id = ?, update_time = ?
+                main_image_count = ?, cover_image_count = ?, transfer_count = ?, yanghao_device_id = ?, update_time = ?
             WHERE device_id = ? AND use_date = ?
-            """, (yanghao_count, create_count, export_count, main_image_count, cover_image_count, yanghao_device_id, now, device_id, date))
+            """, (yanghao_count, create_count, export_count, main_image_count, cover_image_count, transfer_count, yanghao_device_id, now, device_id, date))
         else:
             yanghao_count = 1 if count_type == 'yanghao' else 0
             create_count = 1 if count_type == 'create' else 0
             export_count = 1 if count_type == 'export' else 0
             main_image_count = 1 if count_type == 'main_image' else 0
             cover_image_count = 1 if count_type == 'cover_image' else 0
+            transfer_count = 1 if count_type == 'transfer' else 0
             
             # 如果是免费版，记录今天养号的设备
             yanghao_device_id = None
@@ -378,10 +498,10 @@ class LicenseManager:
             cursor.execute("""
             INSERT INTO daily_usage_count 
             (device_id, use_date, yanghao_count, create_count, export_count, 
-             main_image_count, cover_image_count, yanghao_device_id, update_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             main_image_count, cover_image_count, transfer_count, yanghao_device_id, update_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (device_id, date, yanghao_count, create_count, export_count, 
-                  main_image_count, cover_image_count, yanghao_device_id, now))
+                  main_image_count, cover_image_count, transfer_count, yanghao_device_id, now))
         
         self._clean_old_records(conn)
         conn.commit()
@@ -389,7 +509,7 @@ class LicenseManager:
     
     def get_daily_usage(self, device_id: str, date: str) -> Dict[str, int]:
         """获取当日已使用次数
-        
+
         Returns:
             {
                 'yanghao_count': 养号次数,
@@ -397,19 +517,20 @@ class LicenseManager:
                 'export_count': 导出次数,
                 'main_image_count': 主图次数,
                 'cover_image_count': 封面次数,
+                'transfer_count': 文件传输次数,
                 'yanghao_device_id': 今日养号设备ID
             }
         """
         conn = sqlite3.connect(self.DB_PATH)
         cursor = conn.cursor()
         cursor.execute("""
-        SELECT yanghao_count, create_count, export_count, main_image_count, cover_image_count, yanghao_device_id
-        FROM daily_usage_count 
+        SELECT yanghao_count, create_count, export_count, main_image_count, cover_image_count, transfer_count, yanghao_device_id
+        FROM daily_usage_count
         WHERE device_id = ? AND use_date = ?
         """, (device_id, date))
         row = cursor.fetchone()
         conn.close()
-        
+
         if row:
             return {
                 'yanghao_count': row[0] or 0,
@@ -417,7 +538,8 @@ class LicenseManager:
                 'export_count': row[2] or 0,
                 'main_image_count': row[3] or 0,
                 'cover_image_count': row[4] or 0,
-                'yanghao_device_id': row[5],
+                'transfer_count': row[5] or 0,
+                'yanghao_device_id': row[6],
             }
         return {
             'yanghao_count': 0,
@@ -425,6 +547,7 @@ class LicenseManager:
             'export_count': 0,
             'main_image_count': 0,
             'cover_image_count': 0,
+            'transfer_count': 0,
             'yanghao_device_id': None,
         }
     
@@ -434,43 +557,44 @@ class LicenseManager:
         conn = sqlite3.connect(self.DB_PATH)
         cursor = conn.cursor()
         cursor.execute("""
-        SELECT SUM(yanghao_count), SUM(create_count), SUM(export_count), 
-               SUM(main_image_count), SUM(cover_image_count), 
+        SELECT SUM(yanghao_count), SUM(create_count), SUM(export_count),
+               SUM(main_image_count), SUM(cover_image_count), SUM(transfer_count),
                MAX(yanghao_device_id)
         FROM daily_usage_count WHERE use_date = ?
         """, (today,))
         row = cursor.fetchone()
         conn.close()
-        
+
         return {
             'yanghao_count': row[0] or 0,
             'create_count': row[1] or 0,
             'export_count': row[2] or 0,
             'main_image_count': row[3] or 0,
             'cover_image_count': row[4] or 0,
-            'yanghao_device_id': row[5],
+            'transfer_count': row[5] or 0,
+            'yanghao_device_id': row[6],
         }
     
     def check_daily_quota(self, count_type: str, device_id: str = None) -> Tuple[bool, str]:
         """检查每日配额是否够用
-        
+
         Args:
-            count_type: 计数类型 ('yanghao', 'create', 'export', 'main_image', 'cover_image')
+            count_type: 计数类型 ('yanghao', 'create', 'export', 'main_image', 'cover_image', 'transfer')
             device_id: 设备ID（仅养号时需要）
-        
+
         Returns:
             (can_proceed, message)
         """
         license = self.get_current_license()
         today = self._get_today()
         daily_usage = self.get_total_daily_usage_all_devices()
-        
+
         max_key = f"max_daily_{count_type}"
         used_key = f"{count_type}_count"
-        
+
         max_count = license.get(max_key, -1)
         used_count = daily_usage.get(used_key, 0)
-        
+
         # 检查是否超限
         if max_count != -1 and used_count >= max_count:
             type_names = {
@@ -479,17 +603,18 @@ class LicenseManager:
                 'export': '导出',
                 'main_image': '主图生成',
                 'cover_image': '封面生成',
+                'transfer': '文件传输',
             }
             type_name = type_names.get(count_type, count_type)
             return False, f"今日已使用 {used_count}/{max_count} 次{type_name}次数，达到今日限额，请明天再来或升级套餐"
-        
+
         # 如果是养号，检查设备限制（免费版）
         if count_type == 'yanghao' and device_id:
             if license.get('daily_yanghao_device_limit', False):
                 yanghao_device_id = daily_usage.get('yanghao_device_id')
                 if yanghao_device_id and yanghao_device_id != device_id:
                     return False, "免费版每天只能在一个设备上养号，请明天再试或升级套餐"
-        
+
         return True, ""
     
     def increment_daily_yanghao(self, device_id: str):
@@ -516,6 +641,11 @@ class LicenseManager:
         """增加每日封面生成次数"""
         today = self._get_today()
         self._increment_daily_count(device_id, today, 'cover_image')
+    
+    def increment_daily_transfer(self, device_id: str):
+        """增加每日文件传输次数"""
+        today = self._get_today()
+        self._increment_daily_count(device_id, today, 'transfer')
     
     def get_registered_devices_count(self) -> int:
         """获取已注册设备数量"""
@@ -605,19 +735,32 @@ class LicenseManager:
             license_data = result.get("data", {})
             package_type = license_data.get("package_type", "basic")
             expire_date = license_data.get("expiry_date")
+            permissions = license_data.get("permissions", {})
             
             # 从服务端套餐配置中获取配额
             package_config = self.package_config.get(package_type, {})
             
-            # 使用服务端返回的或本地默认的配额
-            max_devices = license_data.get("max_devices", package_config.get("max_devices", 3))
-            max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", 9))
-            max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", 15))
-            max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", 30))
-            max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", 15))
-            max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", 15))
-            max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", 60))
-            daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", False))
+            # 优先使用协议中的 permissions 结构，如果没有则使用本地配置
+            if permissions:
+                parsed_permissions = self._parse_permissions_from_protocol(permissions)
+                max_devices = parsed_permissions.get("max_devices", 3)
+                max_daily_yanghao = parsed_permissions.get("max_daily_yanghao", 9)
+                max_daily_create = parsed_permissions.get("max_daily_create", 15)
+                max_daily_export = parsed_permissions.get("max_daily_export", 30)
+                max_daily_main_image = parsed_permissions.get("max_daily_main_image", 15)
+                max_daily_cover_image = parsed_permissions.get("max_daily_cover_image", 15)
+                max_single_yanghao_minutes = parsed_permissions.get("max_single_yanghao_minutes", 60)
+                daily_yanghao_device_limit = parsed_permissions.get("daily_yanghao_device_limit", False)
+            else:
+                # 使用服务端返回的或本地默认的配额（兼容旧版）
+                max_devices = license_data.get("max_devices", package_config.get("max_devices", 3))
+                max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", 9))
+                max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", 15))
+                max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", 30))
+                max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", 15))
+                max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", 15))
+                max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", 60))
+                daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", False))
             
             # 转换过期日期：从 ISO 格式提取 YYYY-MM-DD
             if expire_date and 'T' in expire_date:
@@ -741,13 +884,13 @@ class LicenseManager:
         ym = self._get_current_year_month()
         license = self.get_current_license()
         daily_usage = self.get_total_daily_usage_all_devices()
-        
+
         # 获取每个设备今日使用情况
         conn = sqlite3.connect(self.DB_PATH)
         cursor = conn.cursor()
         cursor.execute("""
-        SELECT device_id, yanghao_count, create_count, export_count, 
-               main_image_count, cover_image_count
+        SELECT device_id, yanghao_count, create_count, export_count,
+               main_image_count, cover_image_count, transfer_count
         FROM daily_usage_count WHERE use_date = ?
         """, (today,))
         rows = cursor.fetchall()
@@ -759,9 +902,10 @@ class LicenseManager:
                 'export_count': row[3] or 0,
                 'main_image_count': row[4] or 0,
                 'cover_image_count': row[5] or 0,
+                'transfer_count': row[6] or 0,
             }
         conn.close()
-        
+
         # 为了兼容旧页面，添加 active 字段和重命名 device_usage
         license['active'] = license.get('activation_code') is not None
         devices_usage = []
@@ -771,7 +915,7 @@ class LicenseManager:
                 'total_minutes': usage.get('yanghao_count', 0) * 20,
                 'start_count': usage.get('yanghao_count', 0)
             })
-        
+
         return {
             "today": today,
             "year_month": ym,
@@ -782,6 +926,7 @@ class LicenseManager:
             "used_daily_export": daily_usage['export_count'],
             "used_daily_main_image": daily_usage['main_image_count'],
             "used_daily_cover_image": daily_usage['cover_image_count'],
+            "used_daily_transfer": daily_usage['transfer_count'],
             "today_yanghao_device_id": daily_usage.get('yanghao_device_id'),
             "device_usage": device_usage_dict,
             "devices_usage": devices_usage,
@@ -839,18 +984,32 @@ class LicenseManager:
             license_data = result.get("data", {})
             package_type = license_data.get("package_type", current["package_type"])
             expire_date = license_data.get("expiry_date")
-            
+            permissions = license_data.get("permissions", {})
+
             # 从服务端套餐配置中获取配额
             package_config = self.package_config.get(package_type, {})
-            
-            max_devices = license_data.get("max_devices", package_config.get("max_devices", current.get("max_devices", 3)))
-            max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", current.get("max_daily_yanghao", 9)))
-            max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", current.get("max_daily_create", 15)))
-            max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", current.get("max_daily_export", 30)))
-            max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", current.get("max_daily_main_image", 15)))
-            max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", current.get("max_daily_cover_image", 15)))
-            max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", current.get("max_single_yanghao_minutes", 60)))
-            daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", current.get("daily_yanghao_device_limit", False)))
+
+            # 优先使用协议中的 permissions 结构
+            if permissions:
+                parsed_permissions = self._parse_permissions_from_protocol(permissions)
+                max_devices = parsed_permissions.get("max_devices", current.get("max_devices", 3))
+                max_daily_yanghao = parsed_permissions.get("max_daily_yanghao", current.get("max_daily_yanghao", 9))
+                max_daily_create = parsed_permissions.get("max_daily_create", current.get("max_daily_create", 15))
+                max_daily_export = parsed_permissions.get("max_daily_export", current.get("max_daily_export", 30))
+                max_daily_main_image = parsed_permissions.get("max_daily_main_image", current.get("max_daily_main_image", 15))
+                max_daily_cover_image = parsed_permissions.get("max_daily_cover_image", current.get("max_daily_cover_image", 15))
+                max_single_yanghao_minutes = parsed_permissions.get("max_single_yanghao_minutes", current.get("max_single_yanghao_minutes", 60))
+                daily_yanghao_device_limit = parsed_permissions.get("daily_yanghao_device_limit", current.get("daily_yanghao_device_limit", False))
+            else:
+                # 使用服务端返回的或本地默认的配额（兼容旧版）
+                max_devices = license_data.get("max_devices", package_config.get("max_devices", current.get("max_devices", 3)))
+                max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", current.get("max_daily_yanghao", 9)))
+                max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", current.get("max_daily_create", 15)))
+                max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", current.get("max_daily_export", 30)))
+                max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", current.get("max_daily_main_image", 15)))
+                max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", current.get("max_daily_cover_image", 15)))
+                max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", current.get("max_single_yanghao_minutes", 60)))
+                daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", current.get("daily_yanghao_device_limit", False)))
             
             # 转换过期日期：从 ISO 格式提取 YYYY-MM-DD
             if expire_date and 'T' in expire_date:
