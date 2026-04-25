@@ -487,6 +487,7 @@ def api_pdf_convert():
         end_page = data.get('end_page')
         add_header = data.get('add_header', False)
         add_footer = data.get('add_footer', False)
+        device_id = data.get('device_id', '')
         
         # 水印相关参数
         watermark_page_range = data.get('watermark_page_range', 'even')
@@ -505,6 +506,11 @@ def api_pdf_convert():
         filepath = os.path.join(pdf_converter.upload_folder, filename)
         if not os.path.exists(filepath):
             return jsonify({"success": False, "error": "文件不存在"})
+        
+        # 检查每日导出配额
+        ok, msg = license_manager.check_daily_quota('export', device_id)
+        if not ok:
+            return jsonify({"success": False, "error": msg})
         
         # 执行转换
         result = pdf_converter.convert_pdf_to_images(
@@ -525,6 +531,9 @@ def api_pdf_convert():
             border_color=border_color,
             background_color=background_color
         )
+        
+        # 记录导出次数
+        license_manager.increment_daily_export(device_id)
         
         # 获取相对路径用于前端显示
         images_urls = []
@@ -802,12 +811,19 @@ def api_pdf_batch_convert():
         files = data.get('files', [])
         settings = data.get('settings', {})
         base_dir = data.get('base_dir', '')
+        device_id = data.get('device_id', '')
 
         if not files:
             return jsonify({"success": False, "error": "没有选择文件"})
 
         results = []
         total_files = len(files)
+        
+        # 检查每日导出配额（每个文件算一次）
+        for _ in files:
+            ok, msg = license_manager.check_daily_quota('export', device_id)
+            if not ok:
+                return jsonify({"success": False, "error": msg})
 
         for index, file_info in enumerate(files):
             try:
@@ -882,6 +898,8 @@ def api_pdf_batch_convert():
                         "total": total_files
                     }
                 })
+                # 记录导出次数
+                license_manager.increment_daily_export(device_id)
 
             except Exception as e:
                 results.append({
@@ -964,6 +982,7 @@ def api_pdf_batch_convert_local():
         files = data.get('files', [])
         settings = data.get('settings', {})
         base_dir = data.get('base_dir', '')
+        device_id = data.get('device_id', '')
         if not files:
             return jsonify({"success": False, "error": "没有选择文件"})
 
@@ -971,7 +990,7 @@ def api_pdf_batch_convert_local():
         if not base_dir:
             base_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
 
-        # 验证基础目录是否存在
+        # 检查基础目录是否存在
         if not os.path.exists(base_dir):
             return jsonify({"success": False, "error": f"工作区不存在: {base_dir}"})
 
@@ -986,6 +1005,12 @@ def api_pdf_batch_convert_local():
 
         results = []
         total_files = len(files)
+        
+        # 检查每日导出配额（每个文件算一次）
+        for _ in files:
+            ok, msg = license_manager.check_daily_quota('export', device_id)
+            if not ok:
+                return jsonify({"success": False, "error": msg})
 
         # 加载用户配置的图片路径
         config = load_pdf_images_config()
@@ -1128,6 +1153,8 @@ def api_pdf_batch_convert_local():
                         "total": total_files
                     }
                 })
+                # 记录导出次数
+                license_manager.increment_daily_export(device_id)
 
             except Exception as e:
                 results.append({
@@ -1352,12 +1379,19 @@ def api_pdf_batch_convert_full_path():
         data = request.json
         file_paths = data.get('file_paths', [])  # 完整文件路径列表
         settings = data.get('settings', {})
+        device_id = data.get('device_id', '')
         
         if not file_paths:
             return jsonify({"success": False, "error": "没有选择文件"})
         
         results = []
         total_files = len(file_paths)
+        
+        # 检查每日导出配额（每个文件算一次）
+        for _ in file_paths:
+            ok, msg = license_manager.check_daily_quota('export', device_id)
+            if not ok:
+                return jsonify({"success": False, "error": msg})
         
         # 加载用户配置的图片路径
         config = load_pdf_images_config()
@@ -1438,6 +1472,8 @@ def api_pdf_batch_convert_full_path():
                         "total": total_files
                     }
                 })
+                # 记录导出次数
+                license_manager.increment_daily_export(device_id)
                 
             except Exception as e:
                 import traceback
@@ -1549,12 +1585,21 @@ def api_transfer_files():
         if not os.path.exists(computer_dir):
             return jsonify({"success": False, "error": f"电脑源目录不存在: {computer_dir}"})
         
+        # 检查每日文件传输配额
+        ok, msg = license_manager.check_daily_quota('transfer', device_id)
+        if not ok:
+            return jsonify({"success": False, "error": msg})
+        
         # 创建设备特定的传输管理器
         from file_transfer import FileTransferManager
         ft_manager = FileTransferManager(device_id=device_id)
         
         # 传输文件到手机
         result = ft_manager.transfer_files_to_phone(computer_dir, phone_dir)
+        
+        # 记录文件传输次数
+        if result.get('success'):
+            license_manager.increment_daily_transfer(device_id)
         
         return jsonify(result)
             
@@ -1593,6 +1638,11 @@ def api_full_transfer():
         if not os.path.exists(computer_dir):
             return jsonify({"success": False, "error": f"电脑源目录不存在: {computer_dir}"})
         
+        # 检查每日文件传输配额
+        ok, msg = license_manager.check_daily_quota('transfer', device_id)
+        if not ok:
+            return jsonify({"success": False, "error": msg})
+        
         # 创建设备特定的传输管理器
         from file_transfer import FileTransferManager
         ft_manager = FileTransferManager(device_id=device_id)
@@ -1623,6 +1673,9 @@ def api_full_transfer():
         # 步骤3: 清空电脑目录
         step3_result = ft_manager.clear_computer_directory(computer_dir)
         results["steps"]["clear_computer"] = step3_result
+        
+        # 记录文件传输次数
+        license_manager.increment_daily_transfer(device_id)
         
         results["message"] = "完整传输流程执行成功"
         return jsonify(results)
@@ -1772,6 +1825,7 @@ def api_save_cover_image():
         
         file = request.files['image']
         output_dir = request.form.get('output_dir', '')
+        device_id = request.form.get('device_id', '')
         
         if file.filename == '':
             return jsonify({"success": False, "error": "没有选择文件"})
@@ -1783,12 +1837,20 @@ def api_save_cover_image():
         # 确保输出目录存在
         os.makedirs(output_dir, exist_ok=True)
         
+        # 检查每日封面生成配额
+        ok, msg = license_manager.check_daily_quota('cover_image', device_id)
+        if not ok:
+            return jsonify({"success": False, "error": msg})
+        
         # 生成文件名
         filename = secure_filename(file.filename)
         filepath = os.path.join(output_dir, filename)
         
         # 保存文件
         file.save(filepath)
+        
+        # 记录封面生成次数
+        license_manager.increment_daily_cover_image(device_id)
         
         return jsonify({
             "success": True,
