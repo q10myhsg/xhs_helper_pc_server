@@ -207,7 +207,8 @@ class LicenseManager:
         
         协议格式:
         {
-            "auto_use": {"device_count": 3, "device_time": 60},
+            "auto_use": {"device_count": 3, "daily_count": 9, "device_time": 60},
+            "create": {"daily_limit": 15},
             "pdf": {"daily_limit": 30},
             "cover": {"daily_limit": 30},
             "transfer": {"daily_limit": 30}
@@ -234,7 +235,13 @@ class LicenseManager:
         auto_use = permissions.get("auto_use", {})
         if auto_use:
             parsed["max_devices"] = auto_use.get("device_count", 3)
+            parsed["max_daily_yanghao"] = auto_use.get("daily_count", 9)
             parsed["max_single_yanghao_minutes"] = auto_use.get("device_time", 60)
+        
+        # 解析 create 权限 (对应内容创作次数)
+        create = permissions.get("create", {})
+        if create:
+            parsed["max_daily_create"] = create.get("daily_limit", 15)
         
         # 解析 pdf 权限 (对应导出次数)
         pdf = permissions.get("pdf", {})
@@ -252,10 +259,13 @@ class LicenseManager:
             parsed["max_daily_transfer"] = transfer.get("daily_limit", 30)
         
         # 其他字段使用默认值或从其他来源获取
-        # 养号次数和创作次数可能需要从其他配置获取
-        parsed.setdefault("max_daily_yanghao", 9)
-        parsed.setdefault("max_daily_create", 15)
         parsed.setdefault("max_daily_main_image", 15)
+        
+        # 确保 max_daily_yanghao 和 max_daily_create 有默认值
+        if "max_daily_yanghao" not in parsed:
+            parsed["max_daily_yanghao"] = 9
+        if "max_daily_create" not in parsed:
+            parsed["max_daily_create"] = 15
         
         # 根据套餐类型设置 device_limit
         # 免费版有限制，其他版本没有
