@@ -245,10 +245,7 @@
                     <strong>每日导出次数</strong>
                     <span>${license.max_daily_export === -1 ? '无限制' : license.max_daily_export || '-'} 次</span>
                 </div>
-                <div class="license-item">
-                    <strong>每日主图次数</strong>
-                    <span>${license.max_daily_main_image === -1 ? '无限制' : license.max_daily_main_image || '-'} 次</span>
-                </div>
+
                 <div class="license-item">
                     <strong>每日封面次数</strong>
                     <span>${license.max_daily_cover_image === -1 ? '无限制' : license.max_daily_cover_image || '-'} 次</span>
@@ -299,13 +296,6 @@
             max: license.max_daily_export,
             key: 'export',
             warning: '今日导出次数即将用尽！'
-            },
-            {
-            name: '🖼️ 主图生成',
-            used: statsData.used_daily_main_image || 0,
-            max: license.max_daily_main_image,
-            key: 'main_image',
-            warning: '今日主图生成次数即将用尽！'
             },
             {
             name: '🎨 封面生成',
