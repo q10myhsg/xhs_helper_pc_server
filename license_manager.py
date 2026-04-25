@@ -99,7 +99,7 @@ class LicenseManager:
             except Exception:
                 pass
     
-    def _load_package_config(self) -&gt; Dict[str, Any]:
+    def _load_package_config(self) -> Dict[str, Any]:
         """加载本地缓存的套餐配置"""
         if os.path.exists(PACKAGE_CONFIG_PATH):
             try:
@@ -119,7 +119,7 @@ class LicenseManager:
         except Exception:
             pass
     
-    def _get_last_fetch_date(self) -&gt; Optional[str]:
+    def _get_last_fetch_date(self) -> Optional[str]:
         """获取上次获取套餐配置的日期"""
         if os.path.exists(PACKAGE_FETCH_DATE_PATH):
             try:
@@ -139,7 +139,7 @@ class LicenseManager:
         except Exception:
             pass
     
-    def _fetch_package_config_from_server(self) -&gt; Optional[Dict[str, Any]]:
+    def _fetch_package_config_from_server(self) -> Optional[Dict[str, Any]]:
         """从服务端获取套餐配置"""
         url = f"{self.api_base_url}/package/config"
         headers = {
@@ -175,7 +175,7 @@ class LicenseManager:
             config = self._fetch_package_config_from_server()
             if config:
                 break
-            if attempt &lt; 2:
+            if attempt < 2:
                 time.sleep(5)
         
         if config:
@@ -252,21 +252,21 @@ class LicenseManager:
         if _current_start_time and _current_device_id:
             end_time = time.time()
             used_minutes = int((end_time - _current_start_time) / 60)
-            if used_minutes &lt; 1:
+            if used_minutes < 1:
                 used_minutes = 1
             self._add_usage(_current_device_id, self._get_today(), used_minutes)
     
-    def _get_today(self) -&gt; str:
+    def _get_today(self) -> str:
         return datetime.now().strftime("%Y-%m-%d")
     
-    def _get_current_year_month(self) -&gt; str:
+    def _get_current_year_month(self) -> str:
         """获取当前年月 YYYY-MM"""
         return datetime.now().strftime("%Y-%m")
     
     def _clean_old_records(self, conn):
         """删除 7 天前的记录"""
         seven_days_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        conn.execute("DELETE FROM daily_usage_count WHERE use_date &lt; ?", (seven_days_ago,))
+        conn.execute("DELETE FROM daily_usage_count WHERE use_date < ?", (seven_days_ago,))
         conn.commit()
     
     def _add_usage(self, device_id: str, date: str, minutes: int):
@@ -344,7 +344,7 @@ class LicenseManager:
         conn.commit()
         conn.close()
     
-    def get_daily_usage(self, device_id: str, date: str) -&gt; Dict[str, int]:
+    def get_daily_usage(self, device_id: str, date: str) -> Dict[str, int]:
         """获取当日已使用次数
         
         Returns:
@@ -385,7 +385,7 @@ class LicenseManager:
             'yanghao_device_id': None,
         }
     
-    def get_total_daily_usage_all_devices(self) -&gt; Dict[str, int]:
+    def get_total_daily_usage_all_devices(self) -> Dict[str, int]:
         """获取今日所有设备总使用次数"""
         today = self._get_today()
         conn = sqlite3.connect(self.DB_PATH)
@@ -408,7 +408,7 @@ class LicenseManager:
             'yanghao_device_id': row[5],
         }
     
-    def check_daily_quota(self, count_type: str, device_id: str = None) -&gt; Tuple[bool, str]:
+    def check_daily_quota(self, count_type: str, device_id: str = None) -> Tuple[bool, str]:
         """检查每日配额是否够用
         
         Args:
@@ -429,7 +429,7 @@ class LicenseManager:
         used_count = daily_usage.get(used_key, 0)
         
         # 检查是否超限
-        if max_count != -1 and used_count &gt;= max_count:
+        if max_count != -1 and used_count >= max_count:
             type_names = {
                 'yanghao': '养号',
                 'create': '创作',
@@ -474,7 +474,7 @@ class LicenseManager:
         today = self._get_today()
         self._increment_daily_count(device_id, today, 'cover_image')
     
-    def get_registered_devices_count(self) -&gt; int:
+    def get_registered_devices_count(self) -> int:
         """获取已注册设备数量"""
         conn = sqlite3.connect(self.DB_PATH)
         cursor = conn.cursor()
@@ -483,7 +483,7 @@ class LicenseManager:
         conn.close()
         return row[0] if row else 0
     
-    def get_current_license(self) -&gt; Dict[str, Any]:
+    def get_current_license(self) -> Dict[str, Any]:
         """获取当前有效的授权"""
         conn = sqlite3.connect(self.DB_PATH)
         cursor = conn.cursor()
@@ -510,7 +510,7 @@ class LicenseManager:
         if expire_date:
             try:
                 expire_dt = datetime.strptime(expire_date, "%Y-%m-%d")
-                if datetime.now() &gt; expire_dt:
+                if datetime.now() > expire_dt:
                     # 已过期，返回免费
                     return DEFAULT_FREE_LICENSE.copy()
             except:
@@ -534,7 +534,7 @@ class LicenseManager:
             "activation_code": row[0],
         }
     
-    def activate_license(self, activation_code: str, machine_code: str) -&gt; Tuple[bool, str]:
+    def activate_license(self, activation_code: str, machine_code: str) -> Tuple[bool, str]:
         """调用云端API激活授权"""
         # 请求云端 - 对齐官方接口协议
         url = f"{self.api_base_url}/auth/verify"
@@ -608,7 +608,7 @@ class LicenseManager:
         
         return True, f"激活成功！套餐: {package_type}"
     
-    def check_can_start(self, device_id: str, planned_duration: int = 0, is_create: bool = False) -&gt; Tuple[bool, str, int]:
+    def check_can_start(self, device_id: str, planned_duration: int = 0, is_create: bool = False) -> Tuple[bool, str, int]:
         """检查是否可以启动养号/创作
         
         Args:
@@ -639,7 +639,7 @@ class LicenseManager:
         
         # 检查设备数量
         device_count = self.get_registered_devices_count()
-        if max_devices != -1 and device_count &gt; max_devices:
+        if max_devices != -1 and device_count > max_devices:
             return False, f"已达到最大设备数限制({max_devices})，请升级套餐", 0
         
         # 检查单次养号时长
@@ -647,7 +647,7 @@ class LicenseManager:
         message = ""
         
         if max_single_duration != -1:
-            if planned_duration &gt; max_single_duration:
+            if planned_duration > max_single_duration:
                 actual_duration = max_single_duration
                 message = (f"⚠️ 套餐单次养号最长 {max_single_duration} 分钟，"
                            f"你计划养号 {planned_duration} 分钟，本次将只运行 {max_single_duration} 分钟后自动停止")
@@ -672,7 +672,7 @@ class LicenseManager:
             _current_start_time = None
             _current_device_id = None
     
-    def get_usage_stats(self) -&gt; Dict[str, Any]:
+    def get_usage_stats(self) -> Dict[str, Any]:
         """获取使用统计信息"""
         today = self._get_today()
         ym = self._get_current_year_month()
@@ -713,7 +713,7 @@ class LicenseManager:
             "registered_devices_count": self.get_registered_devices_count(),
         }
     
-    def refresh_license(self) -&gt; Tuple[bool, str]:
+    def refresh_license(self) -> Tuple[bool, str]:
         """程序启动时刷新授权，联网更新"""
         # 获取当前激活码
         current = self.get_current_license()
@@ -808,4 +808,12 @@ class LicenseManager:
             return True, f"使用本地缓存授权，网络异常: {str(e)}"
 
 # 单例
-_
+_license_manager: Optional[LicenseManager] = None
+
+def get_license_manager() -> LicenseManager:
+    """获取单例"""
+    global _license_manager
+    if _license_manager is None:
+        _license_manager = LicenseManager()
+    return _license_manager
+
