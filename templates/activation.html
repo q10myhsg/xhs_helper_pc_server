@@ -169,13 +169,6 @@
             <div class="alert alert-info">暂无授权信息，请先激活</div>
         </div>
     </div>
-
-    <!-- 使用情况 -->
-    <div class="usage-progress-section" id="usage-progress-section" style="display: none;">
-        <h3>📊 今日使用情况</h3>
-        <div id="usage-progress-container">
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -192,8 +185,7 @@
             .then(data => {
                 if (data.success) {
                     document.getElementById('machine-code').value = data.data.machine_code;
-                    renderLicenseInfo(data.data.license);
-                    renderUsageProgress(data.data);
+                    renderLicenseInfo(data.data.license, data.data);
                 }
             })
             .catch(error => {
@@ -201,7 +193,7 @@
             });
     }
 
-    function renderLicenseInfo(license) {
+    function renderLicenseInfo(license, statsData) {
         const content = document.getElementById('license-content');
         if (!license) {
             content.innerHTML = '<div class="alert alert-info">暂无授权信息，请先激活</div>';
@@ -213,6 +205,89 @@
         if (license.active) {
             statusClass = 'status-active';
             statusText = '已激活';
+        }
+
+        // 构建使用情况部分
+        let usageHtml = '';
+        if (statsData) {
+            const usageItems = [
+                {
+                name: '🎯 养号',
+                used: statsData.used_daily_yanghao || 0,
+                max: license.max_daily_yanghao,
+                key: 'yanghao',
+                warning: '今日养号次数即将用尽！'
+                },
+                {
+                name: '📝 内容创建',
+                used: statsData.used_daily_create || 0,
+                max: license.max_daily_create,
+                key: 'create',
+                warning: '今日创建次数即将用尽！'
+                },
+                {
+                name: '📄 PDF导出',
+                used: statsData.used_daily_export || 0,
+                max: license.max_daily_export,
+                key: 'export',
+                warning: '今日导出次数即将用尽！'
+                },
+                {
+                name: '🎨 封面生成',
+                used: statsData.used_daily_cover_image || 0,
+                max: license.max_daily_cover_image,
+                key: 'cover_image',
+                warning: '今日封面生成次数即将用尽！'
+                },
+                {
+                name: '📲 文件传输',
+                used: statsData.used_daily_transfer || 0,
+                max: license.max_daily_transfer,
+                key: 'transfer',
+                warning: '今日文件传输次数即将用尽！'
+                }
+            ];
+            
+            usageHtml = '<hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;"><h4 style="margin-bottom: 15px;">📊 今日使用情况</h4>';
+            usageItems.forEach(item => {
+                let isUnlimited = item.max === -1;
+                let percentage = isUnlimited ? 0 : (item.used / item.max) * 100;
+                let isNearLimit = !isUnlimited && percentage >= 80 && percentage < 100;
+                let isOverLimit = !isUnlimited && percentage >= 100;
+                
+                let countClass = '';
+                let fillClass = '';
+                let warningHtml = '';
+                
+                if (isNearLimit) {
+                    countClass = 'near-limit';
+                    fillClass = 'warning';
+                    warningHtml = `<div class="usage-warning">⚠️ ${item.warning}请合理使用，建议升级套餐！</div>`;
+                }
+                
+                if (isOverLimit) {
+                    countClass = 'over-limit';
+                    fillClass = 'danger';
+                    warningHtml = `<div class="usage-danger">⛔ 今日${item.name}次数已用尽！请升级套餐或明日再使用。</div>`;
+                }
+                
+                usageHtml += `
+                    <div class="usage-item">
+                        <div class="usage-header">
+                            <span class="usage-name">${item.name}</span>
+                            <span class="usage-count ${countClass}">
+                                ${isUnlimited ? '♾️ 无限制' : `${item.used} / ${item.max} 次`}
+                            </span>
+                        </div>
+                        ${!isUnlimited ? `
+                            <div class="progress-bar">
+                                <div class="progress-fill ${fillClass}" style="width: ${Math.min(percentage, 100)}%;"></div>
+                            </div>
+                        ` : ''}
+                        ${warningHtml}
+                    </div>
+                `;
+            });
         }
 
         content.innerHTML = `
@@ -245,7 +320,6 @@
                     <strong>每日导出次数</strong>
                     <span>${license.max_daily_export === -1 ? '无限制' : license.max_daily_export || '-'} 次</span>
                 </div>
-
                 <div class="license-item">
                     <strong>每日封面次数</strong>
                     <span>${license.max_daily_cover_image === -1 ? '无限制' : license.max_daily_cover_image || '-'} 次</span>
@@ -259,102 +333,8 @@
                     <span>${license.create_time ? new Date(license.create_time).toLocaleString() : '-'}</span>
                 </div>
             </div>
+            ${usageHtml}
         `;
-    }
-
-    function renderUsageProgress(statsData) {
-        const section = document.getElementById('usage-progress-section');
-        const container = document.getElementById('usage-progress-container');
-        
-        const license = statsData.license;
-        
-        if (!license) {
-            section.style.display = 'none';
-            return;
-        }
-
-        section.style.display = 'block';
-        
-        const usageItems = [
-            {
-            name: '🎯 养号',
-            used: statsData.used_daily_yanghao || 0,
-            max: license.max_daily_yanghao,
-            key: 'yanghao',
-            warning: '今日养号次数即将用尽！'
-            },
-            {
-            name: '📝 内容创建',
-            used: statsData.used_daily_create || 0,
-            max: license.max_daily_create,
-            key: 'create',
-            warning: '今日创建次数即将用尽！'
-            },
-            {
-            name: '📄 PDF导出',
-            used: statsData.used_daily_export || 0,
-            max: license.max_daily_export,
-            key: 'export',
-            warning: '今日导出次数即将用尽！'
-            },
-            {
-            name: '🎨 封面生成',
-            used: statsData.used_daily_cover_image || 0,
-            max: license.max_daily_cover_image,
-            key: 'cover_image',
-            warning: '今日封面生成次数即将用尽！'
-            },
-            {
-            name: '📲 文件传输',
-            used: statsData.used_daily_transfer || 0,
-            max: license.max_daily_transfer,
-            key: 'transfer',
-            warning: '今日文件传输次数即将用尽！'
-            }
-        ];
-        
-        let html = '';
-        usageItems.forEach(item => {
-            let isUnlimited = item.max === -1;
-            let percentage = isUnlimited ? 0 : (item.used / item.max) * 100;
-            let isNearLimit = !isUnlimited && percentage >= 80 && percentage < 100;
-            let isOverLimit = !isUnlimited && percentage >= 100;
-            
-            let countClass = '';
-            let fillClass = '';
-            let warningHtml = '';
-            
-            if (isNearLimit) {
-                countClass = 'near-limit';
-                fillClass = 'warning';
-                warningHtml = `<div class="usage-warning">⚠️ ${item.warning}请合理使用，建议升级套餐！</div>`;
-            }
-            
-            if (isOverLimit) {
-                countClass = 'over-limit';
-                fillClass = 'danger';
-                warningHtml = `<div class="usage-danger">⛔ 今日${item.name}次数已用尽！请升级套餐或明日再使用。</div>`;
-            }
-            
-            html += `
-                <div class="usage-item">
-                    <div class="usage-header">
-                        <span class="usage-name">${item.name}</span>
-                        <span class="usage-count ${countClass}">
-                            ${isUnlimited ? '♾️ 无限制' : `${item.used} / ${item.max} 次`}
-                        </span>
-                    </div>
-                    ${!isUnlimited ? `
-                        <div class="progress-bar">
-                            <div class="progress-fill ${fillClass}" style="width: ${Math.min(percentage, 100)}%;"></div>
-                        </div>
-                    ` : ''}
-                    ${warningHtml}
-                </div>
-            `;
-        });
-        
-        container.innerHTML = html;
     }
 
     function verifyActivation() {
