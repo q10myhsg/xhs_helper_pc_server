@@ -836,6 +836,7 @@ class LicenseManager:
         """
         license = self.get_current_license()
         max_devices = license["max_devices"]
+        max_single_yanghao_minutes = license.get("max_single_yanghao_minutes", 20)
         
         # 检查养号次数配额
         ok, msg = self.check_daily_quota('yanghao', device_id)
@@ -853,8 +854,14 @@ class LicenseManager:
         if max_devices != -1 and device_count > max_devices:
             return False, f"已达到最大设备数限制({max_devices})，请升级套餐", 0
         
-        # 不再限制时长，只限制次数
-        return True, "可以启动", planned_duration
+        # 检查养号时长限制
+        actual_duration = planned_duration
+        message = "可以启动"
+        if max_single_yanghao_minutes != -1 and planned_duration > max_single_yanghao_minutes:
+            actual_duration = max_single_yanghao_minutes
+            message = f"当前权限最多允许养号 {max_single_yanghao_minutes} 分钟，已自动调整"
+        
+        return True, message, actual_duration
     
     def on_start(self, device_id: str):
         """启动前调用，记录开始时间并增加养号次数"""

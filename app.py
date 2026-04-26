@@ -177,6 +177,16 @@ def api_save_config(device_id):
     try:
         config = request.json
 
+        # 检查养号时长权限限制
+        if "duration_minutes" in config:
+            license_info = license_manager.get_current_license()
+            max_duration = license_info.get("max_single_yanghao_minutes", 20)
+            requested_duration = config["duration_minutes"]
+            
+            if max_duration != -1 and requested_duration > max_duration:
+                # 自动调整为最大允许时长
+                config["duration_minutes"] = max_duration
+
         # 先获取现有配置
         existing_config = nurturing_manager.get_device_config(device_id)
 
@@ -185,7 +195,14 @@ def api_save_config(device_id):
 
         success = nurturing_manager.update_device_config(device_id, merged_config)
         if success:
-            return jsonify({"success": True, "message": "配置已保存"})
+            # 返回实际保存的配置，让前端知道是否被调整
+            return jsonify({
+                "success": True, 
+                "message": "配置已保存",
+                "data": {
+                    "duration_minutes": merged_config.get("duration_minutes")
+                }
+            })
         else:
             return jsonify({"success": False, "error": "配置更新失败"})
     except Exception as e:
@@ -237,6 +254,11 @@ def api_start_yanghao():
         if msg:
             logger.info(msg)
         
+        # 如果实际时长和计划时长不同，更新配置
+        if actual_duration != duration_minutes:
+            config["duration_minutes"] = actual_duration
+            nurturing_manager.update_device_config(device_id, config)
+        
         # 连接设备
         if not nurturing_manager.device_manager.connect_device(device_id):
             logger.error(f"无法连接设备 {device_id}")
@@ -261,7 +283,10 @@ def api_start_yanghao():
         success = nurturing_manager.start_nurturing(device_id)
         if success:
             logger.info(f"设备 {device_id} 养号启动成功")
-            return jsonify({"success": True, "message": "养号已启动"})
+            response_message = "养号已启动"
+            if msg and "已自动调整" in msg:
+                response_message = msg
+            return jsonify({"success": True, "message": response_message, "data": {"actual_duration": actual_duration}})
         else:
             logger.error(f"设备 {device_id} 养号启动失败")
             return jsonify({"success": False, "error": "启动养号失败，请查看后台日志"})
@@ -379,6 +404,19 @@ def api_get_license_info():
     try:
         stats = license_manager.get_usage_stats()
         return jsonify({"success": True, "data": stats})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/license/config", methods=["GET"])
+def api_get_license_config():
+    """获取当前权限配置"""
+    try:
+        license = license_manager.get_current_license()
+        config = {
+            "max_single_yanghao_minutes": license.get("max_single_yanghao_minutes", 20),
+            "package_type": license.get("package_type", "free")
+        }
+        return jsonify({"success": True, "data": config})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
