@@ -27,7 +27,7 @@ DEFAULT_PACKAGE_CONFIG = {
         "max_devices": 1,
         "max_daily_yanghao": 3,
         "max_daily_create": 5,
-        "max_daily_export": 10,
+        "max_daily_export": 5,
         "max_daily_main_image": 5,
         "max_daily_cover_image": 5,
         "max_daily_transfer": 10,
@@ -38,7 +38,7 @@ DEFAULT_PACKAGE_CONFIG = {
         "max_devices": 3,
         "max_daily_yanghao": 9,
         "max_daily_create": 15,
-        "max_daily_export": 30,
+        "max_daily_export": 15,
         "max_daily_main_image": 15,
         "max_daily_cover_image": 15,
         "max_daily_transfer": 30,
@@ -209,7 +209,6 @@ class LicenseManager:
         {
             "auto_use": {"device_count": 3, "daily_count": 9, "device_time": 60},
             "create": {"daily_limit": 15},
-            "pdf": {"daily_limit": 30},
             "cover": {"daily_limit": 30},
             "transfer": {"daily_limit": 30}
         }
@@ -219,7 +218,7 @@ class LicenseManager:
             "max_devices": 3,
             "max_daily_yanghao": 9,
             "max_daily_create": 15,
-            "max_daily_export": 30,
+            "max_daily_export": 15,  # 与内容创作共用
             "max_daily_main_image": 15,
             "max_daily_cover_image": 15,
             "max_single_yanghao_minutes": 60,
@@ -238,15 +237,11 @@ class LicenseManager:
             parsed["max_daily_yanghao"] = auto_use.get("daily_count", 9)
             parsed["max_single_yanghao_minutes"] = auto_use.get("device_time", 60)
         
-        # 解析 create 权限 (对应内容创作次数)
+        # 解析 create 权限 (对应内容创作和 PDF 导出次数)
         create = permissions.get("create", {})
         if create:
             parsed["max_daily_create"] = create.get("daily_limit", 15)
-        
-        # 解析 pdf 权限 (对应导出次数)
-        pdf = permissions.get("pdf", {})
-        if pdf:
-            parsed["max_daily_export"] = pdf.get("daily_limit", 30)
+            parsed["max_daily_export"] = create.get("daily_limit", 15)  # 与内容创作共用
         
         # 解析 cover 权限 (对应封面生成次数)
         cover = permissions.get("cover", {})
