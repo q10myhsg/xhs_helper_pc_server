@@ -89,6 +89,9 @@ class LicenseManager:
         # 初始化套餐配置
         self.package_config = self._load_package_config()
         self._fetch_package_config_if_needed()
+        
+        # 获取设备权限信息
+        self._refresh_device_info()
     
     def _load_api_config(self):
         """加载 API 配置"""
@@ -125,6 +128,21 @@ class LicenseManager:
             self.package_config = config
         except Exception:
             pass
+    
+    def _refresh_device_info(self):
+        """从服务端获取设备信息并更新本地权限"""
+        device_info = self.fetch_device_info_from_server()
+        if device_info:
+            # 更新本地权限配置
+            permissions = device_info.get("permissions", {})
+            if permissions:
+                parsed_permissions = self._parse_permissions_from_protocol(permissions)
+                # 更新到 package_config
+                package_type = device_info.get("package_type", "free")
+                if package_type not in self.package_config:
+                    self.package_config[package_type] = {}
+                self.package_config[package_type].update(parsed_permissions)
+                self._save_package_config(self.package_config)
     
     def _get_last_fetch_date(self) -> Optional[str]:
         """获取上次获取套餐配置的日期"""
@@ -739,38 +757,50 @@ class LicenseManager:
                 return False, result.get("message", "激活码无效")
             
             license_data = result.get("data", {})
-            package_type = license_data.get("package_type", "basic")
             expire_date = license_data.get("expiry_date")
-            permissions = license_data.get("permissions", {})
-            
-            # 从服务端套餐配置中获取配额
-            package_config = self.package_config.get(package_type, {})
-            
-            # 优先使用协议中的 permissions 结构，如果没有则使用本地配置
-            if permissions:
-                parsed_permissions = self._parse_permissions_from_protocol(permissions)
-                max_devices = parsed_permissions.get("max_devices", 3)
-                max_daily_yanghao = parsed_permissions.get("max_daily_yanghao", 9)
-                max_daily_create = parsed_permissions.get("max_daily_create", 15)
-                max_daily_export = parsed_permissions.get("max_daily_export", 30)
-                max_daily_main_image = parsed_permissions.get("max_daily_main_image", 15)
-                max_daily_cover_image = parsed_permissions.get("max_daily_cover_image", 15)
-                max_single_yanghao_minutes = parsed_permissions.get("max_single_yanghao_minutes", 60)
-                daily_yanghao_device_limit = parsed_permissions.get("daily_yanghao_device_limit", False)
-            else:
-                # 使用服务端返回的或本地默认的配额（兼容旧版）
-                max_devices = license_data.get("max_devices", package_config.get("max_devices", 3))
-                max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", 9))
-                max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", 15))
-                max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", 30))
-                max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", 15))
-                max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", 15))
-                max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", 60))
-                daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", False))
             
             # 转换过期日期：从 ISO 格式提取 YYYY-MM-DD
             if expire_date and 'T' in expire_date:
                 expire_date = expire_date.split('T')[0]
+            
+            # 调用 /device/info 获取最新的权限和套餐信息
+            device_info = self.fetch_device_info_from_server(machine_code)
+            if device_info:
+                package_type = device_info.get("package_type", "basic")
+                permissions = device_info.get("permissions", {})
+                
+                # 解析权限
+                if permissions:
+                    parsed_permissions = self._parse_permissions_from_protocol(permissions)
+                    max_devices = parsed_permissions.get("max_devices", 3)
+                    max_daily_yanghao = parsed_permissions.get("max_daily_yanghao", 9)
+                    max_daily_create = parsed_permissions.get("max_daily_create", 15)
+                    max_daily_export = parsed_permissions.get("max_daily_export", 30)
+                    max_daily_main_image = parsed_permissions.get("max_daily_main_image", 15)
+                    max_daily_cover_image = parsed_permissions.get("max_daily_cover_image", 15)
+                    max_single_yanghao_minutes = parsed_permissions.get("max_single_yanghao_minutes", 60)
+                    daily_yanghao_device_limit = parsed_permissions.get("daily_yanghao_device_limit", False)
+                else:
+                    # 使用默认值
+                    max_devices = 3
+                    max_daily_yanghao = 9
+                    max_daily_create = 15
+                    max_daily_export = 30
+                    max_daily_main_image = 15
+                    max_daily_cover_image = 15
+                    max_single_yanghao_minutes = 60
+                    daily_yanghao_device_limit = False
+            else:
+                # 获取设备信息失败，使用默认值
+                package_type = "basic"
+                max_devices = 3
+                max_daily_yanghao = 9
+                max_daily_create = 15
+                max_daily_export = 30
+                max_daily_main_image = 15
+                max_daily_cover_image = 15
+                max_single_yanghao_minutes = 60
+                daily_yanghao_device_limit = False
             
         except Exception as e:
             return False, f"网络请求失败: {str(e)}"
@@ -938,7 +968,8 @@ class LicenseManager:
         # 获取当前激活码
         current = self.get_current_license()
         if "activation_code" not in current or not current.get("activation_code"):
-            # 没有激活码，不用刷新，用默认
+            # 没有激活码，调用 /device/info 获取免费版权限
+            self._refresh_device_info()
             return True, "使用免费授权"
         
         # 获取机器码
@@ -952,12 +983,13 @@ class LicenseManager:
         conn.close()
         
         if not row:
+            self._refresh_device_info()
             return True, "使用本地缓存授权"
         
         machine_code = row[0]
         activation_code = current["activation_code"]
         
-        # 重新验证
+        # 重新验证激活码
         url = f"{self.api_base_url}/auth/verify"
         headers = {
             "X-API-Key": self.api_key,
@@ -974,6 +1006,7 @@ class LicenseManager:
             resp = requests.post(url, json=data, headers=headers, timeout=10)
             if resp.status_code != 200:
                 # 网络失败，使用缓存
+                self._refresh_device_info()
                 return True, "使用本地缓存授权，网络验证失败"
             
             result = resp.json()
@@ -982,38 +1015,50 @@ class LicenseManager:
                 return False, "授权已失效，请重新激活"
             
             license_data = result.get("data", {})
-            package_type = license_data.get("package_type", current["package_type"])
             expire_date = license_data.get("expiry_date")
-            permissions = license_data.get("permissions", {})
-
-            # 从服务端套餐配置中获取配额
-            package_config = self.package_config.get(package_type, {})
-
-            # 优先使用协议中的 permissions 结构
-            if permissions:
-                parsed_permissions = self._parse_permissions_from_protocol(permissions)
-                max_devices = parsed_permissions.get("max_devices", current.get("max_devices", 3))
-                max_daily_yanghao = parsed_permissions.get("max_daily_yanghao", current.get("max_daily_yanghao", 9))
-                max_daily_create = parsed_permissions.get("max_daily_create", current.get("max_daily_create", 15))
-                max_daily_export = parsed_permissions.get("max_daily_export", current.get("max_daily_export", 30))
-                max_daily_main_image = parsed_permissions.get("max_daily_main_image", current.get("max_daily_main_image", 15))
-                max_daily_cover_image = parsed_permissions.get("max_daily_cover_image", current.get("max_daily_cover_image", 15))
-                max_single_yanghao_minutes = parsed_permissions.get("max_single_yanghao_minutes", current.get("max_single_yanghao_minutes", 60))
-                daily_yanghao_device_limit = parsed_permissions.get("daily_yanghao_device_limit", current.get("daily_yanghao_device_limit", False))
-            else:
-                # 使用服务端返回的或本地默认的配额（兼容旧版）
-                max_devices = license_data.get("max_devices", package_config.get("max_devices", current.get("max_devices", 3)))
-                max_daily_yanghao = license_data.get("max_daily_yanghao", package_config.get("max_daily_yanghao", current.get("max_daily_yanghao", 9)))
-                max_daily_create = license_data.get("max_daily_create", package_config.get("max_daily_create", current.get("max_daily_create", 15)))
-                max_daily_export = license_data.get("max_daily_export", package_config.get("max_daily_export", current.get("max_daily_export", 30)))
-                max_daily_main_image = license_data.get("max_daily_main_image", package_config.get("max_daily_main_image", current.get("max_daily_main_image", 15)))
-                max_daily_cover_image = license_data.get("max_daily_cover_image", package_config.get("max_daily_cover_image", current.get("max_daily_cover_image", 15)))
-                max_single_yanghao_minutes = license_data.get("max_single_yanghao_minutes", package_config.get("max_single_yanghao_minutes", current.get("max_single_yanghao_minutes", 60)))
-                daily_yanghao_device_limit = license_data.get("daily_yanghao_device_limit", package_config.get("daily_yanghao_device_limit", current.get("daily_yanghao_device_limit", False)))
             
             # 转换过期日期：从 ISO 格式提取 YYYY-MM-DD
             if expire_date and 'T' in expire_date:
                 expire_date = expire_date.split('T')[0]
+            
+            # 调用 /device/info 获取最新的权限和套餐信息
+            device_info = self.fetch_device_info_from_server(machine_code)
+            if device_info:
+                package_type = device_info.get("package_type", current["package_type"])
+                permissions = device_info.get("permissions", {})
+                
+                # 解析权限
+                if permissions:
+                    parsed_permissions = self._parse_permissions_from_protocol(permissions)
+                    max_devices = parsed_permissions.get("max_devices", current.get("max_devices", 3))
+                    max_daily_yanghao = parsed_permissions.get("max_daily_yanghao", current.get("max_daily_yanghao", 9))
+                    max_daily_create = parsed_permissions.get("max_daily_create", current.get("max_daily_create", 15))
+                    max_daily_export = parsed_permissions.get("max_daily_export", current.get("max_daily_export", 30))
+                    max_daily_main_image = parsed_permissions.get("max_daily_main_image", current.get("max_daily_main_image", 15))
+                    max_daily_cover_image = parsed_permissions.get("max_daily_cover_image", current.get("max_daily_cover_image", 15))
+                    max_single_yanghao_minutes = parsed_permissions.get("max_single_yanghao_minutes", current.get("max_single_yanghao_minutes", 60))
+                    daily_yanghao_device_limit = parsed_permissions.get("daily_yanghao_device_limit", current.get("daily_yanghao_device_limit", False))
+                else:
+                    # 使用默认值
+                    max_devices = current.get("max_devices", 3)
+                    max_daily_yanghao = current.get("max_daily_yanghao", 9)
+                    max_daily_create = current.get("max_daily_create", 15)
+                    max_daily_export = current.get("max_daily_export", 30)
+                    max_daily_main_image = current.get("max_daily_main_image", 15)
+                    max_daily_cover_image = current.get("max_daily_cover_image", 15)
+                    max_single_yanghao_minutes = current.get("max_single_yanghao_minutes", 60)
+                    daily_yanghao_device_limit = current.get("daily_yanghao_device_limit", False)
+            else:
+                # 获取设备信息失败，使用当前值
+                package_type = current["package_type"]
+                max_devices = current.get("max_devices", 3)
+                max_daily_yanghao = current.get("max_daily_yanghao", 9)
+                max_daily_create = current.get("max_daily_create", 15)
+                max_daily_export = current.get("max_daily_export", 30)
+                max_daily_main_image = current.get("max_daily_main_image", 15)
+                max_daily_cover_image = current.get("max_daily_cover_image", 15)
+                max_single_yanghao_minutes = current.get("max_single_yanghao_minutes", 60)
+                daily_yanghao_device_limit = current.get("daily_yanghao_device_limit", False)
             
             # 更新本地缓存
             conn = sqlite3.connect(self.DB_PATH)
