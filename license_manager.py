@@ -19,6 +19,7 @@ import requests
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 from machine_code import get_machine_code
+from path_manager import LICENSE_DB_PATH, API_CONFIG_PATH, PACKAGE_CONFIG_PATH, PACKAGE_FETCH_DATE_PATH, CONFIG_DIR
 
 # 默认套餐配置（当服务端不可用时使用）
 # 约定：-1 表示不限制
@@ -65,12 +66,8 @@ DEFAULT_FREE_LICENSE = {
     **DEFAULT_PACKAGE_CONFIG["free"]
 }
 
-# 配置文件路径
-CONFIG_DIR = "config"
-DB_PATH = os.path.join(CONFIG_DIR, "license.db")
-API_CONFIG_PATH = os.path.join(CONFIG_DIR, "api_config.json")
-PACKAGE_CONFIG_PATH = os.path.join(CONFIG_DIR, "package_config.json")
-PACKAGE_FETCH_DATE_PATH = os.path.join(CONFIG_DIR, "package_fetch_date.json")
+# 配置文件路径 - 使用隐蔽的存储位置
+DB_PATH = LICENSE_DB_PATH
 
 # 全局变量用于退出钩子统计
 _current_start_time: Optional[float] = None
