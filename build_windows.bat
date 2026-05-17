@@ -47,7 +47,7 @@ REM 3. 运行 PyInstaller
 echo [3/4] 开始打包...
 
 REM 构建命令
-set CMD=python -m PyInstaller --clean --name %APP_NAME% --onefile --console --noupx ^
+set CMD=python -m PyInstaller --clean --name %APP_NAME% --onefile --noconsole --noupx ^
     --add-data "templates;templates" ^
     --add-data "static;static" ^
     --add-data "config;config" ^
@@ -154,8 +154,8 @@ set README_CONTENT=# %APP_NAME% v%VERSION%
 浏览器打开: http://localhost:5000
 
 ## 功能
-- 小红书助手
-- 养号功能
+- 智能养号
+- 封面生成
 - PDF 转换
 - 文件传输
 

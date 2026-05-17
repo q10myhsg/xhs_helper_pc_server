@@ -52,7 +52,7 @@ echo
 echo -e "${YELLOW}[3/4] 开始打包...${NC}"
 
 # 构建命令
-CMD="python3 -m PyInstaller --clean --name $APP_NAME --onefile --console --noupx \
+CMD="python3 -m PyInstaller --clean --name $APP_NAME --onefile --windowed --noupx \
     --add-data 'templates:templates' \
     --add-data 'static:static' \
     --add-data 'config:config' \
@@ -170,8 +170,8 @@ README_CONTENT="# $APP_NAME v$VERSION
 浏览器打开: http://localhost:5000
 
 ## 功能
-- 小红书助手
-- 养号功能
+- 智能养号
+- 封面生成
 - PDF 转换
 - 文件传输"
 

@@ -19,7 +19,7 @@ cmd = [
     '--clean',
     '--name', 'creator_helper',
     '--onefile',
-    '--console',  # 显示控制台窗口，方便查看日志
+    '--windowed',  # 不显示控制台窗口，日志写入 ~/.creator_helper/logs/
     '--noupx',
     '--add-data', f'templates{sep}templates',
     '--add-data', f'static{sep}static',
@@ -39,6 +39,7 @@ cmd = [
     '--hidden-import', 'PyMuPDF',
     '--hidden-import', 'fitz',
     '--hidden-import', 'openai',
+    '--hidden-import', 'content_nurturing',
     '--hidden-import', 'xhs_nurturing',
     '--hidden-import', 'create_notes',
     '--hidden-import', 'license_manager',

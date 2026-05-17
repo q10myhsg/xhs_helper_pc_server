@@ -9,6 +9,7 @@ import os
 import sys
 import threading
 import logging
+from logging.handlers import RotatingFileHandler
 import webview
 from waitress import serve
 
@@ -20,11 +21,32 @@ except ImportError:
 
 
 def setup_logging():
-    """配置日志"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s'
+    """配置日志：同时写入文件和控制台（打包后无控制台时只写文件）"""
+    log_dir = os.path.join(os.path.expanduser("~"), ".creator_helper", "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "creator_helper.log")
+
+    fmt = logging.Formatter(
+        "%(asctime)s - %(name)s - %(funcName)s:%(lineno)d - %(levelname)s - %(message)s"
     )
+
+    # 滚动文件 handler：单文件最大 5 MB，保留最近 3 份
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
+    file_handler.setFormatter(fmt)
+
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.addHandler(file_handler)
+
+    # 打包后 sys.stdout 可能为 None，只在有控制台时才加 StreamHandler
+    if sys.stdout is not None:
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(fmt)
+        root.addHandler(stream_handler)
+
+    logging.info(f"日志文件路径：{log_file}")
 
 
 def start_flask_server():
@@ -201,30 +223,27 @@ def main():
         
         if missing:
             logger.warning("检测到缺失的依赖项！")
-            print("="*60)
-            print("检测到缺失的依赖项！")
-            print(checker.get_summary())
-            print("="*60)
-            
+            logger.warning(checker.get_summary())
+
             # 尝试启动环境配置 GUI
             try:
                 import tkinter as tk
                 from env_setup_gui import EnvSetupApp
-                
-                print("\n正在启动环境配置工具...")
+
+                logger.info("正在启动环境配置工具...")
                 root = tk.Tk()
                 app = EnvSetupApp(root)
                 root.mainloop()
-                
+
             except ImportError:
-                print("\n环境配置工具不可用，请手动安装以下依赖：")
+                logger.error("环境配置工具不可用，请手动安装以下依赖：")
                 for dep in missing:
-                    print(f"  - {dep}")
-                print("\n或运行: python env_setup_gui.py")
+                    logger.error(f"  - {dep}")
+                logger.error("或运行: python env_setup_gui.py")
                 return 1
         else:
             logger.info("所有依赖项已满足")
-            print(checker.get_summary())
+            logger.info(checker.get_summary())
         
         # 将我们的工具目录添加到 PATH
         installer = EnvInstaller()
@@ -233,12 +252,9 @@ def main():
             os.environ['PATH'] = bin_dir + os.pathsep + os.environ['PATH']
             
     except ImportError as e:
-        logger.warning(f"环境检查模块不可用: {e}")
-        print("环境检查模块不可用，直接启动...")
+        logger.warning(f"环境检查模块不可用: {e}，直接启动...")
     except Exception as e:
-        logger.error(f"启动过程中出错: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"启动过程中出错: {e}", exc_info=True)
     
     # 启动 PyWebview 窗口，先显示 loading 页面
     logger.info("正在启动桌面窗口...")
