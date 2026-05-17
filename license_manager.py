@@ -73,6 +73,7 @@ DB_PATH = LICENSE_DB_PATH
 _current_start_time: Optional[float] = None
 _current_device_id: Optional[str] = None
 
+
 class LicenseManager:
     def __init__(self):
         self.DB_PATH = DB_PATH
