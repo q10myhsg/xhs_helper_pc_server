@@ -1,5 +1,6 @@
 import uiautomator2 as u2
 import subprocess
+import subprocess_util
 import logging
 import time
 from typing import Dict, List, Optional
@@ -29,7 +30,7 @@ class DeviceManager:
         """
         try:
             # 使用subprocess调用adb命令获取设备列表
-            result = subprocess.run(['adb', 'devices'], capture_output=True, text=True)
+            result = subprocess_util.run(['adb', 'devices'], capture_output=True, text=True)
             self.logger.info(f"adb devices输出: {result.stdout}")
             lines = result.stdout.strip().split('\n')[1:]  # 跳过第一行标题
             
@@ -60,7 +61,7 @@ class DeviceManager:
                                 # 尝试使用 adb 命令初始化 uiautomator2
                                 try:
                                     # 使用 uiautomator2 的 init 方法
-                                    subprocess.run(['python3', '-m', 'uiautomator2', 'init', '--device', device_id], 
+                                    subprocess_util.run(['python3', '-m', 'uiautomator2', 'init', '--device', device_id], 
                                                  capture_output=True, text=True)
                                     # 等待一下
                                     time.sleep(3)
@@ -139,7 +140,7 @@ class DeviceManager:
                 # 尝试使用 adb 命令初始化 uiautomator2
                 try:
                     # 使用 uiautomator2 的 init 方法
-                    subprocess.run(['python3', '-m', 'uiautomator2', 'init', '--device', device_id], 
+                    subprocess_util.run(['python3', '-m', 'uiautomator2', 'init', '--device', device_id], 
                                  capture_output=True, text=True)
                     # 等待一下
                     time.sleep(3)

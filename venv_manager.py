@@ -8,6 +8,7 @@
 import os
 import sys
 import subprocess
+import subprocess_util
 import platform
 import venv
 from pathlib import Path
@@ -83,7 +84,7 @@ class VenvManager:
             pip_path = self._get_pip_path(venv_path)
             if pip_path:
                 print('正在升级 pip...')
-                subprocess.run([pip_path, 'install', '--upgrade', 'pip'], capture_output=True)
+                subprocess_util.run([pip_path, 'install', '--upgrade', 'pip'], capture_output=True)
             
             return {
                 'success': True,
@@ -149,7 +150,7 @@ class VenvManager:
                 }
             
             print(f'正在安装依赖到虚拟环境...')
-            result = subprocess.run(
+            result = subprocess_util.run(
                 [pip_path, 'install', '-r', requirements_path],
                 capture_output=True,
                 text=True

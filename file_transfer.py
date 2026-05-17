@@ -8,6 +8,7 @@
 import os
 import shutil
 import subprocess
+import subprocess_util
 import logging
 from typing import Optional, Dict, List
 import time
@@ -32,7 +33,7 @@ class FileTransferManager:
     def _check_adb(self) -> bool:
         """检查ADB是否可用"""
         try:
-            subprocess.run(['adb', 'version'], check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            subprocess_util.run(['adb', 'version'], check=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             raise RuntimeError("ADB命令不可用，请确保已安装Android SDK并将adb添加到环境变量")
@@ -50,7 +51,7 @@ class FileTransferManager:
         try:
             # 使用简单的 test 命令，不使用 shell 操作符
             adb_cmd = self._build_adb_cmd(['shell', 'test', '-e', path])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             # 如果返回码是 0，表示路径存在
             return result.returncode == 0
         except KeyboardInterrupt:
@@ -65,7 +66,7 @@ class FileTransferManager:
         try:
             # 直接传递路径参数，不需要引号（因为我们传递的是参数列表）
             adb_cmd = self._build_adb_cmd(['shell', 'mkdir', '-p', path])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             logger.info(f"已创建手机目录: {path}")
             return True
         except KeyboardInterrupt:
@@ -88,7 +89,7 @@ class FileTransferManager:
             # 执行ADB删除目录命令（直接传递路径参数）
             logger.info(f"正在删除手机目录: {path}")
             adb_cmd = self._build_adb_cmd(['shell', 'rm', '-rf', path])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             
             # 验证目录是否已删除
             if not self._check_path_exists_on_device(path):
@@ -129,7 +130,7 @@ class FileTransferManager:
                 '-d', f'file://{encoded_path}'
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             
             logger.info(f"媒体扫描广播发送成功: {result.stdout.strip()}")
             return True
@@ -164,7 +165,7 @@ class FileTransferManager:
                 '-d', f'file://{encoded_path}'
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             logger.info(f"MediaStore 扫描触发结果: {result.returncode}")
             
             # 等待一下让系统处理
@@ -196,7 +197,7 @@ class FileTransferManager:
             
             # 使用 ls -1 命令只列出文件名，避免空格解析问题
             adb_cmd = self._build_adb_cmd(['shell', 'ls', '-1', dir_path])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             
             if result.returncode == 0 and result.stdout:
                 filenames = result.stdout.strip().split('\n')
@@ -241,7 +242,7 @@ class FileTransferManager:
                 '-d', 'file:///storage/emulated/0'
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             logger.info(f"全面媒体扫描触发结果: {result.returncode}")
             
             return True
@@ -277,7 +278,7 @@ class FileTransferManager:
                 'shell', 'touch', '-a', '-m', '-t', time_str, file_path
             ])
             
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True)
             logger.info(f"文件时间戳修改成功: {file_path}")
             return True
         except KeyboardInterrupt:
@@ -354,7 +355,7 @@ class FileTransferManager:
                 
                 adb_cmd = self._build_adb_cmd(['push', computer_dir, target_file_path])
                 logger.info(f"执行命令: {' '.join(adb_cmd)}")
-                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
                 # 打印详细的输出信息，方便调试
                 logger.info(f"adb 返回码: {result.returncode}")
@@ -421,7 +422,7 @@ class FileTransferManager:
                     # 传输文件 - 直接指定完整目标文件路径
                     adb_cmd = self._build_adb_cmd(['push', file_path, target_file_path])
                     logger.info(f"执行命令: {' '.join(adb_cmd)}")
-                    result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                    result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                     
                     # 打印详细的输出信息，方便调试
                     logger.info(f"adb 返回码: {result.returncode}")
@@ -619,7 +620,7 @@ class FileTransferManager:
             
             # 检查是否是单个文件
             adb_cmd = self._build_adb_cmd(['shell', 'test', '-f', phone_dir, '&&', 'echo', 'file', '||', 'echo', 'dir'])
-            result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             is_file = 'file' in result.stdout
             
             if is_file:
@@ -628,7 +629,7 @@ class FileTransferManager:
                 target_path = os.path.join(computer_dir, filename)
                 
                 adb_cmd = self._build_adb_cmd(['pull', phone_dir, target_path])
-                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
                 if result.returncode == 0:
                     file_count = 1
@@ -641,7 +642,7 @@ class FileTransferManager:
                 # 目录，需要递归拉取
                 # 先获取目录结构
                 adb_cmd = self._build_adb_cmd(['shell', 'find', phone_dir, '-type', 'f'])
-                result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                 
                 if result.returncode != 0:
                     return {"success": False, "error": f"获取手机文件列表失败: {result.stderr}"}
@@ -661,7 +662,7 @@ class FileTransferManager:
                     
                     # 拉取文件
                     adb_cmd = self._build_adb_cmd(['pull', phone_file_path, target_file_path])
-                    result = subprocess.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                    result = subprocess_util.run(adb_cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
                     
                     if result.returncode == 0:
                         file_count += 1
