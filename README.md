@@ -1,14 +1,14 @@
-# 小红书自动化 - 智能养号系统
+# 创作助手 PC 端 - 智能养号系统
 
 ## 项目概述
 
-这是一个基于 Python 和 uiautomator2 开发的小红书自动化养号系统，支持多设备管理、关键词搜索、帖子浏览、互动行为模拟等功能。系统通过 Web 界面进行操作，提供直观的设备管理、关键词配置和参数设置界面。
+这是一个基于 Python 和 uiautomator2 开发的移动端自动化养号系统，支持多设备管理、关键词搜索、帖子浏览、互动行为模拟等功能。系统通过 Web 界面进行操作，提供直观的设备管理、关键词配置和参数设置界面。
 
 ## 功能特性
 
 ### 核心功能
 - **多设备管理**：支持同时管理多个 Android 设备
-- **智能养号**：自动执行小红书养号流程，包括启动应用、浏览发现页、搜索关键词、访问帖子等
+- **智能养号**：自动执行养号流程，包括启动应用、浏览发现页、搜索关键词、访问帖子等
 - **关键词管理**：支持添加、删除、批量导入关键词
 - **行为模拟**：模拟真实用户的浏览、点赞、收藏、评论等行为
 - **参数配置**：可配置养号时长、访问比例、互动概率等参数
@@ -34,8 +34,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/q10myhsg/xiaohongshu-automation.git
-cd xiaohongshu-automation
+git clone https://github.com/q10myhsg/xhs_helper_pc_server.git
+cd xhs_helper_pc_server
 
 # 安装依赖
 pip install -r requirements.txt
@@ -97,7 +97,7 @@ python app.py
 - 在仪表板页面选择要养号的设备
 - 点击「启动养号」按钮，开始执行养号流程
 - 系统会自动执行以下操作：
-  1. 启动小红书应用
+  1. 启动目标应用
   2. 在发现页浏览一段时间
   3. 搜索关键词
   4. 访问搜索结果中的帖子
@@ -109,15 +109,15 @@ python app.py
 - 在仪表板页面选择要停止养号的设备
 - 点击「停止养号」按钮，停止执行养号流程
 
-### 8. 关闭小红书
+### 8. 关闭目标应用
 
 - 在仪表板页面选择要操作的设备
-- 点击「关闭小红书」按钮，关闭小红书应用
+- 点击「关闭目标应用」按钮，关闭目标应用
 
 ## 项目结构
 
 ```
-xiaohongshu-automation/
+xhs_helper_pc_server/
 ├── app.py              # 主应用文件
 ├── app2.py             # 备用应用文件
 ├── config/             # 配置文件目录
@@ -126,7 +126,8 @@ xiaohongshu-automation/
 ├── config_manager.py   # 配置管理模块
 ├── create_notes/       # 笔记创建相关文件
 │   ├── example_xhs_parser.py
-│   └── xhs_parser.py
+│   ├── xhs_parser.py
+│   └── note_link_parser.py
 ├── requirements.txt    # 依赖文件
 ├── static/             # 静态资源目录
 │   ├── generate_files/ # 生成的文件
@@ -139,7 +140,8 @@ xiaohongshu-automation/
 │   ├── html/
 │   └── local_run.py
 ├── utils.py            # 工具函数
-└── xhs_nurturing/      # 养号核心模块
+├── xhs_nurturing/      # 养号核心模块（旧包名，保持兼容）
+└── content_nurturing/  # 养号核心模块
     ├── __init__.py
     ├── browse_manager.py      # 浏览管理模块
     ├── config_manager.py      # 配置管理模块
@@ -163,7 +165,7 @@ xiaohongshu-automation/
 - 管理默认配置模板
 
 ### 3. 浏览管理模块 (`browse_manager.py`)
-- 启动小红书应用
+- 启动目标应用
 - 浏览发现页
 - 搜索关键词
 - 访问帖子详情
@@ -198,7 +200,7 @@ xiaohongshu-automation/
    - 建议使用性能较好的设备进行养号
 
 5. **合规性**：
-   - 请遵守小红书的用户协议
+   - 请遵守目标平台的用户协议
    - 合理使用自动化功能，避免过度操作
 
 ## 故障排除
@@ -211,7 +213,7 @@ xiaohongshu-automation/
 
 ### 2. 自动化操作失败
 - 检查设备是否解锁
-- 检查小红书应用是否正常运行
+- 检查目标应用是否正常运行
 - 检查 ATX 应用是否有必要的权限
 - 查看日志文件，了解具体错误信息
 
@@ -226,7 +228,7 @@ xiaohongshu-automation/
 A: 可能是设备连接不稳定，或 ADB 服务未正常运行。尝试重新连接设备，或重启 ADB 服务。
 
 **Q: 为什么养号过程中会停止？**
-A: 可能是设备网络问题、小红书应用崩溃，或系统资源不足。查看日志文件了解具体原因。
+A: 可能是设备网络问题、目标应用崩溃，或系统资源不足。查看日志文件了解具体原因。
 
 **Q: 如何提高养号效果？**
 A: 合理设置养号参数，使用真实的关键词，模拟自然的用户行为，避免过度操作。

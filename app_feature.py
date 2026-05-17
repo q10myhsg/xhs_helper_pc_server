@@ -320,11 +320,12 @@ def api_status(device_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-@app.route("/api/yanghao/close-xhs/&lt;device_id&gt;")
+@app.route("/api/yanghao/close-app/<device_id>")
+@app.route("/api/yanghao/close-xhs/<device_id>")  # 旧路由兼容
 def api_close_xhs(device_id):
-    """关闭小红书"""
+    """关闭目标应用"""
     try:
-        # 调用NurturingManager中的方法关闭小红书
+        # 调用NurturingManager中的方法关闭目标应用
         device = nurturing_manager.device_manager.get_device(device_id)
         if not device:
             # 尝试连接设备
@@ -334,7 +335,7 @@ def api_close_xhs(device_id):
         
         if device:
             device.app_stop("com.xingin.xhs")
-            return jsonify({"success": True, "message": "小红书已关闭"})
+            return jsonify({"success": True, "message": "目标应用已关闭"})
         else:
             return jsonify({"success": False, "error": "设备未连接"})
     except Exception as e:

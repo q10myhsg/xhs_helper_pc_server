@@ -296,7 +296,7 @@ def main():
     <body>
         <div class="loading-container">
             <div class="spinner"></div>
-            <h1>🚀 正在启动小红书助手</h1>
+            <h1>🚀 正在启动创作助手</h1>
             <p>服务器正在准备中，请稍候...</p>
         </div>
     </body>
@@ -308,7 +308,7 @@ def main():
     
     # 创建窗口，先显示 loading 页面
     window = webview.create_window(
-        title='小红书助手',
+        title='创作助手',
         html=loading_html,
         js_api=api,
         width=1280,

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小红书自动化 - 智能养号系统</title>
+    <title>智能养号系统</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -38,7 +38,7 @@
                 <div style="margin-bottom: 20px;">
                     <button type="button" class="btn btn-success" onclick="startNurturing()" style="margin-right: 10px;">🚀 启动养号</button>
                     <button type="button" class="btn btn-danger" onclick="stopNurturing()" style="margin-right: 10px;">🛑 停止养号</button>
-                    <button type="button" class="btn btn-secondary" onclick="closeXiaohongshu()">关闭小红书</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTargetApp()">关闭目标应用</button>
                 </div>
 
 
@@ -1922,8 +1922,8 @@
             loadDeviceStatuses();
         }
         
-        // 关闭小红书
-        function closeXiaohongshu() {
+        // 关闭目标应用
+        function closeTargetApp() {
             if (selectedDevices.length === 0) {
                 alert('请选择至少一个设备');
                 return;
@@ -1956,7 +1956,7 @@
                 });
             })).then(() => {
                 if (invalidDevices.length > 0) {
-                    let errorMsg = '以下设备无法关闭小红书：\n';
+                    let errorMsg = '以下设备无法关闭目标应用：\n';
                     invalidDevices.forEach(device => {
                         errorMsg += `- 设备 ${device.id}：${device.reason}\n`;
                     });
@@ -1968,12 +1968,12 @@
                     }
                 }
                 
-                // 为有效的设备关闭小红书
+                // 为有效的设备关闭目标应用
                 let successCount = 0;
                 let totalCount = validDevices.length;
                 
                 validDevices.forEach(deviceId => {
-                    fetch(`/api/yanghao/close-xhs/${deviceId}`)
+                    fetch(`/api/yanghao/close-app/${deviceId}`)
                         .then(response => response.json())
                         .then(data => {
                             totalCount--;
@@ -1982,9 +1982,9 @@
                             }
                             if (totalCount === 0) {
                                 if (successCount === validDevices.length) {
-                                    alert('小红书已关闭');
+                                    alert('目标应用已关闭');
                                 } else {
-                                    alert(`部分设备关闭小红书失败，成功 ${successCount} 个，失败 ${validDevices.length - successCount} 个`);
+                                    alert(`部分设备关闭目标应用失败，成功 ${successCount} 个，失败 ${validDevices.length - successCount} 个`);
                                 }
                             }
                         })
@@ -2321,12 +2321,13 @@
                     }
                 }
             });
-            localStorage.setItem('xhsFormData', JSON.stringify(formData));
+            localStorage.setItem('appFormData', JSON.stringify(formData));
         }
 
         // 从localStorage恢复所有表单数据
         function restoreAllFormData() {
-            const savedData = localStorage.getItem('xhsFormData');
+            const savedData = localStorage.getItem('appFormData')
+                || localStorage.getItem('xhsFormData'); // 兼容旧key
             if (!savedData) return;
 
             try {

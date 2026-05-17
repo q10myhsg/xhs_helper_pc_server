@@ -4,7 +4,10 @@ import threading
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from xhs_nurturing import NurturingManager
+try:
+    from content_nurturing import NurturingManager
+except ImportError:
+    from xhs_nurturing import NurturingManager  # 旧包名兼容
 from license_manager import get_license_manager
 from machine_code import get_machine_code
 from pdf_converter import PDFConverter
@@ -68,7 +71,7 @@ def activation_page():
 
 @app.route("/cover-generator")
 def cover_generator_page():
-    """小红书封面生成器页面"""
+    """封面生成器页面"""
     return render_template("cover_generator.html", active_page="cover-generator")
 
 
@@ -316,11 +319,12 @@ def api_status(device_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
-@app.route("/api/yanghao/close-xhs/<device_id>", methods=["POST"])
+@app.route("/api/yanghao/close-app/<device_id>", methods=["POST"])
+@app.route("/api/yanghao/close-xhs/<device_id>", methods=["POST"])  # 旧路由兼容
 def api_close_xhs(device_id):
-    """关闭小红书"""
+    """关闭目标应用"""
     try:
-        # 调用NurturingManager中的方法关闭小红书
+        # 调用NurturingManager中的方法关闭目标应用
         device = nurturing_manager.device_manager.get_device(device_id)
         if not device:
             # 尝试连接设备
@@ -330,7 +334,7 @@ def api_close_xhs(device_id):
         
         if device:
             device.app_stop("com.xingin.xhs")
-            return jsonify({"success": True, "message": "小红书已关闭"})
+            return jsonify({"success": True, "message": "目标应用已关闭"})
         else:
             return jsonify({"success": False, "error": "设备未连接"})
     except Exception as e:
@@ -889,7 +893,7 @@ def api_pdf_batch_convert():
                 # 执行转换 - 输出到工作区目录
                 target_dir = file_info.get('target_dir', base_dir)
                 if not target_dir:
-                    target_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
+                    target_dir = os.path.expanduser("~/Downloads/creator_helper_workspace")
                 output_dir = os.path.join(target_dir, 'output_images', os.path.splitext(file_info.get('original_name', ''))[0])
                 result = converter.convert_pdf_to_images(
                     filepath,
@@ -969,7 +973,7 @@ def api_pdf_batch_upload_to_dir():
 
         # 如果未指定工作区，使用默认工作区
         if not base_dir:
-            base_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
+            base_dir = os.path.expanduser("~/Downloads/creator_helper_workspace")
 
         if 'files' not in request.files:
             return jsonify({"success": False, "error": "没有文件"})
@@ -1026,7 +1030,7 @@ def api_pdf_batch_convert_local():
 
         # 如果未指定工作区，使用默认工作区
         if not base_dir:
-            base_dir = os.path.expanduser("~/Downloads/xhs_helper_workspace")
+            base_dir = os.path.expanduser("~/Downloads/creator_helper_workspace")
 
         # 检查基础目录是否存在
         if not os.path.exists(base_dir):
@@ -1870,7 +1874,7 @@ def api_save_cover_image():
         
         # 如果未指定输出目录，使用默认目录
         if not output_dir:
-            output_dir = os.path.expanduser("~/Desktop/小红书封面")
+            output_dir = os.path.expanduser("~/Desktop/封面输出")
         
         # 确保输出目录存在
         os.makedirs(output_dir, exist_ok=True)

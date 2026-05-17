@@ -41,8 +41,8 @@
 ### 3. 启动程序
 
 双击运行程序文件：
-- Windows: `xhs_helper.exe`
-- macOS: `xhs_helper.app`
+- Windows: `creator_helper.exe`
+- macOS: `creator_helper.app`
 
 程序启动后会自动打开环境配置工具。
 
@@ -217,7 +217,7 @@ sudo apt-get install poppler-utils
 
 **A:** 请检查：
 1. 设备是否已解锁
-2. 小红书应用是否已安装并正常运行
+2. 目标应用是否已安装并正常运行
 3. 设备网络连接是否稳定
 4. 查看程序日志了解具体错误信息
 

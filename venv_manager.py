@@ -32,13 +32,13 @@ class VenvManager:
                 app_data = os.environ.get('APPDATA', os.path.expanduser('~'))
                 self.base_dir = os.path.join(app_data, 'xhs_helper', 'venvs')
             else:
-                self.base_dir = os.path.join(os.path.expanduser('~'), '.xhs_helper', 'venvs')
+                self.base_dir = os.path.join(os.path.expanduser('~'), '.creator_helper', 'venvs')
         else:
             self.base_dir = base_dir
         
         os.makedirs(self.base_dir, exist_ok=True)
     
-    def create_venv(self, name: str = 'xhs_helper_env', python_path: Optional[str] = None) -> Dict:
+    def create_venv(self, name: str = 'creator_helper_env', python_path: Optional[str] = None) -> Dict:
         """
         创建虚拟环境
         
@@ -98,7 +98,7 @@ class VenvManager:
                 'message': f'创建虚拟环境失败: {str(e)}'
             }
     
-    def delete_venv(self, name: str = 'xhs_helper_env') -> Dict:
+    def delete_venv(self, name: str = 'creator_helper_env') -> Dict:
         """删除虚拟环境"""
         try:
             import shutil
@@ -171,7 +171,7 @@ class VenvManager:
                 'message': f'安装依赖时出错: {str(e)}'
             }
     
-    def get_venv_python(self, venv_name: str = 'xhs_helper_env') -> Optional[str]:
+    def get_venv_python(self, venv_name: str = 'creator_helper_env') -> Optional[str]:
         """获取虚拟环境的 Python 解释器路径"""
         venv_path = os.path.join(self.base_dir, venv_name)
         return self._get_python_path(venv_path)
@@ -192,7 +192,7 @@ class VenvManager:
         except Exception:
             return []
     
-    def venv_exists(self, name: str = 'xhs_helper_env') -> bool:
+    def venv_exists(self, name: str = 'creator_helper_env') -> bool:
         """检查虚拟环境是否存在"""
         venv_path = os.path.join(self.base_dir, name)
         if not os.path.exists(venv_path):

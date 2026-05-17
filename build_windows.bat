@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 REM 配置
-set APP_NAME=xhs_helper
+set APP_NAME=creator_helper
 set VERSION=1.0.0
 set RELEASE_DIR=release
 

@@ -17,7 +17,7 @@ uiautomator2_assets_path = os.path.join(uiautomator2_path, 'assets')
 cmd = [
     'pyinstaller',
     '--clean',
-    '--name', 'xhs_helper',
+    '--name', 'creator_helper',
     '--onefile',
     '--console',  # 显示控制台窗口，方便查看日志
     '--noupx',

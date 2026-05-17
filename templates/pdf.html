@@ -683,12 +683,13 @@ function saveAllFormData() {
     if (selectedPdfFiles.length > 0) {
         formData['pdf-files'] = selectedPdfFiles;
     }
-    localStorage.setItem('xhsFormData', JSON.stringify(formData));
+    localStorage.setItem('appFormData', JSON.stringify(formData));
 }
 
 // 从localStorage恢复所有表单数据
 function restoreAllFormData() {
-    const savedData = localStorage.getItem('xhsFormData');
+    const savedData = localStorage.getItem('appFormData')
+        || localStorage.getItem('xhsFormData'); // 兼容旧key
     if (!savedData) return;
 
     try {

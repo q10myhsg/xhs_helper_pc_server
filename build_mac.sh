@@ -4,7 +4,7 @@
 # 用于将 Flask 应用打包成可执行文件
 
 # 配置
-APP_NAME="xhs_helper"
+APP_NAME="creator_helper"
 VERSION="1.0.0"
 RELEASE_DIR="release"
 

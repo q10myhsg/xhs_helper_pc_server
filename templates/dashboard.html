@@ -38,7 +38,7 @@
 <div style="margin-bottom: 20px;">
     <button class="btn btn-success" onclick="startNurturing()" style="margin-right: 10px;">🚀 启动养号</button>
     <button class="btn btn-danger" onclick="stopNurturing()" style="margin-right: 10px;">🛑 停止养号</button>
-    <button class="btn btn-secondary" onclick="closeXiaohongshu()">关闭小红书</button>
+    <button class="btn btn-secondary" onclick="closeTargetApp()">关闭目标应用</button>
 </div>
 
 
@@ -370,19 +370,19 @@ function stopNurturing() {
     setTimeout(() => loadDeviceStatuses(), 500);
 }
 
-function closeXiaohongshu() {
+function closeTargetApp() {
     if (selectedDevices.length === 0) {
         alert('请先选择设备');
         return;
     }
     selectedDevices.forEach(deviceId => {
-        fetch(`/api/yanghao/close-xhs/${deviceId}`, {
+        fetch(`/api/yanghao/close-app/${deviceId}`, {
             method: 'POST'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log(`设备 ${deviceId} 关闭小红书成功`);
+                console.log(`设备 ${deviceId} 关闭目标应用成功`);
             }
         });
     });
