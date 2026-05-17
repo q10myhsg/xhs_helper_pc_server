@@ -90,10 +90,11 @@ class LicenseManager:
         threading.Thread(target=self._background_refresh, daemon=True).start()
 
     def _background_refresh(self):
-        """后台静默刷新套餐配置和设备权限，不阻塞主线程启动。"""
+        """后台静默刷新设备权限，不阻塞主线程启动。
+        /device/info 已包含当前设备的全部限额，无需再调 /package/config。
+        """
         import time as _time
         _time.sleep(2)          # 让 Flask 先完成启动再发网络请求
-        self._fetch_package_config_if_needed()
         self._refresh_device_info()
     
     def _load_api_config(self):
