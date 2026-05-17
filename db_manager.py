@@ -1,16 +1,25 @@
 import sqlite3
 import os
+import sys
 from typing import Optional, Dict, List
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
 
+# 使用与 license_manager 相同的隐蔽存储目录
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from path_manager import CONFIG_DIR as _CONFIG_DIR
+    _DEFAULT_DB_PATH = os.path.join(_CONFIG_DIR, ".app_data.db")
+except Exception:
+    _DEFAULT_DB_PATH = "config/license.db"
+
 
 class DBManager:
     """数据库管理类"""
     
-    def __init__(self, db_path: str = "config/license.db"):
+    def __init__(self, db_path: str = _DEFAULT_DB_PATH):
         self.db_path = db_path
         self._ensure_db_dir()
         self._init_db()
