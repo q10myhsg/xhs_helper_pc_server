@@ -206,56 +206,41 @@ class Api:
             }
 
 
+def run_env_check_and_server():
+    """在后台线程中完成环境检查 + 启动 Flask，不阻塞主线程显示窗口。"""
+    logger = logging.getLogger(__name__)
+    try:
+        from env_checker import EnvChecker
+        from env_installer import EnvInstaller
+
+        checker = EnvChecker()
+        checker.check_all()
+        missing = checker.get_missing_dependencies()
+
+        if missing:
+            logger.warning("检测到缺失的依赖项：" + ", ".join(missing))
+            logger.warning(checker.get_summary())
+        else:
+            logger.info("所有依赖项已满足")
+
+        installer = EnvInstaller()
+        bin_dir = installer.get_bin_dir()
+        if bin_dir and bin_dir not in os.environ.get('PATH', ''):
+            os.environ['PATH'] = bin_dir + os.pathsep + os.environ.get('PATH', '')
+
+    except ImportError as e:
+        logger.warning(f"环境检查模块不可用: {e}")
+    except Exception as e:
+        logger.error(f"环境检查出错: {e}", exc_info=True)
+
+    # 环境检查完成后再启动 Flask
+    start_flask_server()
+
+
 def main():
     setup_logging()
     logger = logging.getLogger(__name__)
-    
-    try:
-        # 尝试导入环境检查模块
-        from env_checker import EnvChecker
-        from env_installer import EnvInstaller
-        
-        checker = EnvChecker()
-        results = checker.check_all()
-        
-        # 检查是否有缺失的核心依赖
-        missing = checker.get_missing_dependencies()
-        
-        if missing:
-            logger.warning("检测到缺失的依赖项！")
-            logger.warning(checker.get_summary())
 
-            # 尝试启动环境配置 GUI
-            try:
-                import tkinter as tk
-                from env_setup_gui import EnvSetupApp
-
-                logger.info("正在启动环境配置工具...")
-                root = tk.Tk()
-                app = EnvSetupApp(root)
-                root.mainloop()
-
-            except ImportError:
-                logger.error("环境配置工具不可用，请手动安装以下依赖：")
-                for dep in missing:
-                    logger.error(f"  - {dep}")
-                logger.error("或运行: python env_setup_gui.py")
-                return 1
-        else:
-            logger.info("所有依赖项已满足")
-            logger.info(checker.get_summary())
-        
-        # 将我们的工具目录添加到 PATH
-        installer = EnvInstaller()
-        bin_dir = installer.get_bin_dir()
-        if bin_dir and bin_dir not in os.environ['PATH']:
-            os.environ['PATH'] = bin_dir + os.pathsep + os.environ['PATH']
-            
-    except ImportError as e:
-        logger.warning(f"环境检查模块不可用: {e}，直接启动...")
-    except Exception as e:
-        logger.error(f"启动过程中出错: {e}", exc_info=True)
-    
     # 启动 PyWebview 窗口，先显示 loading 页面
     logger.info("正在启动桌面窗口...")
     
@@ -333,9 +318,9 @@ def main():
         min_size=(800, 600)
     )
     
-    # 在后台线程中启动 Flask 服务器
+    # 在后台线程中完成环境检查 + 启动 Flask（两步并行于窗口显示）
     logger.info("正在启动后台服务器...")
-    server_thread = threading.Thread(target=start_flask_server, daemon=True)
+    server_thread = threading.Thread(target=run_env_check_and_server, daemon=True)
     server_thread.start()
     
     # 等待服务器启动，同时显示 loading 页面
