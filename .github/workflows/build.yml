@@ -40,5 +40,5 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: xhs_helper-${{ runner.os }}
+        name: creator_helper-${{ runner.os }}
         path: release/
