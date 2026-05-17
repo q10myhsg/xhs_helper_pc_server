@@ -134,19 +134,22 @@ class LicenseManager:
             pass
     
     def _refresh_device_info(self):
-        """从服务端获取设备信息并更新本地权限"""
+        """每天第一次启动时从服务端获取设备信息并更新本地权限"""
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self._get_last_fetch_date() == today:
+            return  # 今天已刷新过，直接用本地缓存
+
         device_info = self.fetch_device_info_from_server()
         if device_info:
-            # 更新本地权限配置
             permissions = device_info.get("permissions", {})
             if permissions:
                 parsed_permissions = self._parse_permissions_from_protocol(permissions)
-                # 更新到 package_config
                 package_type = device_info.get("package_type", "free")
                 if package_type not in self.package_config:
                     self.package_config[package_type] = {}
                 self.package_config[package_type].update(parsed_permissions)
                 self._save_package_config(self.package_config)
+            self._save_last_fetch_date(today)  # 记录今天已刷新
     
     def _get_last_fetch_date(self) -> Optional[str]:
         """获取上次获取套餐配置的日期"""

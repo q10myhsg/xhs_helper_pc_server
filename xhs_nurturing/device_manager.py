@@ -1,11 +1,20 @@
-import uiautomator2 as u2
 import subprocess
 import subprocess_util
 import logging
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 from .config_manager import ConfigManager
+
+u2 = None
+
+def _get_u2():
+    global u2
+    if u2 is None:
+        import uiautomator2 as _u2
+        u2 = _u2
+    return u2
+
 
 class DeviceManager:
     """设备管理器"""
@@ -14,7 +23,7 @@ class DeviceManager:
         """
         初始化设备管理器
         """
-        self._devices_pool: Dict[str, u2.Device] = {}
+        self._devices_pool: Dict[str, Any] = {}
         self._status: Dict[str, dict] = {}
         self._stop_flag: Dict[str, bool] = {}
         self._device_aliases: Dict[str, str] = {}  # 存储设备别名
@@ -50,13 +59,13 @@ class DeviceManager:
                         # 尝试连接并获取设备信息
                         try:
                             self.logger.info(f"尝试连接设备: {device_id}")
-                            d = u2.connect(device_id)
+                            d = _get_u2().connect(device_id)
                             
                             info = None
                             # 尝试获取设备信息
                             try:
                                 info = d.info
-                            except u2.exceptions.UiAutomationNotConnectedError:
+                            except _get_u2().exceptions.UiAutomationNotConnectedError:
                                 self.logger.info(f"设备 {device_id} 的 uiautomator2 未启动，尝试使用 adb 命令初始化...")
                                 # 尝试使用 adb 命令初始化 uiautomator2
                                 try:
@@ -130,12 +139,12 @@ class DeviceManager:
             if device_id in self._devices_pool:
                 del self._devices_pool[device_id]
             
-            d = u2.connect(device_id)
+            d = _get_u2().connect(device_id)
             
             # 检查 uiautomator2 是否连接，如果没有则尝试初始化
             try:
                 d.info
-            except u2.exceptions.UiAutomationNotConnectedError:
+            except _get_u2().exceptions.UiAutomationNotConnectedError:
                 self.logger.info(f"设备 {device_id} 的 uiautomator2 未启动，尝试使用 adb 命令初始化...")
                 # 尝试使用 adb 命令初始化 uiautomator2
                 try:
@@ -164,7 +173,7 @@ class DeviceManager:
             self.logger.error(f"连接设备失败: {e}")
             return False
     
-    def get_device(self, device_id: str) -> Optional[u2.Device]:
+    def get_device(self, device_id: str) -> Optional[Any]:
         """
         获取设备连接
         :param device_id: 设备ID

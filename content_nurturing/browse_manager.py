@@ -1,8 +1,8 @@
 import random
 import time
 import logging
-from typing import List, Optional
-import uiautomator2 as u2
+from typing import List, Optional, Any
+from .device_manager import _get_u2
 from .utils import random_delay, get_screen_size, random_click_inside_bounds, scroll_randomly, safe_click, simulate_typing
 
 class BrowseManager:
@@ -12,7 +12,7 @@ class BrowseManager:
         """初始化浏览管理器"""
         self.logger = logging.getLogger(__name__)
     
-    def browse_recommended_notes(self, device: u2.Device, browse_time: int, max_notes_to_open: int = 10, config: dict = None) -> bool:
+    def browse_recommended_notes(self, device: Any, browse_time: int, max_notes_to_open: int = 10, config: dict = None) -> bool:
         """
         在推荐页浏览笔记
         :param device: 设备实例
@@ -51,7 +51,7 @@ class BrowseManager:
             self.logger.error(f"浏览过程中发生错误: {e}")
             return False
     
-    def start_target_app(self, device: u2.Device) -> bool:
+    def start_target_app(self, device: Any) -> bool:
         """
         启动目标应用应用
         :param device: 设备实例
@@ -74,7 +74,7 @@ class BrowseManager:
             self.logger.error(f"启动目标应用失败: {e}")
             return False
     
-    def browse_discovery_page(self, device: u2.Device, browse_time: int, config: dict = None, stop_check_callback=None) -> bool:
+    def browse_discovery_page(self, device: Any, browse_time: int, config: dict = None, stop_check_callback=None) -> bool:
         """
         在发现页浏览
         :param device: 设备实例
@@ -114,7 +114,7 @@ class BrowseManager:
             self.logger.error(f"发现页浏览失败: {e}")
             return False
     
-    def search_and_browse(self, device: u2.Device, keyword: str, config: dict, max_posts: int = 10, device_id: str = None, stop_check_callback=None, count_callback=None) -> int:
+    def search_and_browse(self, device: Any, keyword: str, config: dict, max_posts: int = 10, device_id: str = None, stop_check_callback=None, count_callback=None) -> int:
         """
         搜索关键词并浏览相关内容
         :param device: 设备实例
@@ -211,7 +211,7 @@ class BrowseManager:
             self.logger.error(f"搜索浏览失败: {e}")
             return 0
     
-    def _open_search(self, device: u2.Device) -> bool:
+    def _open_search(self, device: Any) -> bool:
         """
         打开搜索框
         :param device: 设备实例
@@ -246,7 +246,7 @@ class BrowseManager:
             self.logger.error(f"打开搜索框失败: {e}")
             return False
     
-    def _input_search_keyword(self, device: u2.Device, keyword: str) -> bool:
+    def _input_search_keyword(self, device: Any, keyword: str) -> bool:
         """
         输入搜索关键词
         :param device: 设备实例
@@ -282,7 +282,7 @@ class BrowseManager:
             self.logger.error(f"输入搜索关键词失败: {e}")
             return False
     
-    def _execute_search(self, device: u2.Device) -> bool:
+    def _execute_search(self, device: Any) -> bool:
         """
         执行搜索
         :param device: 设备实例
@@ -297,7 +297,7 @@ class BrowseManager:
             self.logger.error(f"执行搜索失败: {e}")
             return False
     
-    def _open_random_note(self, device: u2.Device, config: dict) -> bool:
+    def _open_random_note(self, device: Any, config: dict) -> bool:
         """
         随机打开一篇笔记
         :param device: 设备实例
@@ -401,7 +401,7 @@ class BrowseManager:
     
 
     
-    def _visit_post(self, device: u2.Device, config: dict) -> bool:
+    def _visit_post(self, device: Any, config: dict) -> bool:
         """
         访问帖子
         :param device: 设备实例
@@ -486,7 +486,7 @@ class BrowseManager:
             self.logger.error(f"访问帖子失败: {e}")
             return False
     
-    def _visit_post_detail(self, device: u2.Device, duration_range: List[int], config: dict, stop_check_callback=None):
+    def _visit_post_detail(self, device: Any, duration_range: List[int], config: dict, stop_check_callback=None):
         """
         访问帖子详情
         :param device: 设备实例

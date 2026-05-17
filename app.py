@@ -4,24 +4,44 @@ import threading
 import os
 import uuid
 from werkzeug.utils import secure_filename
-try:
-    from content_nurturing import NurturingManager
-except ImportError:
-    from xhs_nurturing import NurturingManager  # 旧包名兼容
 from license_manager import get_license_manager
 from machine_code import get_machine_code
-from pdf_converter import PDFConverter
-from file_transfer import file_transfer_manager
-
-# 初始化PDF转换器
-pdf_converter = PDFConverter()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# 初始化管理器
-nurturing_manager = NurturingManager()
+# 懒加载：首次用到时才初始化，避免 uiautomator2/pdf2image/PIL 在启动时阻塞
 license_manager = get_license_manager()
 current_device = {"device_id": None}
+_nurturing_manager = None
+_pdf_converter = None
+_file_transfer_manager = None
+
+
+def get_nurturing_manager():
+    global _nurturing_manager
+    if _nurturing_manager is None:
+        try:
+            from content_nurturing import NurturingManager
+        except ImportError:
+            from xhs_nurturing import NurturingManager
+        _nurturing_manager = NurturingManager()
+    return _nurturing_manager
+
+
+def get_pdf_converter():
+    global _pdf_converter
+    if _pdf_converter is None:
+        from pdf_converter import PDFConverter
+        _pdf_converter = PDFConverter()
+    return _pdf_converter
+
+
+def get_file_transfer_manager():
+    global _file_transfer_manager
+    if _file_transfer_manager is None:
+        from file_transfer import file_transfer_manager as _ftm
+        _file_transfer_manager = _ftm
+    return _file_transfer_manager
 
 # ==================== 页面路由 ====================
 @app.route("/")
@@ -82,7 +102,7 @@ def cover_generator_page():
 def api_devices():
     """获取已连接设备列表"""
     try:
-        devices = nurturing_manager.get_all_devices()
+        devices = get_nurturing_manager().get_all_devices()
         return jsonify({"success": True, "data": devices})
     except Exception as e:
         return jsonify({"success": False, "error":  str(e)})
@@ -97,13 +117,13 @@ def api_device_switch():
         
         # 如果有其他设备在运行，先停止
         if current_device["device_id"]:
-            nurturing_manager.stop_nurturing(current_device["device_id"])
+            get_nurturing_manager().stop_nurturing(current_device["device_id"])
         
-        result = nurturing_manager.device_manager.connect_device(device_id)
+        result = get_nurturing_manager().device_manager.connect_device(device_id)
         if result: 
             current_device["device_id"] = device_id
             # 初始化新设备配置（如无则使用默认配置）
-            config = nurturing_manager.get_device_config(device_id)
+            config = get_nurturing_manager().get_device_config(device_id)
             return jsonify({"success": True, "message": f"已切换到设备:  {device_id}"})
         else:
             return jsonify({"success": False, "error":  "设备连接失败"})
@@ -121,7 +141,7 @@ def api_device_alias():
             if not device_id:
                 return jsonify({"success": False, "error": "设备ID不能为空"})
             
-            nurturing_manager.device_manager.set_device_alias(device_id, alias)
+            get_nurturing_manager().device_manager.set_device_alias(device_id, alias)
             return jsonify({"success": True, "message": f"已为设备 {device_id} 设置别名: {alias}"})
         else:
             # 获取设备别名
@@ -129,7 +149,7 @@ def api_device_alias():
             if not device_id:
                 return jsonify({"success": False, "error": "设备ID不能为空"})
             
-            alias = nurturing_manager.device_manager.get_device_alias(device_id)
+            alias = get_nurturing_manager().device_manager.get_device_alias(device_id)
             return jsonify({"success": True, "data": {"device_id": device_id, "alias": alias}})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -138,7 +158,7 @@ def api_device_alias():
 def api_remove_device_alias(device_id):
     """移除设备别名"""
     try:
-        nurturing_manager.device_manager.remove_device_alias(device_id)
+        get_nurturing_manager().device_manager.remove_device_alias(device_id)
         return jsonify({"success": True, "message": f"已移除设备 {device_id} 的别名"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -148,7 +168,7 @@ def api_delete_device(device_id):
     """删除设备"""
     try:
         # 检查设备是否离线
-        devices = nurturing_manager.get_all_devices()
+        devices = get_nurturing_manager().get_all_devices()
         device = next((d for d in devices if d['id'] == device_id), None)
         if not device:
             return jsonify({"success": False, "error": "设备不存在"})
@@ -157,9 +177,9 @@ def api_delete_device(device_id):
             return jsonify({"success": False, "error": "只能删除离线设备"})
         
         # 从配置中删除设备
-        nurturing_manager.config_manager.remove_device_config(device_id)
+        get_nurturing_manager().config_manager.remove_device_config(device_id)
         # 移除设备别名
-        nurturing_manager.device_manager.remove_device_alias(device_id)
+        get_nurturing_manager().device_manager.remove_device_alias(device_id)
         
         return jsonify({"success": True, "message": f"设备 {device_id} 已删除"})
     except Exception as e:
@@ -169,7 +189,7 @@ def api_delete_device(device_id):
 def api_get_config(device_id):
     """获取设备配置"""
     try:
-        config = nurturing_manager.get_device_config(device_id)
+        config = get_nurturing_manager().get_device_config(device_id)
         return jsonify({"success":  True, "data": config})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -191,12 +211,12 @@ def api_save_config(device_id):
                 config["duration_minutes"] = max_duration
 
         # 先获取现有配置
-        existing_config = nurturing_manager.get_device_config(device_id)
+        existing_config = get_nurturing_manager().get_device_config(device_id)
 
         # 合并配置：现有配置 + 新配置（新配置覆盖现有配置）
         merged_config = {**existing_config, **config}
 
-        success = nurturing_manager.update_device_config(device_id, merged_config)
+        success = get_nurturing_manager().update_device_config(device_id, merged_config)
         if success:
             # 返回实际保存的配置，让前端知道是否被调整
             return jsonify({
@@ -216,11 +236,11 @@ def api_keywords(device_id):
     """管理关键词"""
     try:
         if request.method == "GET": 
-            keywords = nurturing_manager.config_manager.get_keywords(device_id)
+            keywords = get_nurturing_manager().config_manager.get_keywords(device_id)
             return jsonify({"success": True, "data": keywords})
         else:
             keywords = request.json.get("keywords", [])
-            success = nurturing_manager.update_keywords(device_id, keywords)
+            success = get_nurturing_manager().update_keywords(device_id, keywords)
             if success:
                 return jsonify({"success": True, "message": "关键词已更新"})
             else:
@@ -244,7 +264,7 @@ def api_start_yanghao():
         logger.info(f"尝试启动设备 {device_id} 的养号")
         
         # 获取设备配置
-        config = nurturing_manager.config_manager.get_device_config(device_id)
+        config = get_nurturing_manager().config_manager.get_device_config(device_id)
         
         # 检查是否可以启动（使用新的授权管理）
         duration_minutes = config.get("duration_minutes", 20)
@@ -260,20 +280,20 @@ def api_start_yanghao():
         # 如果实际时长和计划时长不同，更新配置
         if actual_duration != duration_minutes:
             config["duration_minutes"] = actual_duration
-            nurturing_manager.update_device_config(device_id, config)
+            get_nurturing_manager().update_device_config(device_id, config)
         
         # 连接设备
-        if not nurturing_manager.device_manager.connect_device(device_id):
+        if not get_nurturing_manager().device_manager.connect_device(device_id):
             logger.error(f"无法连接设备 {device_id}")
             return jsonify({"success": False, "error": f"启动失败: 无法连接设备 {device_id}"})
         
         # 验证配置
-        if not nurturing_manager.config_manager.validate_config(config):
+        if not get_nurturing_manager().config_manager.validate_config(config):
             logger.error(f"设备 {device_id} 的配置无效")
             return jsonify({"success": False, "error": f"启动失败: 设备配置无效"})
         
         # 从数据库获取关键词
-        keywords = nurturing_manager.config_manager.get_keywords(device_id)
+        keywords = get_nurturing_manager().config_manager.get_keywords(device_id)
         config["keywords"] = keywords
         
         # 验证关键词
@@ -283,7 +303,7 @@ def api_start_yanghao():
             return jsonify({"success": False, "error": f"启动失败: 关键词配置无效"})
         
         # 启动养号
-        success = nurturing_manager.start_nurturing(device_id)
+        success = get_nurturing_manager().start_nurturing(device_id)
         if success:
             logger.info(f"设备 {device_id} 养号启动成功")
             response_message = "养号已启动"
@@ -305,7 +325,7 @@ def api_stop_yanghao():
         if not device_id: 
             return jsonify({"success": False, "error": "未选择设备"})
         
-        nurturing_manager.stop_nurturing(device_id)
+        get_nurturing_manager().stop_nurturing(device_id)
         return jsonify({"success": True, "message": "已停止养号"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -314,7 +334,7 @@ def api_stop_yanghao():
 def api_status(device_id):
     """获取养号状态"""
     try:
-        status = nurturing_manager.get_nurturing_status(device_id)
+        status = get_nurturing_manager().get_nurturing_status(device_id)
         return jsonify({"success": True, "data": status})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -325,12 +345,12 @@ def api_close_xhs(device_id):
     """关闭目标应用"""
     try:
         # 调用NurturingManager中的方法关闭目标应用
-        device = nurturing_manager.device_manager.get_device(device_id)
+        device = get_nurturing_manager().device_manager.get_device(device_id)
         if not device:
             # 尝试连接设备
-            if not nurturing_manager.device_manager.connect_device(device_id):
+            if not get_nurturing_manager().device_manager.connect_device(device_id):
                 return jsonify({"success": False, "error": "设备未连接"})
-            device = nurturing_manager.device_manager.get_device(device_id)
+            device = get_nurturing_manager().device_manager.get_device(device_id)
         
         if device:
             device.app_stop("com.xingin.xhs")
@@ -345,11 +365,11 @@ def api_default_config():
     """管理默认配置模板"""
     try:
         if request.method == "GET": 
-            default_cfg = nurturing_manager.config_manager.get_default_template()
+            default_cfg = get_nurturing_manager().config_manager.get_default_template()
             return jsonify({"success": True, "data": default_cfg})
         else:
             cfg = request.json
-            nurturing_manager.config_manager.set_default_template(cfg)
+            get_nurturing_manager().config_manager.set_default_template(cfg)
             return jsonify({"success":  True, "message": "默认模板已更新"})
     except Exception as e:
         return jsonify({"success": False, "error":  str(e)})
@@ -498,7 +518,7 @@ def api_pdf_upload():
             # 生成唯一文件名
             unique_id = str(uuid.uuid4())
             filename = f"{unique_id}_{filename}"
-            filepath = os.path.join(pdf_converter.upload_folder, filename)
+            filepath = os.path.join(get_pdf_converter().upload_folder, filename)
             file.save(filepath)
             
             return jsonify({
@@ -545,7 +565,7 @@ def api_pdf_convert():
         if not filename:
             return jsonify({"success": False, "error": "文件名不能为空"})
         
-        filepath = os.path.join(pdf_converter.upload_folder, filename)
+        filepath = os.path.join(get_pdf_converter().upload_folder, filename)
         if not os.path.exists(filepath):
             return jsonify({"success": False, "error": "文件不存在"})
         
@@ -555,7 +575,7 @@ def api_pdf_convert():
             return jsonify({"success": False, "error": msg})
         
         # 执行转换
-        result = pdf_converter.convert_pdf_to_images(
+        result = get_pdf_converter().convert_pdf_to_images(
             filepath, 
             dpi=dpi, 
             fmt=fmt, 
@@ -627,12 +647,12 @@ def api_pdf_preview():
         if not filename:
             return jsonify({"success": False, "error": "文件名不能为空"})
         
-        filepath = os.path.join(pdf_converter.upload_folder, filename)
+        filepath = os.path.join(get_pdf_converter().upload_folder, filename)
         if not os.path.exists(filepath):
             return jsonify({"success": False, "error": "文件不存在"})
         
         # 执行转换（仅第一页）
-        result = pdf_converter.convert_pdf_to_images(
+        result = get_pdf_converter().convert_pdf_to_images(
             filepath, 
             dpi=dpi, 
             fmt=fmt, 
@@ -695,7 +715,7 @@ def api_pdf_preview_multi():
         if not filename:
             return jsonify({"success": False, "error": "文件名不能为空"})
         
-        filepath = os.path.join(pdf_converter.upload_folder, filename)
+        filepath = os.path.join(get_pdf_converter().upload_folder, filename)
         if not os.path.exists(filepath):
             return jsonify({"success": False, "error": "文件不存在"})
         
@@ -709,7 +729,7 @@ def api_pdf_preview_multi():
         preview_pages = min(max_pages, total_pages)
         
         # 执行转换（多页）
-        result = pdf_converter.convert_pdf_to_images(
+        result = get_pdf_converter().convert_pdf_to_images(
             filepath, 
             dpi=dpi, 
             fmt=fmt, 
@@ -762,7 +782,7 @@ def api_pdf_download(filename):
 def api_pdf_cleanup():
     """清理旧的PDF转换文件"""
     try:
-        pdf_converter.cleanup_old_files(max_age_hours=24)
+        get_pdf_converter().cleanup_old_files(max_age_hours=24)
         return jsonify({"success": True, "message": "清理完成"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -824,7 +844,7 @@ def api_pdf_batch_upload():
                 filename = secure_filename(file.filename)
                 unique_id = str(uuid.uuid4())
                 saved_filename = f"{unique_id}_{filename}"
-                filepath = os.path.join(pdf_converter.upload_folder, saved_filename)
+                filepath = os.path.join(get_pdf_converter().upload_folder, saved_filename)
                 file.save(filepath)
                 
                 uploaded_files.append({
@@ -870,7 +890,7 @@ def api_pdf_batch_convert():
         for index, file_info in enumerate(files):
             try:
                 filename = file_info.get('saved_name')
-                filepath = os.path.join(pdf_converter.upload_folder, filename)
+                filepath = os.path.join(get_pdf_converter().upload_folder, filename)
 
                 if not os.path.exists(filepath):
                     results.append({
@@ -993,7 +1013,7 @@ def api_pdf_batch_upload_to_dir():
                 # 生成唯一文件名，保存到服务器uploads目录
                 unique_id = str(uuid.uuid4())
                 saved_filename = f"{unique_id}_{filename}"
-                filepath = os.path.join(pdf_converter.upload_folder, saved_filename)
+                filepath = os.path.join(get_pdf_converter().upload_folder, saved_filename)
 
                 # 保存文件到服务器uploads目录
                 file.save(filepath)
